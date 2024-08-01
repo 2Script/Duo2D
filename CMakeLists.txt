@@ -1,13 +1,15 @@
 cmake_minimum_required(VERSION 3.15)
 
 project(Duo2D VERSION 1.0 LANGUAGES CXX)
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 
 option(BUILD_SHARED_LIBS "Build using shared libraries" ON)
 
 
 set(CPP_FILES
-    #application.cpp
+    application/device.cpp
+    application/create.cpp
+    application/window.cpp
 )
 list(TRANSFORM CPP_FILES PREPEND src/Duo2D/)
 
