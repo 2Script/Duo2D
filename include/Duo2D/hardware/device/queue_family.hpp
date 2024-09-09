@@ -19,7 +19,7 @@ namespace d2d {
 
 namespace d2d {
     namespace queue_family {
-        constexpr std::array<VkQueueFlagBits, queue_family::num_families> vulkan_bit = {
+        constexpr std::array<VkQueueFlagBits, queue_family::num_families> flag_bit = {
             VK_QUEUE_GRAPHICS_BIT,
 
             VK_QUEUE_FLAG_BITS_MAX_ENUM

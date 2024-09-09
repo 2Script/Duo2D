@@ -29,6 +29,7 @@ namespace d2d {
         __D2D_GLFW_VERIFY(dummy.handle);
         __D2D_VULKAN_VERIFY(glfwCreateWindowSurface(vulkan_instance, dummy.handle, nullptr, &dummy.surface));
 
+
         std::set<device_info> ret{};
         for(VkPhysicalDevice d : devices) {
             //Get device features and properties
@@ -36,6 +37,7 @@ namespace d2d {
             VkPhysicalDeviceFeatures device_features;
             vkGetPhysicalDeviceProperties(d, &device_properties);
             vkGetPhysicalDeviceFeatures(d, &device_features);
+
 
             //Get device queue family indicies
             queue_family_idxs_t device_idxs{};
@@ -48,7 +50,7 @@ namespace d2d {
 
             for(std::size_t idx = 0; idx < families.size(); ++idx) {
                 for(std::size_t family_id = 0; family_id < queue_family::num_families - 1; ++family_id) {
-                    if(families[idx].queueFlags & queue_family::vulkan_bit[family_id]) {
+                    if(families[idx].queueFlags & queue_family::flag_bit[family_id]) {
                         device_idxs[family_id] = idx;
                         goto next_family;
                     }
@@ -64,6 +66,7 @@ namespace d2d {
                 next_family:;
             }
             }
+
 
             //Get device extensions
             extensions_t device_extensions{};
@@ -86,11 +89,13 @@ namespace d2d {
             }
             }
 
+
             //Get device surface capabilites
             VkSurfaceCapabilitiesKHR device_surface_capabilites;
             vkGetPhysicalDeviceSurfaceCapabilitiesKHR(d, dummy.surface, &device_surface_capabilites);
 
-            //Get device display formats
+
+            //Get device display formats (i.e. surface formats)
             std::set<display_format> device_formats;
             {
             std::uint32_t format_count;
@@ -104,11 +109,10 @@ namespace d2d {
 
             //TODO replace with lookup table
             for(VkSurfaceFormatKHR f : formats) {
-                for(std::size_t i = 0; i < display_format_table.size(); ++i) {
-                    for(std::size_t j = 0; j < display_format_table[0].size(); ++j) {
-                        const display_format& df = display_format_table[i][j];
-                        if(df.format_id == f.format && df.color_space_id == f.colorSpace) {
-                            device_formats.insert(df);
+                for(std::size_t i = 0; i < impl::num_pixel_formats; ++i) {
+                    for(std::size_t j = 0; j < impl::num_color_spaces; ++j) {
+                        if(impl::pixel_format_ids[i] == f.format && impl::color_space_ids[j] == f.colorSpace) {
+                            device_formats.emplace(impl::pixel_format_ids[i], impl::color_space_ids[j], pixel_formats[i], color_spaces[j]);
                             goto next_format;
                         }
                     }
@@ -116,6 +120,7 @@ namespace d2d {
                 next_format:;
             }
             }
+
 
             //Get device present modes
             decltype(device_info::present_modes) device_present_modes;

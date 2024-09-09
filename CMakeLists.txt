@@ -7,9 +7,9 @@ option(BUILD_SHARED_LIBS "Build using shared libraries" ON)
 
 
 set(CPP_FILES
-    application/device.cpp
-    application/create.cpp
-    application/window.cpp
+    device.cpp
+    application.cpp
+    window.cpp
 )
 list(TRANSFORM CPP_FILES PREPEND src/Duo2D/)
 

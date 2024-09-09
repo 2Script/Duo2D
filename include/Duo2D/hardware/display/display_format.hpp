@@ -1,5 +1,6 @@
 #pragma once
 #include <vulkan/vulkan.h>
+#include <tuple>
 
 #include "Duo2D/hardware/display/pixel_format_ids.hpp"
 #include "Duo2D/hardware/display/color_space_ids.hpp"
@@ -17,17 +18,15 @@ namespace d2d {
 
 
     public:
-        constexpr friend bool operator<(display_format lhs, display_format rhs) noexcept; 
+        constexpr friend bool operator<(display_format lhs, display_format rhs) noexcept {
+            return std::tie(lhs.format_id, lhs.color_space_id) < std::tie(rhs.format_id, rhs.color_space_id);
+        }
 
-        constexpr explicit operator VkSurfaceFormatKHR() const noexcept;
-        constexpr explicit operator bool() const noexcept;
+        constexpr explicit operator VkSurfaceFormatKHR() const noexcept { 
+            return {format_id, color_space_id}; 
+        }
+        constexpr explicit operator bool() const noexcept { 
+            return format_id != VK_FORMAT_UNDEFINED; 
+        }
     };
 }
-
-
-namespace d2d::impl {
-    using display_format_table_t = std::array<std::array<display_format, num_color_spaces>, num_pixel_formats>;
-    constexpr display_format_table_t all_display_formats() noexcept;
-}
-
-#include "Duo2D/hardware/display/display_format.inl"

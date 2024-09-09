@@ -57,9 +57,6 @@ namespace d2d {
         std::map<std::string, window> windows;
     private:
         inline static bool glfw_init = false;
-
-    private:
-        constexpr static impl::display_format_table_t display_format_table = impl::all_display_formats();
     };
 }
 
