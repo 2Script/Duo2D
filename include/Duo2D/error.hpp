@@ -28,8 +28,12 @@ namespace d2d::error {
         device_lacks_necessary_queue_base,
         device_lacks_necessary_queue_last = device_lacks_necessary_queue_base + queue_family::num_families - 1,
 
-        //Application user errors
+        device_lacks_display_format,
+        device_lacks_present_mode,
+
+        //Internal application errors (programmer's fault)
         device_not_selected,
+        device_not_initialized,
 
         window_not_found,
         window_already_exists,

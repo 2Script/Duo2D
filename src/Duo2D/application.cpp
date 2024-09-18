@@ -46,8 +46,7 @@ namespace d2d {
         // Create instance
         application ret{};
         __D2D_VULKAN_VERIFY(vkCreateInstance(&create_info, nullptr, &ret.vulkan_instance));
-
-
+        ret.name = name;
 
         return ret;
     }
@@ -63,13 +62,16 @@ namespace d2d {
     application::~application() noexcept {
         if(vulkan_instance == VK_NULL_HANDLE) return;
         
-        if(logical_device)
-            vkDestroyDevice(logical_device, nullptr);
 
         for(auto& w : windows) {
+            vkDestroySwapchainKHR(logical_device, w.second.swap_chain, nullptr);
             vkDestroySurfaceKHR(vulkan_instance, w.second.surface, nullptr);
             glfwDestroyWindow(w.second.handle);
         }
+
+        if(logical_device)
+            vkDestroyDevice(logical_device, nullptr);
+
         vkDestroyInstance(vulkan_instance, nullptr);
         glfwTerminate();
         glfw_init = false;
@@ -80,6 +82,9 @@ namespace d2d {
         vulkan_instance(other.vulkan_instance),
         physical_device(other.physical_device),
         logical_device(other.logical_device),
+        device_format(std::move(other.device_format)),
+        device_present_mode(other.device_present_mode),
+        name(std::move(other.name)),
         queues(other.queues),
         windows(std::move(other.windows)) {
         other.physical_device = device_info{};
@@ -88,11 +93,14 @@ namespace d2d {
     }
     
     application& application::operator=(application&& other) noexcept {
-        vulkan_instance = other.vulkan_instance;
-        physical_device = other.physical_device;
-        logical_device  = other.logical_device;
-        queues          = other.queues;
-        windows         = std::move(other.windows);
+        vulkan_instance     = other.vulkan_instance;
+        physical_device     = other.physical_device;
+        logical_device      = other.logical_device;
+        device_format       = std::move(other.device_format);
+        device_present_mode = other.device_present_mode;
+        name                = std::move(other.name);
+        queues              = other.queues;
+        windows             = std::move(other.windows);
         other.physical_device = device_info{};
         other.vulkan_instance = VK_NULL_HANDLE;
         other.logical_device  = VK_NULL_HANDLE;

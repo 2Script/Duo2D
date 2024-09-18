@@ -24,7 +24,7 @@ namespace d2d {
         extensions_t extensions{};
         features_t features{};
 
-        VkSurfaceCapabilitiesKHR surface_capabilites;
+        VkSurfaceCapabilitiesKHR surface_capabilities;
         std::set<display_format> display_formats; //TODO replace with format to bool lookup table?
         std::array<bool, static_cast<std::size_t>(present_mode::num_present_modes)> present_modes;
 

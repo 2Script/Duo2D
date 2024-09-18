@@ -2,6 +2,7 @@
 #include <map>
 #include <string_view>
 #include <set>
+#include <vector>
 #include <vulkan/vulkan.h>
 #include <vulkan/vulkan_core.h>
 
@@ -37,10 +38,16 @@ namespace d2d {
         result<void> add_window(std::string_view title) noexcept;
         result<void> remove_window(std::string_view title) noexcept;
 
+        result<void> add_window() noexcept;
+        result<void> remove_window() noexcept;
+
     private:
         struct window {
             GLFWwindow* handle;
             VkSurfaceKHR surface;
+            VkExtent2D swap_extent;
+            VkSwapchainKHR swap_chain;
+            std::vector<VkImage> images;
         };
 
         
@@ -50,7 +57,9 @@ namespace d2d {
         VkDevice logical_device = VK_NULL_HANDLE;
         display_format device_format;
         present_mode device_present_mode;
+        std::string name;
 
+        //May need to be per-window instead of per-applciation?
         std::array<VkQueue, queue_family::num_families> queues;
 
 

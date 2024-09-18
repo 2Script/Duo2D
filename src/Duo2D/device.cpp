@@ -1,6 +1,12 @@
 #include "Duo2D/application.hpp"
+#include "Duo2D/error.hpp"
 #include "Duo2D/hardware/device/device_info.hpp"
+#include "Duo2D/hardware/display/color_space.hpp"
+#include "Duo2D/hardware/display/color_space_ids.hpp"
 #include "Duo2D/hardware/display/display_format.hpp"
+#include "Duo2D/hardware/display/pixel_format.hpp"
+#include "Duo2D/hardware/display/pixel_format_ids.hpp"
+#include "Duo2D/hardware/display/present_mode.hpp"
 #include <vulkan/vulkan_core.h>
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
@@ -90,9 +96,9 @@ namespace d2d {
             }
 
 
-            //Get device surface capabilites
-            VkSurfaceCapabilitiesKHR device_surface_capabilites;
-            vkGetPhysicalDeviceSurfaceCapabilitiesKHR(d, dummy.surface, &device_surface_capabilites);
+            //Get device surface capabilities
+            VkSurfaceCapabilitiesKHR device_surface_capabilities;
+            vkGetPhysicalDeviceSurfaceCapabilitiesKHR(d, dummy.surface, &device_surface_capabilities);
 
 
             //Get device display formats (i.e. surface formats)
@@ -148,7 +154,7 @@ namespace d2d {
                 device_extensions,
                 std::bit_cast<d2d::features_t>(device_features),
 
-                device_surface_capabilites,
+                device_surface_capabilities,
                 device_formats,
                 device_present_modes,
 
@@ -170,11 +176,12 @@ namespace d2d {
         if(!physical_device.handle)
             return error::device_not_selected;
         
+        //Check for queue family support
         for(std::size_t i = 0; i < queue_family::num_families; ++i)
             if(!physical_device.queue_family_idxs[i].has_value())
                 return static_cast<errc>(error::device_lacks_necessary_queue_base + i);
 
-
+        //Create desired queues for each queue family
         constexpr static float priority = 1.f;
         std::array<VkDeviceQueueCreateInfo, queue_family::num_families> queue_create_infos{};
         for(std::size_t i = 0; i < queue_family::num_families; ++i) {
@@ -186,14 +193,17 @@ namespace d2d {
             queue_create_infos[i] = queue_create_info;
         }
 
+        //Set desired features
         VkPhysicalDeviceFeatures desired_features{};
 
+        //Set extensions
         //TODO improve with lookup table?
         std::vector<const char*> enabled_extensions;
         for(std::size_t i = 0; i < physical_device.extensions.size(); ++i)
             if(physical_device.extensions[i])
                 enabled_extensions.push_back(extension::name[i].data());
 
+        //Create logical device
         VkDeviceCreateInfo device_create_info{};
         device_create_info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
         device_create_info.pQueueCreateInfos = queue_create_infos.data();
@@ -205,9 +215,26 @@ namespace d2d {
 
         __D2D_VULKAN_VERIFY(vkCreateDevice(physical_device.handle, &device_create_info, nullptr, &logical_device));
 
-
+        //Create queues
         for(std::size_t i = 0; i < queue_family::num_families; ++i)
             vkGetDeviceQueue(logical_device, *(physical_device.queue_family_idxs[i]), 0, &queues[i]);
+
+        
+        //Check display format support (TEMP: set to default [VK_FORMAT_B8G8R8A8_SRGB & VK_COLOR_SPACE_SRGB_NONLINEAR_KHR])
+        {
+        constexpr static display_format defualt_display_format = {impl::pixel_format_ids[50], impl::color_space_ids[0], pixel_formats[50], color_spaces[0]};
+        const auto it = physical_device.display_formats.find(defualt_display_format);
+        if(it == physical_device.display_formats.end())
+            return error::device_lacks_display_format;
+        device_format = *it;
+        }
+
+        //Check present mode support (TEMP: set to default)
+        if(physical_device.present_modes[static_cast<std::size_t>(present_mode::mailbox)])
+            device_present_mode = present_mode::mailbox;
+        else if(physical_device.present_modes[static_cast<std::size_t>(present_mode::fifo)])
+            device_present_mode = present_mode::fifo;
+        else return error::device_lacks_present_mode;
 
         return result<void>{std::in_place_type<void>};
     }
