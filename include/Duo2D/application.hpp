@@ -47,7 +47,9 @@ namespace d2d {
             VkSurfaceKHR surface;
             VkExtent2D swap_extent;
             VkSwapchainKHR swap_chain;
+            //TEMP:
             std::vector<VkImage> images;
+            std::vector<VkImageView> image_views;
         };
 
         

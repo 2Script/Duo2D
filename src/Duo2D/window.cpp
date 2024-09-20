@@ -85,6 +85,27 @@ namespace d2d {
         vkGetSwapchainImagesKHR(logical_device, w.swap_chain, &image_count, w.images.data());
         }
 
+        //Create swap chain image views
+        w.image_views.resize(w.images.size());
+        for (size_t i = 0; i < w.images.size(); i++) {
+            VkImageViewCreateInfo image_view_create_info{};
+            image_view_create_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+            image_view_create_info.image = w.images[i];
+            image_view_create_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
+            image_view_create_info.format = device_format.format_id;
+            image_view_create_info.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+            image_view_create_info.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+            image_view_create_info.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+            image_view_create_info.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+            image_view_create_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+            image_view_create_info.subresourceRange.baseMipLevel = 0;
+            image_view_create_info.subresourceRange.levelCount = 1;
+            image_view_create_info.subresourceRange.baseArrayLayer = 0;
+            image_view_create_info.subresourceRange.layerCount = 1;
+            __D2D_VULKAN_VERIFY(vkCreateImageView(logical_device, &image_view_create_info, nullptr, &w.image_views[i]));
+        }
+
+
         //Add window
         if(!windows.emplace(title, w).second) 
             return error::window_already_exists;

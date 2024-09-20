@@ -1,4 +1,5 @@
 #include "Duo2D/application.hpp"
+#include <vulkan/vulkan_core.h>
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 #include <utility>
@@ -64,6 +65,8 @@ namespace d2d {
         
 
         for(auto& w : windows) {
+            for(auto p : w.second.image_views)
+                vkDestroyImageView(logical_device, p, nullptr);
             vkDestroySwapchainKHR(logical_device, w.second.swap_chain, nullptr);
             vkDestroySurfaceKHR(vulkan_instance, w.second.surface, nullptr);
             glfwDestroyWindow(w.second.handle);
