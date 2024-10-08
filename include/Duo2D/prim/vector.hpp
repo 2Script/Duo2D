@@ -2,9 +2,11 @@
 #include <algorithm>
 #include <array>
 #include <cstddef>
+#include <cstdint>
 #include <tuple>
 #include <type_traits>
 #include <utility>
+#include <vulkan/vulkan_core.h>
 
 namespace d2d {
     template<template<std::size_t, typename> typename DerivedTy, std::size_t Dims, typename UnitTy>
@@ -41,6 +43,10 @@ namespace d2d {
     struct vector<2, UnitTy> : vector_base<vector, 2, UnitTy> {
         constexpr explicit operator std::pair<UnitTy, UnitTy>() const noexcept { return {x(), y()}; }
 
+        constexpr explicit operator std::enable_if_t<std::is_convertible_v<UnitTy, std::int32_t>, VkOffset2D>() const noexcept { 
+            return {static_cast<std::int32_t>(x()), static_cast<std::int32_t>(y())}; 
+        }
+
         constexpr       UnitTy& x()       noexcept { return this->_elems[0]; }
         constexpr       UnitTy& y()       noexcept { return this->_elems[1]; }
         constexpr const UnitTy& x() const noexcept { return this->_elems[0]; }
@@ -49,6 +55,10 @@ namespace d2d {
 
     template<typename UnitTy>
     struct vector<3, UnitTy> : vector_base<vector, 3, UnitTy> {
+        constexpr explicit operator std::enable_if_t<std::is_convertible_v<UnitTy, std::int32_t>, VkOffset3D>() const noexcept { 
+            return {static_cast<std::int32_t>(x()), static_cast<std::int32_t>(y()), static_cast<std::int32_t>(z())}; 
+        }
+
         constexpr       UnitTy& x()       noexcept { return this->_elems[0]; }
         constexpr       UnitTy& y()       noexcept { return this->_elems[1]; }
         constexpr       UnitTy& z()       noexcept { return this->_elems[2]; }
