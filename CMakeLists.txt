@@ -6,9 +6,14 @@ set(CMAKE_CXX_STANDARD 20)
 option(BUILD_SHARED_LIBS "Build using shared libraries" ON)
 
 set(CPP_FILES
-    device.cpp
-    application.cpp
-    window.cpp
+    graphics/pipeline/application.cpp
+    graphics/pipeline/image_view.cpp
+    graphics/pipeline/instance.cpp
+    graphics/pipeline/logical_device.cpp
+    graphics/pipeline/physical_device.cpp
+    graphics/pipeline/surface.cpp
+    graphics/pipeline/swap_chain.cpp
+    graphics/pipeline/window.cpp
 )
 list(TRANSFORM CPP_FILES PREPEND src/Duo2D/)
 
@@ -32,9 +37,9 @@ list(APPEND CLANG_ARGS "-Wall" "-Wextra" "-fno-exceptions")
 target_compile_options(${PROJECT_NAME} PUBLIC ${CLANG_ARGS})
 target_compile_options(${PROJECT_NAME} PUBLIC "$<$<CONFIG:RELEASE>:-Werror>")
 if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang") # clang only
-    target_compile_options(${PROJECT_NAME} PUBLIC "-Wno-c++98-compat-pedantic" "-Wc++17-compat-pedantic" "-fsized-deallocation")
+    target_compile_options(${PROJECT_NAME} PUBLIC "-Wno-c++98-compat-pedantic" "-Wc++20-compat-pedantic" "-fsized-deallocation")
 else() # gcc only
-    target_compile_options(${PROJECT_NAME} PUBLIC "-Wc++17-compat")
+    target_compile_options(${PROJECT_NAME} PUBLIC "-Wc++20-compat")
 endif()
 
 

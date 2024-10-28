@@ -38,3 +38,8 @@ namespace d2d {
     using pt2u    = point<2, std::uint64_t>;
     using pt3u    = point<3, std::uint64_t>;
 }
+
+namespace d2d {
+    using offset2 = point<2, std::int32_t>;
+    using offset3 = point<3, std::int32_t>;
+}
