@@ -14,6 +14,7 @@ set(CPP_FILES
     graphics/pipeline/surface.cpp
     graphics/pipeline/swap_chain.cpp
     graphics/pipeline/window.cpp
+    graphics/pipeline/shader_module.cpp
 )
 list(TRANSFORM CPP_FILES PREPEND src/Duo2D/)
 
