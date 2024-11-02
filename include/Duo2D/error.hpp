@@ -24,6 +24,7 @@ namespace d2d::error {
         //Vulkan errors
         vulkan_not_supported = GLFW_API_UNAVAILABLE & __glfw_mask,
         no_vulkan_devices    = __glfw_end + 1,
+        missing_validation_layer,
 
         device_lacks_necessary_queue_base,
         device_lacks_necessary_queue_last = device_lacks_necessary_queue_base + queue_family::num_families - 1,
