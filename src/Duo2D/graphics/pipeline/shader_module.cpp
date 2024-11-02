@@ -4,7 +4,7 @@
 #include <vulkan/vulkan_core.h>
 
 namespace d2d {
-    result<shader_module> shader_module::create(logical_device& device, unsigned char const* data, std::size_t data_size) noexcept {
+    result<shader_module> shader_module::create(logical_device& device, std::string_view name, unsigned char const* data, std::size_t data_size, VkShaderStageFlagBits type) noexcept {
         shader_module ret{};
         ret.dependent_handle = device;
 
@@ -14,6 +14,11 @@ namespace d2d {
         shader_module_create_info.codeSize = data_size;
         shader_module_create_info.pCode = reinterpret_cast<uint32_t const*>(data);
         __D2D_VULKAN_VERIFY(vkCreateShaderModule(device, &shader_module_create_info, nullptr, &ret.handle));
+
+        ret.shader_stage_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        ret.shader_stage_info.stage = type;
+        ret.shader_stage_info.module = ret;
+        ret.shader_stage_info.pName = name.data();
 
         return ret;
     }
