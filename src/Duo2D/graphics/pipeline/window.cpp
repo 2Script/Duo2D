@@ -21,7 +21,7 @@ namespace d2d {
         __D2D_GLFW_VERIFY(ret.handle);
 
         //Create surface
-        __D2D_TRY_MAKE(ret.window_surface, make<surface>(ret, i), s);
+        __D2D_TRY_MAKE(ret._surface, make<surface>(ret, i), s);
 
         return ret;
     }
@@ -29,11 +29,14 @@ namespace d2d {
 
 namespace d2d {
     result<void> window::initialize_swap(logical_device& logi_deivce, physical_device& phys_device) noexcept {
-        if(window_swap_chain) 
+        if(_swap_chain) 
             return result<void>{std::in_place_type<void>}; //return error::swap_chain_already_initialized;
         
+        //Create render pass
+        __D2D_TRY_MAKE(_render_pass, make<render_pass>(logi_deivce), rp);
+
         //Create swap chain
-        __D2D_TRY_MAKE(window_swap_chain, make<swap_chain>(logi_deivce, phys_device, window_surface, *this), s);
+        __D2D_TRY_MAKE(_swap_chain, make<swap_chain>(logi_deivce, phys_device, _render_pass, _surface, *this), s);
 
         //Create shaders (TEMP: hardcoded make arguments)
         __D2D_TRY_MAKE(shader_module triangle_vert, make<shader_module>(logi_deivce, "main", shaders::triangle::vert, 1504, VK_SHADER_STAGE_VERTEX_BIT), tv);
@@ -41,7 +44,7 @@ namespace d2d {
         std::array<VkPipelineShaderStageCreateInfo, 2> shader_stages = {triangle_vert.stage_info(), triangle_frag.stage_info()};
 
         //Create pipeline
-        __D2D_TRY_MAKE(window_pipeline, make<pipeline>(logi_deivce, shader_stages), p)
+        __D2D_TRY_MAKE(_pipeline, make<pipeline>(logi_deivce, _render_pass, shader_stages), p);
 
 
         return result<void>{std::in_place_type<void>};

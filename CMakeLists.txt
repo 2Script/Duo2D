@@ -18,6 +18,7 @@ set(CPP_FILES
     graphics/pipeline/pipeline_layout.cpp
     graphics/pipeline/render_pass.cpp
     graphics/pipeline/pipeline.cpp
+    graphics/pipeline/framebuffer.cpp
 )
 list(TRANSFORM CPP_FILES PREPEND src/Duo2D/)
 

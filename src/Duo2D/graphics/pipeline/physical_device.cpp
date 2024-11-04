@@ -32,7 +32,7 @@ namespace d2d {
 
             {
             VkBool32 supports_present = false;
-            vkGetPhysicalDeviceSurfaceSupportKHR(device_handle, idx, dummy_window.window_surface, &supports_present);
+            vkGetPhysicalDeviceSurfaceSupportKHR(device_handle, idx, dummy_window._surface, &supports_present);
             if(supports_present)
                 device_idxs[queue_family::present] = idx;
             }
@@ -66,19 +66,19 @@ namespace d2d {
 
         //Get device surface capabilities
         VkSurfaceCapabilitiesKHR device_surface_capabilities;
-        vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device_handle, dummy_window.window_surface, &device_surface_capabilities);
+        vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device_handle, dummy_window._surface, &device_surface_capabilities);
 
 
         //Get device display formats (i.e. surface formats)
         std::set<display_format> device_formats;
         {
         std::uint32_t format_count;
-        vkGetPhysicalDeviceSurfaceFormatsKHR(device_handle, dummy_window.window_surface, &format_count, nullptr);
+        vkGetPhysicalDeviceSurfaceFormatsKHR(device_handle, dummy_window._surface, &format_count, nullptr);
 
         std::vector<VkSurfaceFormatKHR> formats;
         if (format_count != 0) {
             formats.resize(format_count);
-            vkGetPhysicalDeviceSurfaceFormatsKHR(device_handle, dummy_window.window_surface, &format_count, formats.data());
+            vkGetPhysicalDeviceSurfaceFormatsKHR(device_handle, dummy_window._surface, &format_count, formats.data());
         }
 
         //TODO replace with lookup table
@@ -100,12 +100,12 @@ namespace d2d {
         decltype(physical_device::present_modes) device_present_modes;
         {
         uint32_t present_mode_count;
-        vkGetPhysicalDeviceSurfacePresentModesKHR(device_handle, dummy_window.window_surface, &present_mode_count, nullptr);
+        vkGetPhysicalDeviceSurfacePresentModesKHR(device_handle, dummy_window._surface, &present_mode_count, nullptr);
 
         std::vector<VkPresentModeKHR> supported_present_modes;
         if (present_mode_count != 0) {
             supported_present_modes.resize(present_mode_count);
-            vkGetPhysicalDeviceSurfacePresentModesKHR(device_handle, dummy_window.window_surface, &present_mode_count, supported_present_modes.data());
+            vkGetPhysicalDeviceSurfacePresentModesKHR(device_handle, dummy_window._surface, &present_mode_count, supported_present_modes.data());
         }
 
         for(VkPresentModeKHR p : supported_present_modes)

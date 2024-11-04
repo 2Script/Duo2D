@@ -2,11 +2,12 @@
 #include "Duo2D/graphics/pipeline/image_view.hpp"
 #include "Duo2D/graphics/pipeline/make.hpp"
 #include "Duo2D/graphics/pipeline/physical_device.hpp"
+#include "Duo2D/graphics/pipeline/render_pass.hpp"
 #include "Duo2D/graphics/pipeline/window.hpp"
 #include <vulkan/vulkan_core.h>
 
 namespace d2d {
-    result<swap_chain> swap_chain::create(logical_device& logi_device, physical_device& phys_device, surface& window_surface, window& w) noexcept {
+    result<swap_chain> swap_chain::create(logical_device& logi_device, physical_device& phys_device, render_pass& window_render_pass, surface& window_surface, window& w) noexcept {
         swap_chain ret{};
         ret.dependent_handle = logi_device;
         
@@ -76,6 +77,13 @@ namespace d2d {
         for (size_t i = 0; i < ret.images.size(); i++) {
             __D2D_TRY_MAKE(ret.image_views[i], make<image_view>(logi_device, ret.images[i], logi_device.format.format_id), iv);
         }
+
+        //Create framebuffers
+        ret.framebuffers.resize(ret.image_views.size());
+        for (size_t i = 0; i < ret.image_views.size(); i++) {
+            __D2D_TRY_MAKE(ret.framebuffers[i], make<framebuffer>(logi_device, ret.image_views[i], window_render_pass, ret.extent), f);
+        }
+
         return ret;
     }
 }

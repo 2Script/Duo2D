@@ -3,7 +3,7 @@
 #include "Duo2D/graphics/pipeline/make.hpp"
 
 namespace d2d {
-    result<pipeline> pipeline::create(logical_device& device, std::span<VkPipelineShaderStageCreateInfo> shaders) noexcept {
+    result<pipeline> pipeline::create(logical_device& device, render_pass& associated_render_pass, std::span<VkPipelineShaderStageCreateInfo> shaders) noexcept {
         pipeline ret{};
         ret.dependent_handle = device;
 
@@ -83,10 +83,6 @@ namespace d2d {
         //Create pipeline layout
         __D2D_TRY_MAKE(ret.layout, make<pipeline_layout>(device), pl)
 
-
-        //Create render pass
-        __D2D_TRY_MAKE(ret.main_render_pass, make<render_pass>(device), rp)
-
         
         VkGraphicsPipelineCreateInfo pipeline_create_info{};
         pipeline_create_info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
@@ -102,7 +98,7 @@ namespace d2d {
         pipeline_create_info.pDepthStencilState = nullptr;
         pipeline_create_info.pTessellationState = nullptr;
         pipeline_create_info.layout = ret.layout;
-        pipeline_create_info.renderPass = ret.main_render_pass;
+        pipeline_create_info.renderPass = associated_render_pass;
         pipeline_create_info.subpass = 0;
         pipeline_create_info.basePipelineHandle = VK_NULL_HANDLE;
         pipeline_create_info.basePipelineIndex = -1;
