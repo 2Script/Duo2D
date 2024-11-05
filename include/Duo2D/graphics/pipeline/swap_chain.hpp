@@ -1,6 +1,7 @@
 #pragma once
 #include <vector>
 #include <vulkan/vulkan_core.h>
+#include "Duo2D/graphics/pipeline/command_buffer.hpp"
 #include "Duo2D/graphics/pipeline/framebuffer.hpp"
 #include "Duo2D/graphics/pipeline/logical_device.hpp"
 #include "Duo2D/graphics/pipeline/physical_device.hpp"
@@ -22,5 +23,8 @@ namespace d2d {
         std::vector<VkImage> images;
         std::vector<image_view> image_views;
         std::vector<framebuffer> framebuffers;
+    
+    private:
+        friend command_buffer;
     };
 }

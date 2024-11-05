@@ -2,6 +2,7 @@
 #include <GLFW/glfw3.h>
 #include <cstddef>
 #include <memory>
+#include "Duo2D/graphics/pipeline/command_buffer.hpp"
 #include "Duo2D/graphics/pipeline/framebuffer.hpp"
 #include "Duo2D/graphics/pipeline/instance.hpp"
 #include "Duo2D/graphics/pipeline/pipeline.hpp"
@@ -23,6 +24,7 @@ namespace d2d {
     private:
         window(GLFWwindow* w) noexcept : handle(w, glfwDestroyWindow), _surface(), _swap_chain(), _pipeline() {}
         friend physical_device;
+        friend command_buffer;
         
     private:
         std::unique_ptr<GLFWwindow, decltype(glfwDestroyWindow)&> handle;

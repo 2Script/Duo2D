@@ -19,6 +19,9 @@ set(CPP_FILES
     graphics/pipeline/render_pass.cpp
     graphics/pipeline/pipeline.cpp
     graphics/pipeline/framebuffer.cpp
+    graphics/pipeline/command_pool.cpp
+    graphics/pipeline/command_buffer.cpp
+    
 )
 list(TRANSFORM CPP_FILES PREPEND src/Duo2D/)
 

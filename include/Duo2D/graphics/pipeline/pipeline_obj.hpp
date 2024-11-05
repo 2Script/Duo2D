@@ -12,6 +12,7 @@ namespace d2d {
         ~pipeline_obj_base() noexcept = default;
 
         constexpr VkTy* operator&() noexcept { return &handle; }
+        //constexpr VkTy const* operator&() const noexcept { return &handle; }
         constexpr operator VkTy() const noexcept { return handle; }
         constexpr explicit operator bool() const noexcept { return handle != VK_NULL_HANDLE; }
 
