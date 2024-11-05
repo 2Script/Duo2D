@@ -21,7 +21,9 @@ set(CPP_FILES
     graphics/pipeline/framebuffer.cpp
     graphics/pipeline/command_pool.cpp
     graphics/pipeline/command_buffer.cpp
-    
+
+    graphics/sync/semaphore.cpp
+    graphics/sync/fence.cpp
 )
 list(TRANSFORM CPP_FILES PREPEND src/Duo2D/)
 
