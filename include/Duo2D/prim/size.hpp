@@ -5,35 +5,15 @@
 #include <type_traits>
 
 namespace d2d {
-    template<typename UnitTy>
-    struct size2 : vector_base<vector, 2, UnitTy> {
-        constexpr explicit operator std::pair<UnitTy, UnitTy>() const noexcept { return {width(), height()}; }
-
-        constexpr explicit operator std::enable_if_t<std::is_convertible_v<UnitTy, std::uint32_t>, VkExtent2D>() const noexcept { 
-            return {static_cast<std::uint32_t>(width()), static_cast<std::uint32_t>(height())}; 
-        }
-
-        constexpr       UnitTy& width()        noexcept { return this->_elems[0]; }
-        constexpr       UnitTy& height()       noexcept { return this->_elems[1]; }
-        constexpr const UnitTy& width()  const noexcept { return this->_elems[0]; }
-        constexpr const UnitTy& height() const noexcept { return this->_elems[1]; }
-    };
-
-    template<typename UnitTy>
-    struct size3 : vector_base<vector, 3, UnitTy> {
-        constexpr explicit operator std::enable_if_t<std::is_convertible_v<UnitTy, std::uint32_t>, VkExtent3D>() const noexcept { 
-            return {static_cast<std::uint32_t>(width()), static_cast<std::uint32_t>(height()), static_cast<std::uint32_t>(depth())}; 
-        }
-
-        constexpr       UnitTy& width()        noexcept { return this->_elems[0]; }
-        constexpr       UnitTy& height()       noexcept { return this->_elems[1]; }
-        constexpr       UnitTy& depth()        noexcept { return this->_elems[2]; }
-        constexpr const UnitTy& width()  const noexcept { return this->_elems[0]; }
-        constexpr const UnitTy& height() const noexcept { return this->_elems[1]; }
-        constexpr const UnitTy& depth()  const noexcept { return this->_elems[2]; }
-    };
+    template<std::size_t Dims, typename UnitTy> using size = vector<Dims, UnitTy, true>;
 }
 
+namespace d2d {
+    template<typename UnitTy> using size2 = size<2, UnitTy>;
+    template<typename UnitTy> using size3 = size<3, UnitTy>;
+    template<typename UnitTy> using sz2 = size<2, UnitTy>;
+    template<typename UnitTy> using sz3 = size<3, UnitTy>;
+}
 
 namespace d2d {
     using size2f  = size2<float>;
