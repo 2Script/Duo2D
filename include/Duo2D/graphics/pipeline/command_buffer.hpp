@@ -10,7 +10,7 @@ namespace d2d {
     struct command_buffer : pipeline_obj_base<VkCommandBuffer> {
         static result<command_buffer> create(logical_device& deivce, command_pool& pool) noexcept;
     public:
-        result<void> record(window& w, std::uint32_t image_index);
-        result<void> reset();
+        result<void> record(const window& w, std::uint32_t image_index) const noexcept;
+        result<void> reset() const noexcept;
     };
 }

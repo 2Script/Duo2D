@@ -14,5 +14,7 @@ namespace d2d {
     public:
         present_mode mode;
         display_format format;
+        //May need to be per-window instead of per-device?
+        std::array<VkQueue, queue_family::num_families> queues;
     };
 }

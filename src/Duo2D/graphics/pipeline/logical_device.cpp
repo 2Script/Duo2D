@@ -65,6 +65,10 @@ namespace d2d {
             ret.mode = present_mode::fifo;
         else return error::device_lacks_present_mode;
 
+        //Create queues
+        for(std::size_t i = 0; i < queue_family::num_families; ++i)
+            vkGetDeviceQueue(ret.handle, *(associated_phys_device.queue_family_idxs[i]), 0, &ret.queues[i]);
+
 
         return ret;
     }

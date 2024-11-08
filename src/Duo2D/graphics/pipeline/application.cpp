@@ -71,10 +71,6 @@ namespace d2d {
         //Create logical device
         __D2D_TRY_MAKE(logi_device, make<logical_device>(phys_device), ld);
 
-        //Create queues
-        for(std::size_t i = 0; i < queue_family::num_families; ++i)
-            vkGetDeviceQueue(logi_device, *(phys_device.queue_family_idxs[i]), 0, &queues[i]);
-
         return result<void>{std::in_place_type<void>};
     }
 }
@@ -88,7 +84,7 @@ namespace d2d {
         
         result<window> w = make<window>(title, 1280, 720, vk_instance);
         if(!w.has_value()) return w.error();
-        w->initialize_swap(logi_device, phys_device);
+        w->initialize(logi_device, phys_device);
         if(!windows.emplace(title, *std::move(w)).second) 
             return error::window_already_exists;
 
@@ -113,5 +109,16 @@ namespace d2d {
 
     result<void> application::remove_window() noexcept {
         return remove_window(name);
+    }
+}
+
+
+namespace d2d {
+    result<void> application::render() const noexcept {
+        glfwPollEvents();
+        for (auto& w : windows)
+            if(auto r = w.second.render(); !r.has_value()) 
+                return r.error();
+        return result<void>{std::in_place_type<void>};
     }
 }

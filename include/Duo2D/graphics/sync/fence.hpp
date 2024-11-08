@@ -12,7 +12,7 @@ namespace d2d {
         static result<fence> create(logical_device& device) noexcept;
 
     public:
-        result<void> wait(std::uint64_t timeout = UINT64_MAX);
-        result<void> reset();
+        result<void> wait(std::uint64_t timeout = UINT64_MAX) const noexcept;
+        result<void> reset() const noexcept;
     };
 }

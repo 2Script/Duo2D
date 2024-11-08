@@ -23,7 +23,7 @@ namespace d2d {
 }
 
 namespace d2d {
-    result<void> command_buffer::record(window& w, std::uint32_t image_index) {
+    result<void> command_buffer::record(const window& w, std::uint32_t image_index) const noexcept {
         VkCommandBufferBeginInfo begin_info{};
         begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
         __D2D_VULKAN_VERIFY(vkBeginCommandBuffer(handle, &begin_info));
@@ -61,7 +61,7 @@ namespace d2d {
     }
 
 
-    result<void> command_buffer::reset() {
+    result<void> command_buffer::reset() const noexcept {
         __D2D_VULKAN_VERIFY(vkResetCommandBuffer(handle, 0));
         return result<void>{std::in_place_type<void>};
     }

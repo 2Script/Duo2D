@@ -36,7 +36,8 @@ namespace d2d {
         result<void> add_window() noexcept;
         result<void> remove_window() noexcept;
 
-    private:
+    public:
+        result<void> render() const noexcept;
 
         
     private:
@@ -44,10 +45,6 @@ namespace d2d {
         physical_device phys_device;
         logical_device logi_device;
         std::string name;
-
-        //May need to be per-window instead of per-applciation?
-        std::array<VkQueue, queue_family::num_families> queues;
-
 
         std::map<std::string, window> windows;
     private:
