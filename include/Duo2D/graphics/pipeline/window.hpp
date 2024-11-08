@@ -28,9 +28,8 @@ namespace d2d {
 
     private:
         window(GLFWwindow* w) noexcept : 
-            handle(w, glfwDestroyWindow), 
-            _surface(), _swap_chain(), _pipeline(), _command_pool(), _command_buffer(),
-            render_fence(), image_available(), cmd_buffer_finished() {}
+            handle(w, glfwDestroyWindow), _surface(), _swap_chain(), _pipeline(), _command_pool(), frame_idx(0),
+            command_buffers{}, render_fences{}, image_available_semaphores{}, cmd_buffer_finished_semaphores{} {}
         friend physical_device;
         friend command_buffer;
         
@@ -43,9 +42,11 @@ namespace d2d {
         render_pass _render_pass;
         pipeline _pipeline;
         command_pool _command_pool;
-        command_buffer _command_buffer;
         
-        fence render_fence;
-        semaphore image_available, cmd_buffer_finished;
+        constexpr static std::size_t frames_in_flight = 2;
+        mutable std::size_t frame_idx;
+        std::array<command_buffer, frames_in_flight> command_buffers;
+        std::array<fence, frames_in_flight> render_fences;
+        std::array<semaphore, frames_in_flight> image_available_semaphores, cmd_buffer_finished_semaphores;
     };
 }

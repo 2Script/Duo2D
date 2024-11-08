@@ -57,13 +57,15 @@ namespace d2d {
         //Create command pool
         __D2D_TRY_MAKE(_command_pool, make<command_pool>(logi_deivce, phys_device), cp);
 
-        //Create command buffer
-        __D2D_TRY_MAKE(_command_buffer, make<command_buffer>(logi_deivce, _command_pool), cb);
+        for(std::size_t i = 0; i < frames_in_flight; ++i) {
+            //Create command buffers
+            __D2D_TRY_MAKE(command_buffers[i], make<command_buffer>(logi_deivce, _command_pool), cb);
 
-        //Create fences & sempahores
-        __D2D_TRY_MAKE(render_fence, make<fence>(logi_deivce), f);
-        __D2D_TRY_MAKE(image_available, make<semaphore>(logi_deivce), ia);
-        __D2D_TRY_MAKE(cmd_buffer_finished, make<semaphore>(logi_deivce), cbf);
+            //Create fences & sempahores
+            __D2D_TRY_MAKE(render_fences[i], make<fence>(logi_deivce), f);
+            __D2D_TRY_MAKE(image_available_semaphores[i], make<semaphore>(logi_deivce), ia);
+            __D2D_TRY_MAKE(cmd_buffer_finished_semaphores[i], make<semaphore>(logi_deivce), cbf);
+        }
 
         return result<void>{std::in_place_type<void>};
     }
@@ -71,36 +73,37 @@ namespace d2d {
 
 namespace d2d {
     result<void> window::render() const noexcept {
-        render_fence.wait();
-        render_fence.reset();
+        render_fences[frame_idx].wait();
+        render_fences[frame_idx].reset();
 
         uint32_t image_index;
-        vkAcquireNextImageKHR(*device_ptr, _swap_chain, UINT64_MAX, image_available, VK_NULL_HANDLE, &image_index);
+        vkAcquireNextImageKHR(*device_ptr, _swap_chain, UINT64_MAX, image_available_semaphores[frame_idx], VK_NULL_HANDLE, &image_index);
 
-        _command_buffer.reset();
-        _command_buffer.record(*this, image_index);
+        command_buffers[frame_idx].reset();
+        command_buffers[frame_idx].record(*this, image_index);
 
         constexpr static std::array<VkPipelineStageFlags, 1> wait_stages = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
         VkSubmitInfo submit_info{};
         submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
         submit_info.pWaitDstStageMask = wait_stages.data();
         submit_info.waitSemaphoreCount = 1;
-        submit_info.pWaitSemaphores = &image_available;
+        submit_info.pWaitSemaphores = &image_available_semaphores[frame_idx];
         submit_info.signalSemaphoreCount = 1;
-        submit_info.pSignalSemaphores = &cmd_buffer_finished;
+        submit_info.pSignalSemaphores = &cmd_buffer_finished_semaphores[frame_idx];
         submit_info.commandBufferCount = 1;
-        submit_info.pCommandBuffers = &_command_buffer;
-        __D2D_VULKAN_VERIFY(vkQueueSubmit(device_ptr->queues[queue_family::graphics], 1, &submit_info, render_fence));
+        submit_info.pCommandBuffers = &command_buffers[frame_idx];
+        __D2D_VULKAN_VERIFY(vkQueueSubmit(device_ptr->queues[queue_family::graphics], 1, &submit_info, render_fences[frame_idx]));
 
         VkPresentInfoKHR present_info{};
         present_info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
         present_info.waitSemaphoreCount = 1;
-        present_info.pWaitSemaphores = &cmd_buffer_finished;
+        present_info.pWaitSemaphores = &cmd_buffer_finished_semaphores[frame_idx];
         present_info.swapchainCount = 1;
         present_info.pSwapchains = &_swap_chain;
         present_info.pImageIndices = &image_index;
         __D2D_VULKAN_VERIFY(vkQueuePresentKHR(device_ptr->queues[queue_family::present], &present_info));
 
+        frame_idx = (frame_idx + 1) % frames_in_flight;
         return result<void>{std::in_place_type<void>};
     }
 }
