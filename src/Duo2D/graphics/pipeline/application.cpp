@@ -114,7 +114,7 @@ namespace d2d {
 
 
 namespace d2d {
-    result<void> application::render() const noexcept {
+    result<void> application::render() noexcept {
         glfwPollEvents();
         for (auto& w : windows)
             if(auto r = w.second.render(); !r.has_value()) 

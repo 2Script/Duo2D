@@ -37,7 +37,7 @@ namespace d2d {
         result<void> remove_window() noexcept;
 
     public:
-        result<void> render() const noexcept;
+        result<void> render() noexcept;
 
         
     private:
