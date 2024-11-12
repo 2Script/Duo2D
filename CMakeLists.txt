@@ -14,7 +14,6 @@ set(CPP_FILES
     graphics/pipeline/surface.cpp
     graphics/pipeline/swap_chain.cpp
     graphics/pipeline/window.cpp
-    graphics/pipeline/shader_module.cpp
     graphics/pipeline/pipeline_layout.cpp
     graphics/pipeline/render_pass.cpp
     graphics/pipeline/pipeline.cpp
@@ -28,8 +27,8 @@ set(CPP_FILES
 list(TRANSFORM CPP_FILES PREPEND src/Duo2D/)
 
 set(SHADER_INPUT_FILES
-    triangle.frag
-    triangle.vert
+    vertex2.vert
+    vertex2.frag
 )
 list(TRANSFORM SHADER_INPUT_FILES PREPEND shaders/)
 list(TRANSFORM SHADER_INPUT_FILES REPLACE "\.[^.]*$" ".hpp" OUTPUT_VARIABLE SHADER_OUTPUT_FILES)

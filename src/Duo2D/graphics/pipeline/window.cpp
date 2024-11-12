@@ -15,7 +15,7 @@
 #include "Duo2D/graphics/pipeline/make.hpp"
 #include "Duo2D/graphics/sync/semaphore.hpp"
 #include "Duo2D/hardware/device/queue_family.hpp"
-#include "Duo2D/shaders/triangle.hpp"
+#include "Duo2D/shaders/vertex2.hpp"
 
 namespace d2d {
     result<window> window::create(std::string_view title, std::size_t width, std::size_t height, instance const& i) noexcept {
@@ -48,8 +48,8 @@ namespace d2d {
         __D2D_TRY_MAKE(_swap_chain, make<swap_chain>(logi_device, phys_device, _render_pass, _surface, *this), s);
 
         //Create shaders (TEMP: hardcoded make arguments)
-        __D2D_TRY_MAKE(shader_module triangle_vert, make<shader_module>(logi_device, "main", shaders::triangle::vert, 1504, VK_SHADER_STAGE_VERTEX_BIT), tv);
-        __D2D_TRY_MAKE(shader_module triangle_frag, make<shader_module>(logi_device, "main", shaders::triangle::frag, 572, VK_SHADER_STAGE_FRAGMENT_BIT), tf);
+        __D2D_TRY_MAKE(shader_module triangle_vert, make<shader_module>(logi_device, shaders::vertex2::vert, VK_SHADER_STAGE_VERTEX_BIT), tv);
+        __D2D_TRY_MAKE(shader_module triangle_frag, make<shader_module>(logi_device, shaders::vertex2::frag, VK_SHADER_STAGE_FRAGMENT_BIT), tf);
         std::array<VkPipelineShaderStageCreateInfo, 2> shader_stages = {triangle_vert.stage_info(), triangle_frag.stage_info()};
 
         //Create pipeline

@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
+#include <limits>
 #include <type_traits>
 
 #include "Duo2D/prim/vector.hpp"
@@ -17,6 +18,9 @@ namespace d2d {
             std::conditional_t<BPC * Channels <= 16, std::uint16_t,
             std::conditional_t<BPC * Channels <= 32, std::uint32_t, 
         std::uint64_t>>>;
+
+        constexpr static std::size_t component_max = std::numeric_limits<component_type>::max() >> ((sizeof(component_type) * 8) - BPC);
+
     private:
         constexpr static bool perfect_sizing = (Channels * sizeof(component_type)) == sizeof(value_type);
 
@@ -25,9 +29,8 @@ namespace d2d {
         constexpr basic_color(std::array<component_type, Channels> color_data) noexcept : data(color_data) {}
         constexpr basic_color(const component_type (&color_arr)[Channels]) noexcept : data(std::to_array(color_arr)) {}
 
-        constexpr basic_color(value_type color_value) noexcept requires (perfect_sizing) : data(std::bit_cast<std::array<component_type, Channels>>(color_value)) {}
-        constexpr basic_color(value_type color_value) noexcept requires (!perfect_sizing) : data{} {
-            //TODO: use memcpy instead?
+        constexpr basic_color(value_type color_value) noexcept : data{} {
+            //can't use memcpy or bitcast beacuse of endian-ness
             for(std::size_t i = 0; i < Channels; ++i)
                 data[i] = static_cast<component_type>(color_value >> (BPC * (Channels - 1 - i)));
         }
@@ -36,6 +39,11 @@ namespace d2d {
 
     public:
         constexpr operator vector<Channels, component_type>() const noexcept { return {data}; }
+        constexpr vector<Channels, float> normalize() const noexcept {
+            return [this]<std::size_t... I>(std::index_sequence<I...>) noexcept {
+                return vector<Channels, float>{(data[I]/static_cast<float>(component_max))...};
+            }(std::make_index_sequence<Channels>{});
+        }
 
         //TODO add rgb, hsv, and hsl converting functions
 
