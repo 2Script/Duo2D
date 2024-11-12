@@ -1,8 +1,7 @@
 #include "Duo2D/graphics/pipeline/command_buffer.hpp"
 #include "Duo2D/error.hpp"
 #include "Duo2D/graphics/pipeline/window.hpp"
-#include "Duo2D/graphics/viewport.hpp"
-#include "Duo2D/prim/rect.hpp"
+#include "Duo2D/graphics/prim/viewport.hpp"
 #include "Duo2D/prim/size.hpp"
 #include <cstdint>
 #include <vulkan/vulkan_core.h>
