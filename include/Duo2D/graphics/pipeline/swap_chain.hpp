@@ -26,5 +26,6 @@ namespace d2d {
     
     private:
         friend command_buffer;
+        friend window; //TODO just make an extent() function
     };
 }

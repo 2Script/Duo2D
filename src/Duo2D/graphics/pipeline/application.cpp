@@ -77,7 +77,7 @@ namespace d2d {
 
 
 namespace d2d {
-    result<void> application::add_window(std::string_view title) noexcept {
+    result<window*> application::add_window(std::string_view title) noexcept {
         if(!logi_device)
             return error::device_not_initialized;
 
@@ -85,10 +85,11 @@ namespace d2d {
         result<window> w = make<window>(title, 1280, 720, vk_instance);
         if(!w.has_value()) return w.error();
         w->initialize(logi_device, phys_device);
-        if(!windows.emplace(title, *std::move(w)).second) 
+        auto new_window = windows.emplace(title, *std::move(w));
+        if(!new_window.second) 
             return error::window_already_exists;
 
-        return result<void>{std::in_place_type<void>};
+        return &(new_window.first->second);
     }
 
 
@@ -103,7 +104,7 @@ namespace d2d {
 }
 
 namespace d2d {
-    result<void> application::add_window() noexcept {
+    result<window*> application::add_window() noexcept {
         return add_window(name);
     }
 

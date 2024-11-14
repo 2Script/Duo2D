@@ -1,19 +1,25 @@
 #include "Duo2D/graphics/pipeline/pipeline.hpp"
 
 #include "Duo2D/graphics/pipeline/make.hpp"
+#include "Duo2D/graphics/pipeline/shader_module.hpp"
+#include "Duo2D/graphics/prim/vertex.hpp"
 
 namespace d2d {
-    result<pipeline> pipeline::create(logical_device& device, render_pass& associated_render_pass, std::span<VkPipelineShaderStageCreateInfo> shaders) noexcept {
+    result<pipeline> pipeline::create(logical_device& device, render_pass& associated_render_pass) noexcept {
         pipeline ret{};
         ret.dependent_handle = device;
 
 
-        //Specify vertex input state (TEMP: specify the use of hard-coded vertex data)
+        //Specify vertex input state
+        constexpr static auto vertex_binding = vertex2::binding_desc();
+        constexpr static auto vertex_attributes = vertex2::attribute_descs();
         VkPipelineVertexInputStateCreateInfo vertex_input_info{};
         {
         vertex_input_info.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-        vertex_input_info.vertexBindingDescriptionCount = 0;
-        vertex_input_info.vertexAttributeDescriptionCount = 0;
+        vertex_input_info.pVertexBindingDescriptions = &vertex_binding;
+        vertex_input_info.vertexBindingDescriptionCount = 1;
+        vertex_input_info.pVertexAttributeDescriptions = vertex_attributes.data();
+        vertex_input_info.vertexAttributeDescriptionCount = vertex_attributes.size();
         }
 
         //Specify input assembly (TEMP: specify no stripping)
@@ -83,11 +89,18 @@ namespace d2d {
         //Create pipeline layout
         __D2D_TRY_MAKE(ret.layout, make<pipeline_layout>(device), pl)
 
+
+        //Create shaders (TEMP: hardcoded)
+        std::array<shader_module, 2> shader_modules; //sizeof...(ShaderTypes)
+        __D2D_TRY_MAKE(shader_modules[0], make<shader_module>(device, shaders::vertex2::vert, VK_SHADER_STAGE_VERTEX_BIT), tv);
+        __D2D_TRY_MAKE(shader_modules[1], make<shader_module>(device, shaders::vertex2::frag, VK_SHADER_STAGE_FRAGMENT_BIT), tf);
+        std::array<VkPipelineShaderStageCreateInfo, 2> shader_stages = {shader_modules[0].stage_info(), shader_modules[1].stage_info()};
+
         
         VkGraphicsPipelineCreateInfo pipeline_create_info{};
         pipeline_create_info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-        pipeline_create_info.stageCount = shaders.size();
-        pipeline_create_info.pStages = shaders.data();
+        pipeline_create_info.stageCount = shader_stages.size();
+        pipeline_create_info.pStages = shader_stages.data();
         pipeline_create_info.pVertexInputState = &vertex_input_info;
         pipeline_create_info.pInputAssemblyState = &input_assembly_info;
         pipeline_create_info.pViewportState = &viewport_info;

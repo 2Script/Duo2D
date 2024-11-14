@@ -47,13 +47,8 @@ namespace d2d {
         //Create swap chain
         __D2D_TRY_MAKE(_swap_chain, make<swap_chain>(logi_device, phys_device, _render_pass, _surface, *this), s);
 
-        //Create shaders (TEMP: hardcoded make arguments)
-        __D2D_TRY_MAKE(shader_module triangle_vert, make<shader_module>(logi_device, shaders::vertex2::vert, VK_SHADER_STAGE_VERTEX_BIT), tv);
-        __D2D_TRY_MAKE(shader_module triangle_frag, make<shader_module>(logi_device, shaders::vertex2::frag, VK_SHADER_STAGE_FRAGMENT_BIT), tf);
-        std::array<VkPipelineShaderStageCreateInfo, 2> shader_stages = {triangle_vert.stage_info(), triangle_frag.stage_info()};
-
         //Create pipeline
-        __D2D_TRY_MAKE(_pipeline, make<pipeline>(logi_device, _render_pass, shader_stages), p);
+        __D2D_TRY_MAKE(_pipeline, make<pipeline>(logi_device, _render_pass), p);
 
         //Create command pool
         __D2D_TRY_MAKE(_command_pool, make<command_pool>(logi_device, phys_device), cp);
@@ -74,6 +69,7 @@ namespace d2d {
 
 namespace d2d {
     result<void> window::render() noexcept {
+
         render_fences[frame_idx].wait();
         render_fences[frame_idx].reset();
 
@@ -93,8 +89,11 @@ namespace d2d {
             return static_cast<errc>(nir);
         }
 
+        if(vk_vertex_buffers.empty())
+            result<void>{std::in_place_type<void>};
+
         command_buffers[frame_idx].reset();
-        command_buffers[frame_idx].record(*this, image_index);
+        command_buffers[frame_idx].record(*this, vk_vertex_buffers, index_buffer, buffer_offsets, index_count, image_index);
 
         constexpr static std::array<VkPipelineStageFlags, 1> wait_stages = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
         VkSubmitInfo submit_info{};
@@ -120,4 +119,8 @@ namespace d2d {
         frame_idx = (frame_idx + 1) % frames_in_flight;
         return result<void>{std::in_place_type<void>};
     }
+}
+
+namespace d2d {
+    
 }

@@ -3,14 +3,19 @@
 #include <cstddef>
 #include <functional>
 #include <memory>
+#include <string_view>
+#include <unordered_map>
+#include <vulkan/vulkan_core.h>
 #include "Duo2D/graphics/pipeline/command_buffer.hpp"
 #include "Duo2D/graphics/pipeline/command_pool.hpp"
 #include "Duo2D/graphics/pipeline/instance.hpp"
 #include "Duo2D/graphics/pipeline/logical_device.hpp"
 #include "Duo2D/graphics/pipeline/pipeline.hpp"
 #include "Duo2D/graphics/pipeline/render_pass.hpp"
+#include "Duo2D/graphics/pipeline/shader_buffer.hpp"
 #include "Duo2D/graphics/pipeline/swap_chain.hpp"
 #include "Duo2D/graphics/pipeline/physical_device.hpp"
+#include "Duo2D/graphics/prim/vertex.hpp"
 #include "Duo2D/graphics/sync/fence.hpp"
 #include "Duo2D/graphics/sync/semaphore.hpp"
 
@@ -20,7 +25,12 @@ namespace d2d {
 
         window() noexcept : window(nullptr) {}
         result<void> initialize(logical_device& logi_device, physical_device& phys_device) noexcept;
+
         result<void> render() noexcept;
+
+        template<impl::RenderableType T>
+        inline result<void> add(std::string_view name, T&& renderable);
+        inline result<void> remove(std::string_view name);
 
     public:
         constexpr operator GLFWwindow*() const noexcept { return handle.get(); }
@@ -29,8 +39,9 @@ namespace d2d {
     private:
         window(GLFWwindow* w) noexcept : 
             handle(w, glfwDestroyWindow), logi_device_ptr(nullptr), phys_device_ptr(nullptr),
-            _surface(), _swap_chain(), _pipeline(), _command_pool(), frame_idx(0),
-            command_buffers{}, render_fences{}, image_available_semaphores{}, cmd_buffer_finished_semaphores{} {}
+            _surface(), _swap_chain(), _pipeline(), _command_pool(), 
+            renderable_mapping(), vertex_buffers(), vk_vertex_buffers(), buffer_offsets(),          
+            frame_idx(0), command_buffers{}, render_fences{}, image_available_semaphores{}, cmd_buffer_finished_semaphores{} {}
         friend physical_device;
         friend command_buffer;
         
@@ -44,6 +55,14 @@ namespace d2d {
         render_pass _render_pass;
         pipeline _pipeline;
         command_pool _command_pool;
+
+        //Probably need all of these for each Renderable type
+        std::unordered_map<std::string, std::size_t> renderable_mapping;
+        std::vector<shader_buffer> vertex_buffers;
+        std::vector<VkBuffer> vk_vertex_buffers;
+        std::vector<std::size_t> buffer_offsets;
+        inline static shader_buffer index_buffer{};
+        inline static std::size_t index_count = 0;
         
         constexpr static std::size_t frames_in_flight = 2;
         std::size_t frame_idx;
@@ -52,3 +71,5 @@ namespace d2d {
         std::array<semaphore, frames_in_flight> image_available_semaphores, cmd_buffer_finished_semaphores;
     };
 }
+
+#include "Duo2D/graphics/pipeline/window.inl"

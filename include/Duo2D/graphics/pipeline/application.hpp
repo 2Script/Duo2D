@@ -29,11 +29,12 @@ namespace d2d {
         result<void> initialize_device() noexcept;
 
 
-    public: 
-        result<void> add_window(std::string_view title) noexcept;
+    public:
+        //TODO return reference to window instead of completely rework how to grab windows
+        result<window*> add_window(std::string_view title) noexcept;
         result<void> remove_window(std::string_view title) noexcept;
 
-        result<void> add_window() noexcept;
+        result<window*> add_window() noexcept;
         result<void> remove_window() noexcept;
 
     public:

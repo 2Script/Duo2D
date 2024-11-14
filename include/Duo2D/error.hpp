@@ -31,6 +31,7 @@ namespace d2d::error {
 
         device_lacks_display_format,
         device_lacks_present_mode,
+        device_lacks_suitable_mem_type,
 
         //Internal application errors (programmer's fault)
         device_not_selected,
@@ -38,7 +39,8 @@ namespace d2d::error {
 
         window_not_found,
         window_already_exists,
-        
+
+        element_not_found,
 
         unknown,
         num_codes,

@@ -22,7 +22,7 @@ namespace d2d {
 }
 
 namespace d2d {
-    result<void> command_buffer::record(const window& w, std::uint32_t image_index) const noexcept {
+    result<void> command_buffer::record(const window& w, std::vector<VkBuffer>& vertex_buffers, shader_buffer& index_buffer, std::vector<std::size_t>& offsets, std::size_t index_count, std::uint32_t image_index) const noexcept {
         VkCommandBufferBeginInfo begin_info{};
         begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
         __D2D_VULKAN_VERIFY(vkBeginCommandBuffer(handle, &begin_info));
@@ -50,8 +50,13 @@ namespace d2d {
         VkRect2D scissor{{}, static_cast<VkExtent2D>(w._swap_chain.extent)};
         vkCmdSetScissor(handle, 0, 1, &scissor);
 
-        //Draw 3 verticies
-        vkCmdDraw(handle, 3, 1, 0, 0);
+        //Bind buffers
+        vkCmdBindVertexBuffers(handle, 0, vertex_buffers.size(), vertex_buffers.data(), offsets.data());
+        //vkCmdBindVertexBuffers(handle, 0, 2, vertex_buffers.data(), offsets_arr.data());
+        vkCmdBindIndexBuffer(handle, static_cast<VkBuffer>(index_buffer), 0, VK_INDEX_TYPE_UINT32);
+
+        //Draw verticies
+        vkCmdDrawIndexed(handle, index_count, 1, 0, 0, 0);
 
         
         vkCmdEndRenderPass(handle);
@@ -62,6 +67,22 @@ namespace d2d {
 
     result<void> command_buffer::reset() const noexcept {
         __D2D_VULKAN_VERIFY(vkResetCommandBuffer(handle, 0));
+        return result<void>{std::in_place_type<void>};
+    }
+}
+
+namespace d2d {
+    result<void> command_buffer::copy(buffer& dest, const buffer& src, std::size_t size) const noexcept {
+        VkCommandBufferBeginInfo begin_info{};
+        begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+        __D2D_VULKAN_VERIFY(vkBeginCommandBuffer(handle, &begin_info));
+
+        VkBufferCopy copy_region{};
+        copy_region.size = size;
+        vkCmdCopyBuffer(handle, src, dest, 1, &copy_region);
+
+        __D2D_VULKAN_VERIFY(vkEndCommandBuffer(handle));
         return result<void>{std::in_place_type<void>};
     }
 }

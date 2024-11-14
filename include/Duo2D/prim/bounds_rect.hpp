@@ -40,15 +40,20 @@ namespace d2d {
         constexpr SizeT height() const noexcept { return size.height(); }
 
     public:
-        constexpr std::array<point2<T>, 4> points() const noexcept requires (impl::identity_rect<T, SizeT>) { 
-            return {pos, {pos.x() + size.width(), pos.y()}, {pos.x(), pos.y() + size.height()}, pos + size}; 
+        constexpr std::array<point2<T>, 4> points() const noexcept requires (impl::identity_rect<T, SizeT>) { return {top_left(), top_right(), bottom_right(), bottom_left()}; }
+        constexpr std::array<point2<T>, 4> points(size2<T> normalize_to) const noexcept requires (impl::identity_rect<T, SizeT>) { 
+            constexpr point2<T> twos = {2,2}, ones = {1,1};
+            return {
+                (twos * (top_left()/normalize_to)) - ones, (twos * (top_right()/normalize_to)) - ones, 
+                (twos * (bottom_right()/normalize_to)) - ones, (twos * (bottom_left()/normalize_to)) - ones, 
+            }; 
         }
-
         constexpr point2<T> operator[](std::size_t pos) const noexcept requires (impl::identity_rect<T, SizeT>) { return points()[pos]; }
-        constexpr point2<T> top_left()     const noexcept requires (impl::identity_rect<T, SizeT>) { return points()[0]; }
-        constexpr point2<T> top_right()    const noexcept requires (impl::identity_rect<T, SizeT>) { return points()[1]; }
-        constexpr point2<T> bottom_left()  const noexcept requires (impl::identity_rect<T, SizeT>) { return points()[2]; }
-        constexpr point2<T> bottom_right() const noexcept requires (impl::identity_rect<T, SizeT>) { return points()[3]; }
+        
+        constexpr point2<T> top_left()     const noexcept requires (impl::identity_rect<T, SizeT>) { return pos; }
+        constexpr point2<T> top_right()    const noexcept requires (impl::identity_rect<T, SizeT>) { return {pos.x() + size.width(), pos.y()}; }
+        constexpr point2<T> bottom_right() const noexcept requires (impl::identity_rect<T, SizeT>) { return (pos + size); }
+        constexpr point2<T> bottom_left()  const noexcept requires (impl::identity_rect<T, SizeT>) { return {pos.x(), pos.y() + size.height()}; }
 
     public:
         point2<T> pos;
