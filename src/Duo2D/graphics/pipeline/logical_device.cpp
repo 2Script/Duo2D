@@ -16,11 +16,12 @@ namespace d2d {
         constexpr static float priority = 1.f;
         std::array<VkDeviceQueueCreateInfo, queue_family::num_families> queue_create_infos{};
         for(std::size_t i = 0; i < queue_family::num_families; ++i) {
-            VkDeviceQueueCreateInfo queue_create_info{};
-            queue_create_info.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-            queue_create_info.queueFamilyIndex = *(associated_phys_device.queue_family_idxs[i]);
-            queue_create_info.queueCount = 1;
-            queue_create_info.pQueuePriorities = &priority;
+            VkDeviceQueueCreateInfo queue_create_info{
+                .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
+                .queueFamilyIndex = *(associated_phys_device.queue_family_idxs[i]),
+                .queueCount = 1,
+                .pQueuePriorities = &priority,
+            };
             queue_create_infos[i] = queue_create_info;
         }
 
@@ -35,14 +36,15 @@ namespace d2d {
                 enabled_extensions.push_back(extension::name[i].data());
 
         //Create logical device
-        VkDeviceCreateInfo device_create_info{};
-        device_create_info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-        device_create_info.pQueueCreateInfos = queue_create_infos.data();
-        device_create_info.queueCreateInfoCount = queue_create_infos.size();
-        device_create_info.pEnabledFeatures = &desired_features;
-        device_create_info.enabledExtensionCount = enabled_extensions.size();
-        device_create_info.ppEnabledExtensionNames = enabled_extensions.data();
-        device_create_info.enabledLayerCount = 0;
+        VkDeviceCreateInfo device_create_info{
+            .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
+            .queueCreateInfoCount = queue_create_infos.size(),
+            .pQueueCreateInfos = queue_create_infos.data(),
+            .enabledLayerCount = 0,
+            .enabledExtensionCount = static_cast<std::uint32_t>(enabled_extensions.size()),
+            .ppEnabledExtensionNames = enabled_extensions.data(),
+            .pEnabledFeatures = &desired_features,
+        };
 
         logical_device ret{};
         __D2D_VULKAN_VERIFY(vkCreateDevice(associated_phys_device, &device_create_info, nullptr, &ret));

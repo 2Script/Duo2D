@@ -10,11 +10,12 @@ namespace d2d {
     result<command_buffer> command_buffer::create(logical_device& device, command_pool& pool) noexcept {
         command_buffer ret{};
 
-        VkCommandBufferAllocateInfo alloc_info{};
-        alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        alloc_info.commandPool = pool;
-        alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-        alloc_info.commandBufferCount = 1;
+        VkCommandBufferAllocateInfo alloc_info{
+            .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+            .commandPool = pool,
+            .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+            .commandBufferCount = 1,
+        };
 
         __D2D_VULKAN_VERIFY(vkAllocateCommandBuffers(device, &alloc_info, &ret.handle));
         return ret;
@@ -29,14 +30,17 @@ namespace d2d {
 
         //Set render pass
         constexpr static VkClearValue clear_color = {{{0.0f, 0.0f, 0.0f, 1.0f}}};
-        VkRenderPassBeginInfo render_pass_info{};
-        render_pass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-        render_pass_info.renderPass = w._render_pass;
-        render_pass_info.framebuffer = w._swap_chain.framebuffers[image_index];
-        render_pass_info.renderArea.offset = {0, 0};
-        render_pass_info.renderArea.extent = static_cast<VkExtent2D>(w._swap_chain.extent);
-        render_pass_info.clearValueCount = 1;
-        render_pass_info.pClearValues = &clear_color;
+        VkRenderPassBeginInfo render_pass_info{
+            .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
+            .renderPass = w._render_pass,
+            .framebuffer = w._swap_chain.framebuffers[image_index],
+            .renderArea{
+                .offset = {0, 0},
+                .extent = static_cast<VkExtent2D>(w._swap_chain.extent),
+            },
+            .clearValueCount = 1,
+            .pClearValues = &clear_color,
+        };
         vkCmdBeginRenderPass(handle, &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
 
         //Set pipeline
@@ -73,9 +77,10 @@ namespace d2d {
 
 namespace d2d {
     result<void> command_buffer::copy(buffer& dest, const buffer& src, std::size_t size) const noexcept {
-        VkCommandBufferBeginInfo begin_info{};
-        begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-        begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+        VkCommandBufferBeginInfo begin_info{
+            .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+            .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+        };
         __D2D_VULKAN_VERIFY(vkBeginCommandBuffer(handle, &begin_info));
 
         VkBufferCopy copy_region{};

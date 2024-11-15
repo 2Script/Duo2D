@@ -96,24 +96,26 @@ namespace d2d {
         command_buffers[frame_idx].record(*this, vk_vertex_buffers, index_buffer, buffer_offsets, index_count, image_index);
 
         constexpr static std::array<VkPipelineStageFlags, 1> wait_stages = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
-        VkSubmitInfo submit_info{};
-        submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-        submit_info.pWaitDstStageMask = wait_stages.data();
-        submit_info.waitSemaphoreCount = 1;
-        submit_info.pWaitSemaphores = &image_available_semaphores[frame_idx];
-        submit_info.signalSemaphoreCount = 1;
-        submit_info.pSignalSemaphores = &cmd_buffer_finished_semaphores[frame_idx];
-        submit_info.commandBufferCount = 1;
-        submit_info.pCommandBuffers = &command_buffers[frame_idx];
+        VkSubmitInfo submit_info{
+            .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+            .waitSemaphoreCount = 1,
+            .pWaitSemaphores = &image_available_semaphores[frame_idx],
+            .pWaitDstStageMask = wait_stages.data(),
+            .commandBufferCount = 1,
+            .pCommandBuffers = &command_buffers[frame_idx],
+            .signalSemaphoreCount = 1,
+            .pSignalSemaphores = &cmd_buffer_finished_semaphores[frame_idx],
+        };
         __D2D_VULKAN_VERIFY(vkQueueSubmit(logi_device_ptr->queues[queue_family::graphics], 1, &submit_info, render_fences[frame_idx]));
 
-        VkPresentInfoKHR present_info{};
-        present_info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-        present_info.waitSemaphoreCount = 1;
-        present_info.pWaitSemaphores = &cmd_buffer_finished_semaphores[frame_idx];
-        present_info.swapchainCount = 1;
-        present_info.pSwapchains = &_swap_chain;
-        present_info.pImageIndices = &image_index;
+        VkPresentInfoKHR present_info{
+            .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
+            .waitSemaphoreCount = 1,
+            .pWaitSemaphores = &cmd_buffer_finished_semaphores[frame_idx],
+            .swapchainCount = 1,
+            .pSwapchains = &_swap_chain,
+            .pImageIndices = &image_index,
+        };
         __D2D_VULKAN_VERIFY(vkQueuePresentKHR(logi_device_ptr->queues[queue_family::present], &present_info));
 
         frame_idx = (frame_idx + 1) % frames_in_flight;

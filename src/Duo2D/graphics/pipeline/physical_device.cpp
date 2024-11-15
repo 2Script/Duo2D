@@ -1,6 +1,7 @@
 #include "Duo2D/graphics/pipeline/physical_device.hpp"
 
 #include <cstring>
+#include <type_traits>
 #include "Duo2D/graphics/pipeline/window.hpp"
 
 namespace d2d {
@@ -114,15 +115,16 @@ namespace d2d {
         }
 
         //Create device info
-        physical_device ret{};
-        ret.name = device_properties.deviceName;
-        ret.type = static_cast<device_type>(device_properties.deviceType);
-        ret.queue_family_idxs = device_idxs;
-        ret.extensions = device_extensions;
-        ret.features = std::bit_cast<d2d::features_t>(device_features);
-        ret.surface_capabilities = device_surface_capabilities;
-        ret.display_formats = device_formats;
-        ret.present_modes = device_present_modes;
+        physical_device ret{
+            .name = device_properties.deviceName,
+            .type = static_cast<device_type>(device_properties.deviceType),
+            .queue_family_idxs = device_idxs,
+            .extensions = device_extensions,
+            .features = std::bit_cast<d2d::features_t>(device_features),
+            .surface_capabilities = device_surface_capabilities,
+            .display_formats = device_formats,
+            .present_modes = device_present_modes,
+        };
         ret.handle = device_handle;
         return ret;
     }

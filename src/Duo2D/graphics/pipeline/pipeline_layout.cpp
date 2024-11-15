@@ -5,10 +5,11 @@ namespace d2d {
         pipeline_layout ret{};
         ret.dependent_handle = device;
 
-        VkPipelineLayoutCreateInfo pipeline_layout_create_info{};
-        pipeline_layout_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-        pipeline_layout_create_info.setLayoutCount = 0;
-        pipeline_layout_create_info.pushConstantRangeCount = 0;
+        VkPipelineLayoutCreateInfo pipeline_layout_create_info{
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+            .setLayoutCount = 0,
+            .pushConstantRangeCount = 0,
+        };
         __D2D_VULKAN_VERIFY(vkCreatePipelineLayout(device, &pipeline_layout_create_info, nullptr, &ret.handle));
 
         return ret;

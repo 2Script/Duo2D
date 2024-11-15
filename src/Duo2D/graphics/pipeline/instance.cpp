@@ -12,11 +12,12 @@ namespace d2d {
         const char** glfw_exts = glfwGetRequiredInstanceExtensions(&glfw_ext_cnt);
         __D2D_GLFW_VERIFY(glfw_exts);
 
-        VkInstanceCreateInfo create_info{};
-        create_info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
-        create_info.pApplicationInfo = &app_info;
-        create_info.enabledExtensionCount = glfw_ext_cnt;
-        create_info.ppEnabledExtensionNames = glfw_exts;
+        VkInstanceCreateInfo create_info{
+            .sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
+            .pApplicationInfo = &app_info,
+            .enabledExtensionCount = glfw_ext_cnt,
+            .ppEnabledExtensionNames = glfw_exts,
+        };
 
         #ifdef NDEBUG
         create_info.enabledLayerCount = 0;

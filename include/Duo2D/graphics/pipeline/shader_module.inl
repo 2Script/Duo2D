@@ -11,16 +11,19 @@ namespace d2d {
         ret.dependent_handle = device;
 
         //TODO verify alignment of passed shader data OR enforce constexpr
-        VkShaderModuleCreateInfo shader_module_create_info{};
-        shader_module_create_info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-        shader_module_create_info.codeSize = N;
-        shader_module_create_info.pCode = reinterpret_cast<uint32_t const*>(data);
+        VkShaderModuleCreateInfo shader_module_create_info{
+            .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+            .codeSize = N,
+            .pCode = reinterpret_cast<uint32_t const*>(data),
+        };
         __D2D_VULKAN_VERIFY(vkCreateShaderModule(device, &shader_module_create_info, nullptr, &ret.handle));
 
-        ret.shader_stage_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-        ret.shader_stage_info.stage = type;
-        ret.shader_stage_info.module = ret;
-        ret.shader_stage_info.pName = "main";
+        ret.shader_stage_info = {
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+            .stage = type,
+            .module = ret,
+            .pName = "main",
+        };
 
         return ret;
     }

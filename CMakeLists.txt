@@ -44,14 +44,23 @@ add_dependencies(${PROJECT_NAME} ${PROJECT_NAME}_shaders)
 
 
 ## compiler args
-list(APPEND CLANG_ARGS "-Wall" "-Wextra" "-fno-exceptions")
+list(APPEND CLANG_ARGS "-Wall" "-Wextra" "-fno-exceptions" "-fno-rtti")
 
 target_compile_options(${PROJECT_NAME} PUBLIC ${CLANG_ARGS})
 target_compile_options(${PROJECT_NAME} PUBLIC "$<$<CONFIG:RELEASE>:-Werror>")
 if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang") # clang only
     target_compile_options(${PROJECT_NAME} PUBLIC "-Wno-c++98-compat-pedantic" "-Wc++20-compat-pedantic" "-fsized-deallocation")
+    if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL "19.1.0")
+        # Don't show warnings for C++20 designated field initializers.
+        target_compile_options(${PROJECT_NAME} PUBLIC "-Wno-missing-designated-field-initializers")
+    else()
+        # If clang is "outdated", then we have to disable the entire warning category
+        target_compile_options(${PROJECT_NAME} PUBLIC "-Wno-missing-field-initializers")
+    endif()
 else() # gcc only
     target_compile_options(${PROJECT_NAME} PUBLIC "-Wc++20-compat")
+    # gcc has no "missing-designated-field-initializers" (https://gcc.gnu.org/bugzilla/show_bug.cgi?id=96868)
+    target_compile_options(${PROJECT_NAME} PUBLIC "-Wno-missing-field-initializers")
 endif()
 
 

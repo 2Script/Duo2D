@@ -28,10 +28,11 @@ namespace d2d {
             return error::device_lacks_suitable_mem_type;
 
 
-        VkMemoryAllocateInfo malloc_info{};
-        malloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-        malloc_info.allocationSize = mem_reqs.size;
-        malloc_info.memoryTypeIndex = *mem_type_idx;
+        VkMemoryAllocateInfo malloc_info{
+            .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+            .allocationSize = mem_reqs.size,
+            .memoryTypeIndex = *mem_type_idx,
+        };
 
         __D2D_VULKAN_VERIFY(vkAllocateMemory(logi_device, &malloc_info, nullptr, &ret.handle));
         vkBindBufferMemory(logi_device, associated_buffer, ret.handle, 0);

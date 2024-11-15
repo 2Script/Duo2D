@@ -33,20 +33,21 @@ namespace d2d {
         if(device_capabilities.maxImageCount > 0)
             image_count = std::min(device_capabilities.maxImageCount, image_count);
 
-        VkSwapchainCreateInfoKHR swap_chain_create_info{};
-        swap_chain_create_info.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
-        swap_chain_create_info.surface = window_surface;
-        swap_chain_create_info.minImageCount = image_count;
-        swap_chain_create_info.imageFormat = logi_device.format.format_id;
-        swap_chain_create_info.imageColorSpace = logi_device.format.color_space_id;
-        swap_chain_create_info.imageExtent = static_cast<VkExtent2D>(ret.extent);
-        swap_chain_create_info.imageArrayLayers = 1;
-        swap_chain_create_info.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-        swap_chain_create_info.preTransform = device_capabilities.currentTransform;
-        swap_chain_create_info.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-        swap_chain_create_info.presentMode = static_cast<VkPresentModeKHR>(logi_device.mode);
-        swap_chain_create_info.clipped = VK_TRUE;
-        swap_chain_create_info.oldSwapchain = VK_NULL_HANDLE;
+        VkSwapchainCreateInfoKHR swap_chain_create_info{
+            .sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
+            .surface = window_surface,
+            .minImageCount = image_count,
+            .imageFormat = logi_device.format.format_id,
+            .imageColorSpace = logi_device.format.color_space_id,
+            .imageExtent = static_cast<VkExtent2D>(ret.extent),
+            .imageArrayLayers = 1,
+            .imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+            .preTransform = device_capabilities.currentTransform,
+            .compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
+            .presentMode = static_cast<VkPresentModeKHR>(logi_device.mode),
+            .clipped = VK_TRUE,
+            .oldSwapchain = VK_NULL_HANDLE,
+        };
 
         const std::array<std::uint32_t, queue_family::present + 1> core_queue_family_idxs = {
             *(phys_device.queue_family_idxs[queue_family::graphics]), *(phys_device.queue_family_idxs[queue_family::present])
