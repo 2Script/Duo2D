@@ -1,5 +1,5 @@
 #pragma once
-#include "Duo2D/prim/vector.hpp"
+#include "Duo2D/arith/vector.hpp"
 #include <cstdint>
 
 namespace d2d {

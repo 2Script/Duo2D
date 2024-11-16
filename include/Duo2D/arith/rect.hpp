@@ -1,7 +1,7 @@
 #pragma once
-#include "Duo2D/prim/point.hpp"
-#include "Duo2D/prim/size.hpp"
-#include "Duo2D/prim/vector.hpp"
+#include "Duo2D/arith/point.hpp"
+#include "Duo2D/arith/size.hpp"
+#include "Duo2D/arith/vector.hpp"
 #include <type_traits>
 #include <vulkan/vulkan_core.h>
 
@@ -18,15 +18,15 @@ namespace d2d::impl {
 
 namespace d2d {
     template<typename T, typename SizeT = T>
-    struct bounds_rect {
-        constexpr bounds_rect() noexcept = default;
-        constexpr bounds_rect(T x, T y, SizeT width, SizeT height) noexcept : pos{x, y}, size{width, height} {}
-        constexpr bounds_rect(point2<T> p, size2<SizeT> s) noexcept : pos(p), size(s) {}
+    struct rect {
+        constexpr rect() noexcept = default;
+        constexpr rect(T x, T y, SizeT width, SizeT height) noexcept : pos{x, y}, size{width, height} {}
+        constexpr rect(point2<T> p, size2<SizeT> s) noexcept : pos(p), size(s) {}
 
-        constexpr explicit bounds_rect(VkOffset2D offset, VkExtent2D extent) noexcept requires impl::VkCompatibleRectType<T, SizeT> : 
+        constexpr explicit rect(VkOffset2D offset, VkExtent2D extent) noexcept requires impl::VkCompatibleRectType<T, SizeT> : 
             pos{static_cast<T>(offset.x), static_cast<T>(offset.y)}, 
             size{static_cast<SizeT>(extent.width), static_cast<SizeT>(extent.height)} {}
-        constexpr explicit bounds_rect(VkRect2D r) noexcept requires impl::VkCompatibleRectType<T, SizeT> : bounds_rect(r.offset, r.extent) {}
+        constexpr explicit rect(VkRect2D r) noexcept requires impl::VkCompatibleRectType<T, SizeT> : rect(r.offset, r.extent) {}
 
     public:
         constexpr explicit operator VkRect2D() const noexcept requires impl::VkCompatibleRectType<T, SizeT> { 
@@ -62,5 +62,5 @@ namespace d2d {
 }
 
 namespace d2d {
-    using vk_rect = bounds_rect<decltype(std::declval<VkOffset2D>().x), decltype(std::declval<VkExtent2D>().height)>;
+    using vk_rect = rect<decltype(std::declval<VkOffset2D>().x), decltype(std::declval<VkExtent2D>().height)>;
 }

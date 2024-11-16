@@ -1,13 +1,13 @@
 #pragma once
-#include "Duo2D/prim/bounds_rect.hpp"
+#include "Duo2D/arith/rect.hpp"
 #include "Duo2D/graphics/prim/color.hpp"
 #include "Duo2D/graphics/prim/vertex.hpp"
-#include "Duo2D/prim/point.hpp"
-#include "Duo2D/prim/size.hpp"
+#include "Duo2D/arith/point.hpp"
+#include "Duo2D/arith/size.hpp"
 
 namespace d2d {
-    struct rect {
-        bounds_rect<float> bounds;
+    struct styled_rect {
+        rect<float> bounds;
         true_color color; //TEMP: only color, replace with style
 
         constexpr std::array<vertex2, 4> verticies(size2<float> screen_size) const noexcept {

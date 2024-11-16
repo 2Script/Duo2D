@@ -28,7 +28,7 @@ namespace d2d::impl {
     };
 
     template<std::size_t Dims>
-    concept Cartesian = Dims == 2 || Dims == 3;
+    concept Cartesian = Dims == 2 || Dims == 3 || Dims == 4;
 
     template<std::size_t Dims, typename T, bool HoldsSize>
     concept VkCompatibleType = Cartesian<Dims> && std::is_convertible_v<T, typename vector_traits<Dims, T, HoldsSize>::vk_component_type>; 
@@ -37,13 +37,13 @@ namespace d2d::impl {
 
 namespace d2d {
     template<std::size_t Dims, typename UnitTy, bool HoldsSize = false>
-    struct vector {
+    struct vector : public std::array<UnitTy, Dims> {
         static_assert(Dims > 0, "0-dimensional vector is not valid!");
         //aggregate
-        std::array<UnitTy, Dims> _elems;
+        //std::array<UnitTy, Dims> *this;
 
-        constexpr       UnitTy& operator[](std::size_t pos)       noexcept { return _elems[pos]; }
-        constexpr const UnitTy& operator[](std::size_t pos) const noexcept { return _elems[pos]; }
+        //constexpr       UnitTy& operator[](std::size_t pos)       noexcept { return _elems[pos]; }
+        //constexpr const UnitTy& operator[](std::size_t pos) const noexcept { return _elems[pos]; }
 
     public:
         constexpr static VkFormat format = impl::vertex_traits<Dims, UnitTy>::format;
@@ -52,28 +52,30 @@ namespace d2d {
 
 
     public:
-        constexpr       UnitTy& x()       noexcept requires (impl::Cartesian<Dims> && !HoldsSize) { return _elems[0]; }
-        constexpr const UnitTy& x() const noexcept requires (impl::Cartesian<Dims> && !HoldsSize) { return _elems[0]; }
-        constexpr       UnitTy& y()       noexcept requires (impl::Cartesian<Dims> && !HoldsSize) { return _elems[1]; }
-        constexpr const UnitTy& y() const noexcept requires (impl::Cartesian<Dims> && !HoldsSize) { return _elems[1]; }
-        constexpr       UnitTy& z()       noexcept requires (Dims == 3 && !HoldsSize) { return _elems[2]; }
-        constexpr const UnitTy& z() const noexcept requires (Dims == 3 && !HoldsSize) { return _elems[2]; }
+        constexpr       UnitTy& x()       noexcept requires (impl::Cartesian<Dims> && !HoldsSize) { return (*this)[0]; }
+        constexpr const UnitTy& x() const noexcept requires (impl::Cartesian<Dims> && !HoldsSize) { return (*this)[0]; }
+        constexpr       UnitTy& y()       noexcept requires (impl::Cartesian<Dims> && !HoldsSize) { return (*this)[1]; }
+        constexpr const UnitTy& y() const noexcept requires (impl::Cartesian<Dims> && !HoldsSize) { return (*this)[1]; }
+        constexpr       UnitTy& z()       noexcept requires ((Dims == 3 || Dims == 4) && !HoldsSize) { return (*this)[2]; }
+        constexpr const UnitTy& z() const noexcept requires ((Dims == 3 || Dims == 4) && !HoldsSize) { return (*this)[2]; }
+        constexpr       UnitTy& w()       noexcept requires (Dims == 4 && !HoldsSize) { return (*this)[3]; }
+        constexpr const UnitTy& w() const noexcept requires (Dims == 4 && !HoldsSize) { return (*this)[3]; }
 
     public:
-        constexpr       UnitTy& width()        noexcept requires (impl::Cartesian<Dims> && HoldsSize) { return _elems[0]; }
-        constexpr const UnitTy& width()  const noexcept requires (impl::Cartesian<Dims> && HoldsSize) { return _elems[0]; }
-        constexpr       UnitTy& height()       noexcept requires (impl::Cartesian<Dims> && HoldsSize) { return _elems[1]; }
-        constexpr const UnitTy& height() const noexcept requires (impl::Cartesian<Dims> && HoldsSize) { return _elems[1]; }
-        constexpr       UnitTy& depth()        noexcept requires (Dims == 3 && HoldsSize) { return _elems[2]; }
-        constexpr const UnitTy& depth()  const noexcept requires (Dims == 3 && HoldsSize) { return _elems[2]; }
+        constexpr       UnitTy& width()        noexcept requires (impl::Cartesian<Dims> && HoldsSize) { return (*this)[0]; }
+        constexpr const UnitTy& width()  const noexcept requires (impl::Cartesian<Dims> && HoldsSize) { return (*this)[0]; }
+        constexpr       UnitTy& height()       noexcept requires (impl::Cartesian<Dims> && HoldsSize) { return (*this)[1]; }
+        constexpr const UnitTy& height() const noexcept requires (impl::Cartesian<Dims> && HoldsSize) { return (*this)[1]; }
+        constexpr       UnitTy& depth()        noexcept requires (Dims == 3 && HoldsSize) { return (*this)[2]; }
+        constexpr const UnitTy& depth()  const noexcept requires (Dims == 3 && HoldsSize) { return (*this)[2]; }
 
     
     public:
-        //TODO: Add more arithmetic operations (and use SIMD)
-        template<bool OtherHoldsSize> constexpr vector& operator+=(const vector<Dims, UnitTy, OtherHoldsSize>& rhs) noexcept { for(std::size_t i = 0; i < Dims; ++i) _elems[i] += rhs._elems[i]; return *this; }
-        template<bool OtherHoldsSize> constexpr vector& operator-=(const vector<Dims, UnitTy, OtherHoldsSize>& rhs) noexcept { for(std::size_t i = 0; i < Dims; ++i) _elems[i] -= rhs._elems[i]; return *this; }
-        template<bool OtherHoldsSize> constexpr vector& operator*=(const vector<Dims, UnitTy, OtherHoldsSize>& rhs) noexcept { for(std::size_t i = 0; i < Dims; ++i) _elems[i] *= rhs._elems[i]; return *this; }
-        template<bool OtherHoldsSize> constexpr vector& operator/=(const vector<Dims, UnitTy, OtherHoldsSize>& rhs) noexcept { for(std::size_t i = 0; i < Dims; ++i) _elems[i] /= rhs._elems[i]; return *this; }
+        //TODO: Add more arithmetic operations (and use SIMD - probably just needs a target_clones)
+        template<bool OtherHoldsSize> constexpr vector& operator+=(const vector<Dims, UnitTy, OtherHoldsSize>& rhs) noexcept { for(std::size_t i = 0; i < Dims; ++i) (*this)[i] += rhs[i]; return *this; }
+        template<bool OtherHoldsSize> constexpr vector& operator-=(const vector<Dims, UnitTy, OtherHoldsSize>& rhs) noexcept { for(std::size_t i = 0; i < Dims; ++i) (*this)[i] -= rhs[i]; return *this; }
+        template<bool OtherHoldsSize> constexpr vector& operator*=(const vector<Dims, UnitTy, OtherHoldsSize>& rhs) noexcept { for(std::size_t i = 0; i < Dims; ++i) (*this)[i] *= rhs[i]; return *this; }
+        template<bool OtherHoldsSize> constexpr vector& operator/=(const vector<Dims, UnitTy, OtherHoldsSize>& rhs) noexcept { for(std::size_t i = 0; i < Dims; ++i) (*this)[i] /= rhs[i]; return *this; }
 
         template<bool OtherHoldsSize> friend constexpr vector operator+(vector lhs, const vector<Dims, UnitTy, OtherHoldsSize>& rhs) noexcept { return lhs += rhs; }
         template<bool OtherHoldsSize> friend constexpr vector operator-(vector lhs, const vector<Dims, UnitTy, OtherHoldsSize>& rhs) noexcept { return lhs -= rhs; }
@@ -82,9 +84,9 @@ namespace d2d {
 
 
     public:
-        constexpr explicit operator std::array<UnitTy, Dims>() const noexcept { return _elems; }
-        constexpr explicit operator decltype(std::tuple_cat(std::declval<decltype(_elems)>()))() const noexcept { return std::tuple_cat(_elems); }
-        constexpr explicit operator std::pair<UnitTy, UnitTy>() const noexcept requires (Dims == 2) { return {_elems[0], _elems[1]}; }
+        //constexpr explicit operator std::array<UnitTy, Dims>() const noexcept { return _elems; }
+        constexpr explicit operator decltype(std::tuple_cat(std::declval<std::array<UnitTy, Dims>>()))() const noexcept { return std::tuple_cat(*this); }
+        constexpr explicit operator std::pair<UnitTy, UnitTy>() const noexcept requires (Dims == 2) { return {(*this)[0], (*this)[1]}; }
 
     public:
         constexpr explicit operator vk_type() const noexcept requires (impl::VkCompatibleType<Dims, UnitTy, HoldsSize>) {
@@ -99,7 +101,7 @@ namespace d2d {
 
     private:
         template<typename RetTy, typename CastTy, std::size_t... I>
-        constexpr RetTy to(std::index_sequence<I...>) const noexcept { return RetTy{static_cast<CastTy>(_elems[I])...}; }
+        constexpr RetTy to(std::index_sequence<I...>) const noexcept { return RetTy{static_cast<CastTy>((*this)[I])...}; }
     };
 }
 

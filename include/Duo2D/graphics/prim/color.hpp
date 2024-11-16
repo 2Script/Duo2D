@@ -6,7 +6,7 @@
 #include <limits>
 #include <type_traits>
 
-#include "Duo2D/prim/vector.hpp"
+#include "Duo2D/arith/vector.hpp"
 
 
 namespace d2d {

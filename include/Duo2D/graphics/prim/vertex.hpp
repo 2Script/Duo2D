@@ -3,9 +3,9 @@
 #include "Duo2D/graphics/pipeline/logical_device.hpp"
 #include "Duo2D/graphics/pipeline/make.hpp"
 #include "Duo2D/graphics/pipeline/shader_module.hpp"
-#include "Duo2D/prim/point.hpp"
-#include "Duo2D/prim/size.hpp"
-#include "Duo2D/prim/vector.hpp"
+#include "Duo2D/arith/point.hpp"
+#include "Duo2D/arith/size.hpp"
+#include "Duo2D/arith/vector.hpp"
 #include "Duo2D/graphics/prim/color.hpp"
 #include "Duo2D/shaders/vertex2.hpp"
 #include <vulkan/vulkan_core.h>

@@ -1,5 +1,5 @@
 #pragma once
-#include "Duo2D/prim/vector.hpp"
+#include "Duo2D/arith/vector.hpp"
 #include <vulkan/vulkan_core.h>
 #include <cstdint>
 #include <type_traits>

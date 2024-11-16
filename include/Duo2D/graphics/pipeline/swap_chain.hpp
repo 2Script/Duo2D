@@ -8,7 +8,7 @@
 #include "Duo2D/graphics/pipeline/pipeline_obj.hpp"
 #include "Duo2D/graphics/pipeline/surface.hpp"
 #include "Duo2D/graphics/pipeline/image_view.hpp"
-#include "Duo2D/prim/size.hpp"
+#include "Duo2D/arith/size.hpp"
 
 __D2D_DECLARE_VK_TRAITS_DEVICE(VkSwapchainKHR);
 

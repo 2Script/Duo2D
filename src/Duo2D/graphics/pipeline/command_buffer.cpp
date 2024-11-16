@@ -2,7 +2,7 @@
 #include "Duo2D/error.hpp"
 #include "Duo2D/graphics/pipeline/window.hpp"
 #include "Duo2D/graphics/prim/viewport.hpp"
-#include "Duo2D/prim/size.hpp"
+#include "Duo2D/arith/size.hpp"
 #include <cstdint>
 #include <vulkan/vulkan_core.h>
 
