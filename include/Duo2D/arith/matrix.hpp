@@ -1,10 +1,13 @@
 #pragma once
 #include <array>
 #include <cstddef>
+#include <cstdint>
 #include <type_traits>
 #include <utility>
 
 namespace d2d {
+    enum class axis { x, y, z, roll = x, pitch = y, yaw = z };
+    
     template<std::size_t M, std::size_t N, typename T>
     struct matrix : public std::array<std::array<T, N>, M> {
         constexpr static std::size_t columns = M;
@@ -20,6 +23,17 @@ namespace d2d {
     public:
         constexpr flattened_type flatten() const noexcept { return std::bit_cast<flattened_type>(*this); }
         constexpr explicit operator flattened_type() const noexcept { return flatten(); }
+
+
+    public:
+        //TODO use SIMD (i.e. target_clones)
+        consteval static matrix<M, N, T> identity() noexcept requires (M == N);
+        constexpr static matrix<M, N, T> scaling(std::array<T, N-1> scale_vec) noexcept requires (M == N);
+        template<typename A, typename FS, typename FC> requires std::is_arithmetic_v<std::remove_cvref_t<A>>
+        constexpr static matrix<M, N, T> rotating(A&& angle, FS&& sin_fn, FC&& cos_fn) noexcept requires (M == N && N == 2);
+        template<typename A, typename FS, typename FC> requires std::is_arithmetic_v<std::remove_cvref_t<A>>
+        constexpr static matrix<M, N, T> rotating(A&& angle, axis rotate_axis, FS&& sin_fn, FC&& cos_fn) noexcept requires (M == N && (N >= 3));
+        constexpr static matrix<M, N, T> translating(std::array<T, N-1> translate_vec) noexcept requires (M == N);
 
 
     public:

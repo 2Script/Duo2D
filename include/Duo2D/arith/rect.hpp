@@ -9,7 +9,7 @@
 namespace d2d::impl {
     template<typename PosT, typename SizeT>
     concept VkCompatibleRectType = 
-        impl::VkCompatibleType<2, PosT, false> && impl::VkCompatibleType<2, SizeT, true>;
+        impl::VkCompatibleType<2, PosT, false, 0> && impl::VkCompatibleType<2, SizeT, true, 0>;
 
     template<typename PosT, typename SizeT>
     constexpr bool identity_rect = std::is_same_v<PosT, SizeT>;
@@ -40,6 +40,8 @@ namespace d2d {
         constexpr SizeT height() const noexcept { return size.height(); }
 
     public:
+        //TODO Use SIMD on all these, epecially points(size2) and center() (target_clones should suffice)
+        //TODO consider calculating points when constructing instead of when called
         constexpr std::array<point2<T>, 4> points() const noexcept requires (impl::identity_rect<T, SizeT>) { return {top_left(), top_right(), bottom_right(), bottom_left()}; }
         constexpr std::array<point2<T>, 4> points(size2<T> normalize_to) const noexcept requires (impl::identity_rect<T, SizeT>) { 
             constexpr point2<T> twos = {2,2}, ones = {1,1};
@@ -54,6 +56,8 @@ namespace d2d {
         constexpr point2<T> top_right()    const noexcept requires (impl::identity_rect<T, SizeT>) { return {pos.x() + size.width(), pos.y()}; }
         constexpr point2<T> bottom_right() const noexcept requires (impl::identity_rect<T, SizeT>) { return (pos + size); }
         constexpr point2<T> bottom_left()  const noexcept requires (impl::identity_rect<T, SizeT>) { return {pos.x(), pos.y() + size.height()}; }
+
+        constexpr point2<T> center() const noexcept requires (impl::identity_rect<T, SizeT>) { return pos + (size / 2); }
 
     public:
         point2<T> pos;
