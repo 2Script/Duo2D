@@ -117,3 +117,163 @@ namespace d2d {
 }
 
 
+
+namespace d2d {
+    template<std::size_t M, std::size_t N, typename T>
+    template<typename F>
+    constexpr matrix<M, N, T> matrix<M, N, T>::looking_at(vector<3, T> eye, vector<3, T> center, axis up_axis, F&& sqrt_fn) noexcept requires (M == N && N >= 4) {
+        vec3<T> f = normalized(center - eye, std::forward<F>(sqrt_fn)); 
+        vec3<T> dir = {0,0,0};
+        dir[static_cast<std::size_t>(up_axis)] = 1.f;
+        vec3<T> s = normalized(cross(f, dir), std::forward<F>(sqrt_fn)); 
+        vec3<T> t = cross(s, f);
+
+        matrix<N, N, T> ret = matrix<N, N, T>::identity();
+        for(std::size_t i = 0; i < 3; ++i) {
+            ret[i][0] = s[i]; 
+            ret[i][1] = t[i]; 
+            ret[i][2] = -f[i]; 
+            ret[i][3] = s[i]*-eye[0]+t[i]*-eye[1]-f[i]*-eye[2];
+        }
+        return ret;
+    }
+
+
+    template<std::size_t M, std::size_t N, typename T>
+    template<typename A, typename F>
+    constexpr matrix<M, N, T> matrix<M, N, T>::perspective(A fov_angle, T screen_width, T screen_height, F&& tan_fn, T near_z, T far_z) noexcept requires (M == N && N == 4) {
+        T focal = 1/static_cast<T>(std::forward<F>(tan_fn)(fov_angle / static_cast<A>(2)));
+        T denom = (far_z - near_z);
+        T a = near_z / denom;
+        T b = (near_z * far_z) / denom;
+        return {{{
+            {{focal * screen_height / screen_width, 0, 0, 0 }},
+            {{0, -focal, 0, 0 }},
+            {{0, 0, a, b }},
+            {{0, 0, -1, 0 }}
+        }}};
+    }
+
+    template<std::size_t M, std::size_t N, typename T>
+    template<typename A, typename F>
+    constexpr matrix<M, N, T> matrix<M, N, T>::perspective(A fov_angle, T screen_width, T screen_height, F&& tan_fn, T near_z) noexcept requires (M == N && N == 4) {
+        T focal = 1/static_cast<T>(std::forward<F>(tan_fn)(fov_angle / static_cast<A>(2)));
+        return {{{
+            {{focal * screen_height / screen_width, 0, 0, 0 }},
+            {{0, -focal, 0, 0 }},
+            {{0, 0, 0, near_z }},
+            {{0, 0, -1, 0 }}
+        }}};
+    }
+}
+
+
+
+//matrix/vector transformations
+namespace d2d {
+    template<std::size_t N, typename T>
+    class scale {
+        template<std::size_t Dims, std::uint8_t Flags> using scaled_vector = vector<Dims, T, false, Flags | impl::transform_flags::scale>;
+        template<std::size_t Dims, std::uint8_t Flags> using source_vector = vector<Dims, T, false, Flags>;
+
+    public:
+        vector<N, T> scale_by;
+
+        template<std::uint8_t Flags>
+        constexpr scaled_vector<N, Flags> operator()(source_vector<N, Flags> src_vec) const noexcept
+        requires (impl::Cartesian<N> && source_vector<N + 1, Flags>::scalable) {
+            return {src_vec * scale_by}; 
+        }
+        template<std::uint8_t Flags>
+        constexpr scaled_vector<N + 1, Flags> operator()(source_vector<N + 1, Flags> src_vec) const noexcept
+        requires (N + 1 >= 4 && source_vector<N + 1, Flags>::scalable) {
+            return { matrix<N + 1, N + 1, T>::scaling(scale_by) * src_vec };
+        }
+    };
+
+    template<typename A, typename FS, typename FC> requires std::is_arithmetic_v<A>
+    class rotate {
+        template<std::size_t N, typename T, std::uint8_t Flags> using rotated_vector = vector<N, T, false, Flags | impl::transform_flags::rotate>;
+        template<std::size_t N, typename T, std::uint8_t Flags> using source_vector  = vector<N, T, false, Flags>;
+
+    public:
+        A angle;
+        FS& sin_fn;
+        FC& cos_fn;
+        axis rotate_axis = axis::x;
+
+        template<std::size_t N, typename T, std::uint8_t Flags>
+        constexpr rotated_vector<N, T, Flags> operator()(source_vector<N, T, Flags> src_vec) const noexcept
+        requires (N == 2 && source_vector<N, T, Flags>::rotatable) {
+            return { matrix<N, N, T>::rotating(angle, sin_fn, cos_fn) * src_vec };
+        }
+        template<std::size_t N, typename T, std::uint8_t Flags>
+        constexpr rotated_vector<N, T, Flags> operator()(source_vector<N, T, Flags> src_vec) const noexcept
+        requires (N >= 3 && source_vector<N, T, Flags>::rotatable) {
+            return { matrix<N, N, T>::rotating(angle, sin_fn, cos_fn, rotate_axis) * src_vec };
+        }
+    };
+
+    template<std::size_t N, typename T>
+    class translate {
+        template<std::size_t Dims, std::uint8_t Flags> using translated_vector = vector<Dims, T, false, Flags | impl::transform_flags::translate>;
+        template<std::size_t Dims, std::uint8_t Flags> using source_vector     = vector<Dims, T, false, Flags>;
+
+    public:
+        vector<N, T> translate_by;
+
+        template<std::uint8_t Flags>
+        constexpr translated_vector<N, Flags> operator()(source_vector<N, Flags> src_vec) const noexcept 
+        requires (impl::Cartesian<N> && source_vector<N + 1, Flags>::translatable) {
+            return {src_vec + translate_by}; 
+        }
+        template<std::uint8_t Flags>
+        constexpr translated_vector<N + 1, Flags> operator()(source_vector<N + 1, Flags> src_vec) const noexcept 
+        requires (N + 1 >= 4 && source_vector<N + 1, Flags>::translatable) {
+            return { matrix<N + 1, N + 1, T>::translating(translate_by) * src_vec };
+        }
+    };
+
+
+    template<std::size_t N, typename T>
+    scale(T (&&)[N]) -> scale<N, T>;
+    template<typename T, typename... Args>
+    scale(T head, Args... rest) -> scale<sizeof...(Args) + 1, T>;
+
+    template<std::size_t N, typename T>
+    translate(T (&&)[N]) -> translate<N, T>;
+    template<typename T, typename... Args>
+    translate(T head, Args... rest) -> translate<sizeof...(Args) + 1, T>;
+}
+
+//cumulative transform function
+namespace d2d {
+    namespace impl {
+        template<typename Arg> struct scale_type { constexpr static bool value = requires (Arg a){ a.scale_by; }; };
+        template<typename Arg> struct rotate_type { constexpr static bool value = requires (Arg a){ a.angle; }; };
+        template<typename Arg> struct translate_type { constexpr static bool value = requires (Arg a){ a.translate_by; }; };
+        
+        //TODO make this work with perfect forwarding?
+        template<template<typename> typename TransformType, std::size_t N, typename T, std::uint8_t Flags, typename Arg>
+        constexpr decltype(auto) do_transform(vector<N, T, false, Flags> src_vec, Arg&& arg) { 
+            if constexpr(TransformType<Arg>::value) return std::forward<Arg>(arg)(src_vec);
+            else return src_vec;
+        }
+        template<template<typename> typename TransformType, std::size_t N, typename T, std::uint8_t Flags, typename First, typename... Args>
+        constexpr decltype(auto) do_transform(vector<N, T, false, Flags> src_vec, First&& first, Args&&... args) {
+            return do_transform<TransformType>(
+                do_transform<TransformType>(src_vec, std::forward<First>(first)),
+            std::forward<Args>(args)...);
+        }
+    }
+
+    template<std::size_t Dims, typename UnitTy, typename... Args>
+    constexpr vector<Dims, UnitTy> transform(vector<Dims, UnitTy> src_vec, Args&&... args) noexcept {
+        auto scale_vec = impl::do_transform<impl::scale_type>(src_vec, std::forward<Args>(args)...);
+        auto rotate_vec = impl::do_transform<impl::rotate_type>(scale_vec, std::forward<Args>(args)...);
+        auto translate_vec = impl::do_transform<impl::translate_type>(rotate_vec, std::forward<Args>(args)...);
+        return static_cast<vector<Dims, UnitTy>>(translate_vec);
+    }
+}
+
+

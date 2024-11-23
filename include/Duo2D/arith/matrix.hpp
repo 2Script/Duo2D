@@ -5,8 +5,11 @@
 #include <type_traits>
 #include <utility>
 
+#include "Duo2D/arith/vector.hpp"
+#include "Duo2D/arith/axis.hpp"
+
+
 namespace d2d {
-    enum class axis { x, y, z, roll = x, pitch = y, yaw = z };
     
     template<std::size_t M, std::size_t N, typename T>
     struct matrix : public std::array<std::array<T, N>, M> {
@@ -34,6 +37,13 @@ namespace d2d {
         template<typename A, typename FS, typename FC> requires std::is_arithmetic_v<std::remove_cvref_t<A>>
         constexpr static matrix<M, N, T> rotating(A&& angle, axis rotate_axis, FS&& sin_fn, FC&& cos_fn) noexcept requires (M == N && (N >= 3));
         constexpr static matrix<M, N, T> translating(std::array<T, N-1> translate_vec) noexcept requires (M == N);
+
+        template<typename F>
+        constexpr static matrix<M, N, T> looking_at(vector<3, T> eye, vector<3, T> center, axis up_axis, F&& sqrt_fn) noexcept requires (M == N && N >= 4);
+        template<typename A, typename F>
+        constexpr static matrix<M, N, T> perspective(A fov_angle, T screen_width, T screen_height, F&& tan_fn, T near_z, T far_z) noexcept requires (M == N && N == 4);
+        template<typename A, typename F>
+        constexpr static matrix<M, N, T> perspective(A fov_angle, T screen_width, T screen_height, F&& tan_fn, T near_z) noexcept requires (M == N && N == 4);
 
 
     public:
@@ -67,6 +77,16 @@ namespace d2d {
         template<typename MatA, typename MatB, std::size_t... Is, std::size_t K, std::size_t... Js>
         constexpr static matrix<sizeof...(Is), sizeof...(Js), T> mult(MatA&& m_a, MatB&& m_b, std::index_sequence<Is...>, std::integral_constant<std::size_t, K>, std::index_sequence<Js...>) noexcept;
     };
+}
+
+namespace d2d {
+    template<std::size_t N, typename T> class scale;
+    template<typename A, typename FS, typename FC> requires std::is_arithmetic_v<A> class rotate;
+    template<std::size_t N, typename T> class translate;
+
+    //TODO flatten/target_clones
+    template<std::size_t Dims, typename UnitTy, typename... Args>
+    constexpr vector<Dims, UnitTy> transform(vector<Dims, UnitTy> src_vec, Args&&... args) noexcept;
 }
 
 namespace d2d {

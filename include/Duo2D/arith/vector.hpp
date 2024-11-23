@@ -1,5 +1,4 @@
 #pragma once
-#include "Duo2D/arith/matrix.hpp"
 #include <algorithm>
 #include <array>
 #include <cstddef>
@@ -8,44 +7,10 @@
 #include <tuple>
 #include <type_traits>
 #include <utility>
+#include <cmath>
 #include <vulkan/vulkan_core.h>
 
-namespace d2d::impl {
-    enum transform_flags {
-        scale = 0b001, rotate = 0b010, translate = 0b100
-    };
-
-    template<std::size_t Dims, typename UnitTy, bool HoldsSize, std::uint8_t TransformFlags>
-    struct vector_traits {
-        using vk_type = std::conditional_t<!HoldsSize,
-            std::conditional_t<Dims == 2, VkOffset2D, VkOffset3D>, 
-            std::conditional_t<Dims == 2, VkExtent2D, VkExtent3D>
-        >;
-
-        using vk_component_type = std::conditional_t<!HoldsSize,
-            decltype(std::declval<VkOffset2D>().x), 
-            decltype(std::declval<VkExtent2D>().height)
-        >;
-
-        constexpr static bool scalable     = !(TransformFlags & (rotate | translate));
-        constexpr static bool rotatable    = !(TransformFlags & translate);
-        constexpr static bool translatable = true;
-    };
-
-    template<std::size_t Dims, typename UnitTy>
-    struct vertex_traits {
-        constexpr static VkFormat format = VK_FORMAT_UNDEFINED;
-    };
-
-    template<std::size_t Dims>
-    concept Cartesian = Dims == 2 || Dims == 3;
-
-    template<std::size_t Dims>
-    concept Graphical = Cartesian<Dims> || Dims == 4;
-
-    template<std::size_t Dims, typename T, bool HoldsSize, std::uint8_t TransformFlags>
-    concept VkCompatibleType = Cartesian<Dims> && std::is_convertible_v<T, typename vector_traits<Dims, T, HoldsSize, TransformFlags>::vk_component_type>; 
-}
+#include "Duo2D/arith/vector_traits.hpp"
 
 
 namespace d2d {
@@ -75,10 +40,10 @@ namespace d2d {
         constexpr const UnitTy& w() const noexcept requires (Dims == 4 && !HoldsSize) { return (*this)[3]; }
 
     public:
-        constexpr       UnitTy& width()        noexcept requires (impl::Graphical<Dims> && HoldsSize) { return (*this)[0]; }
-        constexpr const UnitTy& width()  const noexcept requires (impl::Graphical<Dims> && HoldsSize) { return (*this)[0]; }
-        constexpr       UnitTy& height()       noexcept requires (impl::Graphical<Dims> && HoldsSize) { return (*this)[1]; }
-        constexpr const UnitTy& height() const noexcept requires (impl::Graphical<Dims> && HoldsSize) { return (*this)[1]; }
+        constexpr       UnitTy& width()        noexcept requires (impl::Cartesian<Dims> && HoldsSize) { return (*this)[0]; }
+        constexpr const UnitTy& width()  const noexcept requires (impl::Cartesian<Dims> && HoldsSize) { return (*this)[0]; }
+        constexpr       UnitTy& height()       noexcept requires (impl::Cartesian<Dims> && HoldsSize) { return (*this)[1]; }
+        constexpr const UnitTy& height() const noexcept requires (impl::Cartesian<Dims> && HoldsSize) { return (*this)[1]; }
         constexpr       UnitTy& depth()        noexcept requires (Dims == 3 && HoldsSize) { return (*this)[2]; }
         constexpr const UnitTy& depth()  const noexcept requires (Dims == 3 && HoldsSize) { return (*this)[2]; }
 
@@ -97,7 +62,6 @@ namespace d2d {
 
     public:
         constexpr explicit operator clean_vector() const noexcept { return {*this}; }
-
 
     public:
         //constexpr explicit operator std::array<UnitTy, Dims>() const noexcept { return _elems; }
@@ -121,111 +85,24 @@ namespace d2d {
     };
 }
 
-//matrix/vector transformations
 namespace d2d {
-    template<std::size_t N, typename T>
-    class scale {
-        template<std::size_t Dims, std::uint8_t Flags> using scaled_vector = vector<Dims, T, false, Flags | impl::transform_flags::scale>;
-        template<std::size_t Dims, std::uint8_t Flags> using source_vector = vector<Dims, T, false, Flags>;
-
-    public:
-        vector<N, T> scale_by;
-
-        template<std::uint8_t Flags>
-        constexpr scaled_vector<N, Flags> operator()(source_vector<N, Flags> src_vec) const noexcept
-        requires (impl::Cartesian<N> && source_vector<N + 1, Flags>::scalable) {
-            return {src_vec * scale_by}; 
-        }
-        template<std::uint8_t Flags>
-        constexpr scaled_vector<N + 1, Flags> operator()(source_vector<N + 1, Flags> src_vec) const noexcept
-        requires (N + 1 >= 4 && source_vector<N + 1, Flags>::scalable) {
-            return { matrix<N + 1, N + 1, T>::scaling(scale_by) * src_vec };
-        }
-    };
-
-    template<typename A, typename FS, typename FC> requires std::is_arithmetic_v<A>
-    class rotate {
-        template<std::size_t N, typename T, std::uint8_t Flags> using rotated_vector = vector<N, T, false, Flags | impl::transform_flags::rotate>;
-        template<std::size_t N, typename T, std::uint8_t Flags> using source_vector  = vector<N, T, false, Flags>;
-
-    public:
-        A angle;
-        FS& sin_fn;
-        FC& cos_fn;
-        axis rotate_axis = axis::x;
-
-        template<std::size_t N, typename T, std::uint8_t Flags>
-        constexpr rotated_vector<N, T, Flags> operator()(source_vector<N, T, Flags> src_vec) const noexcept
-        requires (N == 2 && source_vector<N, T, Flags>::rotatable) {
-            return { matrix<N, N, T>::rotating(angle, sin_fn, cos_fn) * src_vec };
-        }
-        template<std::size_t N, typename T, std::uint8_t Flags>
-        constexpr rotated_vector<N, T, Flags> operator()(source_vector<N, T, Flags> src_vec) const noexcept
-        requires (N >= 3 && source_vector<N, T, Flags>::rotatable) {
-            return { matrix<N, N, T>::rotating(angle, sin_fn, cos_fn, rotate_axis) * src_vec };
-        }
-    };
-
-    template<std::size_t N, typename T>
-    class translate {
-        template<std::size_t Dims, std::uint8_t Flags> using translated_vector = vector<Dims, T, false, Flags | impl::transform_flags::translate>;
-        template<std::size_t Dims, std::uint8_t Flags> using source_vector     = vector<Dims, T, false, Flags>;
-
-    public:
-        vector<N, T> translate_by;
-
-        template<std::uint8_t Flags>
-        constexpr translated_vector<N, Flags> operator()(source_vector<N, Flags> src_vec) const noexcept 
-        requires (impl::Cartesian<N> && source_vector<N + 1, Flags>::translatable) {
-            return {src_vec + translate_by}; 
-        }
-        template<std::uint8_t Flags>
-        constexpr translated_vector<N + 1, Flags> operator()(source_vector<N + 1, Flags> src_vec) const noexcept 
-        requires (N + 1 >= 4 && source_vector<N + 1, Flags>::translatable) {
-            return { matrix<N + 1, N + 1, T>::translating(translate_by) * src_vec };
-        }
-    };
-
-
-    template<std::size_t N, typename T>
-    scale(T (&&)[N]) -> scale<N, T>;
-    template<typename T, typename... Args>
-    scale(T head, Args... rest) -> scale<sizeof...(Args) + 1, T>;
-
-    template<std::size_t N, typename T>
-    translate(T (&&)[N]) -> translate<N, T>;
-    template<typename T, typename... Args>
-    translate(T head, Args... rest) -> translate<sizeof...(Args) + 1, T>;
-}
-
-//cumulative transform function
-namespace d2d {
-    namespace impl {
-        template<typename Arg> struct scale_type { constexpr static bool value = requires (Arg a){ a.scale_by; }; };
-        template<typename Arg> struct rotate_type { constexpr static bool value = requires (Arg a){ a.angle; }; };
-        template<typename Arg> struct translate_type { constexpr static bool value = requires (Arg a){ a.translate_by; }; };
-        
-        //TODO make this work with perfect forwarding?
-        template<template<typename> typename TransformType, std::size_t N, typename T, std::uint8_t Flags, typename Arg>
-        constexpr decltype(auto) do_transform(vector<N, T, false, Flags> src_vec, Arg&& arg) { 
-            if constexpr(TransformType<Arg>::value) return std::forward<Arg>(arg)(src_vec);
-            else return src_vec;
-        }
-        template<template<typename> typename TransformType, std::size_t N, typename T, std::uint8_t Flags, typename First, typename... Args>
-        constexpr decltype(auto) do_transform(vector<N, T, false, Flags> src_vec, First&& first, Args&&... args) {
-            return do_transform<TransformType>(
-                do_transform<TransformType>(src_vec, std::forward<First>(first)),
-            std::forward<Args>(args)...);
-        }
+    //TODO target_clones (except maybe dot, which might need manual SIMD for _mm_dp_ps)
+    template<std::size_t N, typename T, bool HS> 
+    constexpr T dot(vector<N, T, HS> lhs, const vector<N, T, HS>& rhs) noexcept { 
+        auto do_dot = [&lhs, &rhs]<std::size_t... I>(std::index_sequence<I...>){ return ((lhs[I] * rhs[I]) + ...); }; 
+        return do_dot(std::make_index_sequence<N>{});
     }
-
-    //TODO flatten/target_clones
-    template<std::size_t Dims, typename UnitTy, typename... Args>
-    constexpr vector<Dims, UnitTy> transform(vector<Dims, UnitTy> src_vec, Args&&... args) noexcept {
-        auto scale_vec = impl::do_transform<impl::scale_type>(src_vec, std::forward<Args>(args)...);
-        auto rotate_vec = impl::do_transform<impl::rotate_type>(scale_vec, std::forward<Args>(args)...);
-        auto translate_vec = impl::do_transform<impl::translate_type>(rotate_vec, std::forward<Args>(args)...);
-        return static_cast<vector<Dims, UnitTy>>(translate_vec);
+    template<std::size_t N, typename T, bool HS, typename F> 
+    constexpr vector<N, T, HS> normalized(vector<N, T, HS> v, F&& sqrt_fn) noexcept { 
+        T len = static_cast<T>(std::forward<F>(sqrt_fn)(dot(v,v)));
+        auto do_norm = [&len, &v]<std::size_t... I>(std::index_sequence<I...>){ return vector<N, T, HS>{(v[I]/len)...}; }; 
+        return do_norm(std::make_index_sequence<N>{});
+    }
+    template<std::size_t N, typename T, bool HS> 
+    vector<N, T, HS> normalized(vector<N, T, HS> v) noexcept { return normalized(v, static_cast<T(&)(T)>(std::sqrt)); }
+    template<typename T, bool HS> 
+    constexpr vector<3, T, HS> cross(vector<3, T, HS> lhs, const vector<3, T, HS>& rhs) noexcept { 
+        return {(lhs[1] * rhs[2] - lhs[2] * rhs[1]), (lhs[2] * rhs[0] - lhs[0] * rhs[2]), (lhs[0] * rhs[1] - lhs[1] * rhs[0])};
     }
 }
 
@@ -242,10 +119,3 @@ namespace d2d {
     template<typename UnitTy> using vec4 = vec<4, UnitTy>;
 }
 
-
-namespace d2d::impl {
-    template<> struct vertex_traits<1, float> { constexpr static VkFormat format = VK_FORMAT_R32_SFLOAT; };
-    template<> struct vertex_traits<2, float> { constexpr static VkFormat format = VK_FORMAT_R32G32_SFLOAT; };
-    template<> struct vertex_traits<3, float> { constexpr static VkFormat format = VK_FORMAT_R32G32B32_SFLOAT; };
-    template<> struct vertex_traits<4, float> { constexpr static VkFormat format = VK_FORMAT_R32G32B32A32_SFLOAT; };
-}
