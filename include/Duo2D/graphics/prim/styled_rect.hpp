@@ -13,8 +13,9 @@ namespace d2d {
         constexpr std::array<vertex2, 4> verticies(size2<float> screen_size) const noexcept {
             return [this, screen_size]<std::size_t... I>(std::index_sequence<I...>) noexcept {
                 vec4<float> normalized_color = color.normalize();
+                vec4<vec4<float>> colors = {normalized_color, {1.0, 0.0, 0.0, 1.0}, {0.0, 1.0, 0.0, 1.0}, {0.0, 0.0, 1.0, 1.0}};
                 std::array<point2f, 4> points = bounds.points(screen_size);
-                return std::array<vertex2, 4>{{vertex2{points[I], normalized_color}...}};
+                return std::array<vertex2, 4>{{vertex2{points[I], colors[I]}...}};
             }(std::make_index_sequence<4>{});
         }
 

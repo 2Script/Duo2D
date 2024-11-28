@@ -6,6 +6,7 @@
 #include "Duo2D/arith/point.hpp"
 #include "Duo2D/arith/size.hpp"
 #include "Duo2D/arith/vector.hpp"
+#include "Duo2D/arith/matrix.hpp"
 #include "Duo2D/graphics/prim/color.hpp"
 #include "Duo2D/shaders/vertex2.hpp"
 #include <vulkan/vulkan_core.h>
@@ -16,11 +17,11 @@ namespace d2d {
         vec4<float> color;
 
     public:
-        constexpr static VkVertexInputBindingDescription binding_desc() noexcept {
+        consteval static VkVertexInputBindingDescription binding_desc() noexcept {
             return {0, sizeof(vertex2), VK_VERTEX_INPUT_RATE_VERTEX};
         }
 
-        constexpr static std::array<VkVertexInputAttributeDescription, 2> attribute_descs() noexcept {
+        consteval static std::array<VkVertexInputAttributeDescription, 2> attribute_descs() noexcept {
             return {{
                 {0, 0, decltype(pos)::format, offsetof(vertex2, pos)},
                 {1, 0, decltype(color)::format, offsetof(vertex2, color)}
@@ -28,6 +29,13 @@ namespace d2d {
         }
 
         using shader_type = shaders::vertex2;
+
+        //TEMP
+        struct uniform_type {
+            vk_mat4 model;
+            vk_mat4 view;
+            vk_mat4 proj;
+        };
     };
 }
 

@@ -1,11 +1,13 @@
 #include "Duo2D/graphics/pipeline/pipeline.hpp"
 
 #include "Duo2D/graphics/pipeline/make.hpp"
+#include "Duo2D/graphics/pipeline/pipeline_layout.hpp"
 #include "Duo2D/graphics/pipeline/shader_module.hpp"
 #include "Duo2D/graphics/prim/vertex.hpp"
+#include <vulkan/vulkan_core.h>
 
 namespace d2d {
-    result<pipeline> pipeline::create(logical_device& device, render_pass& associated_render_pass) noexcept {
+    result<pipeline> pipeline::create(logical_device& device, render_pass& associated_render_pass, pipeline_layout& layout) noexcept {
         pipeline ret{};
         ret.dependent_handle = device;
 
@@ -48,7 +50,7 @@ namespace d2d {
             .rasterizerDiscardEnable = VK_FALSE,
             .polygonMode = VK_POLYGON_MODE_FILL,
             .cullMode = VK_CULL_MODE_BACK_BIT,
-            .frontFace = VK_FRONT_FACE_CLOCKWISE,
+            .frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE,
             .depthBiasEnable = VK_FALSE,
             .depthBiasConstantFactor = 0.0f,
             .depthBiasClamp = 0.0f,
@@ -77,9 +79,6 @@ namespace d2d {
             .blendConstants = {0.0f, 0.0f, 0.0f, 0.0f},
         };
 
-        //Create pipeline layout
-        __D2D_TRY_MAKE(ret.layout, make<pipeline_layout>(device), pl)
-
 
         //Create shaders (TEMP: hardcoded)
         std::array<shader_module, 2> shader_modules; //sizeof...(ShaderTypes)
@@ -101,7 +100,7 @@ namespace d2d {
             .pDepthStencilState = nullptr,
             .pColorBlendState = &color_blend_info,
             .pDynamicState = &dynamic_state_info,
-            .layout = ret.layout,
+            .layout = layout,
             .renderPass = associated_render_pass,
             .subpass = 0,
             .basePipelineHandle = VK_NULL_HANDLE,

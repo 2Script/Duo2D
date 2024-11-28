@@ -22,7 +22,7 @@ namespace d2d::impl {
         >;
 
         constexpr static bool scalable     = !(TransformFlags & (rotate | translate));
-        constexpr static bool rotatable    = !(TransformFlags & translate);
+        constexpr static bool rotatable    = !(TransformFlags & (rotate | translate)); //TODO distinguish between rotating same axis and different (not allowed) axis
         constexpr static bool translatable = true;
     };
 

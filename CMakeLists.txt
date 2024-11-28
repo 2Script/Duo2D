@@ -23,6 +23,8 @@ set(CPP_FILES
     graphics/pipeline/buffer.cpp
     graphics/pipeline/device_memory.cpp
     graphics/pipeline/shader_buffer.cpp
+    graphics/pipeline/descriptor_set_layout.cpp
+
 
     graphics/sync/semaphore.cpp
     graphics/sync/fence.cpp

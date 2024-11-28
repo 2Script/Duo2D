@@ -1,15 +1,16 @@
 #pragma once
+#include <cstdint>
 #include <vulkan/vulkan_core.h>
 #include "Duo2D/graphics/pipeline/command_pool.hpp"
 #include "Duo2D/graphics/pipeline/device_memory.hpp"
 #include "Duo2D/graphics/pipeline/logical_device.hpp"
 #include "Duo2D/graphics/pipeline/physical_device.hpp"
-#include "Duo2D/graphics/pipeline/pipeline_obj.hpp"
 
 namespace d2d {
-    enum class buffer_type {
+    enum class buffer_type : std::uint8_t {
         vertex = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
         index = VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+        uniform = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
     };
 }
 

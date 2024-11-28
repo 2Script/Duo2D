@@ -1,5 +1,6 @@
 #include "Duo2D/graphics/pipeline/command_buffer.hpp"
 #include "Duo2D/error.hpp"
+#include "Duo2D/graphics/pipeline/descriptor_set.hpp"
 #include "Duo2D/graphics/pipeline/window.hpp"
 #include "Duo2D/graphics/prim/viewport.hpp"
 #include "Duo2D/arith/size.hpp"
@@ -23,7 +24,7 @@ namespace d2d {
 }
 
 namespace d2d {
-    result<void> command_buffer::record(const window& w, std::vector<VkBuffer>& vertex_buffers, shader_buffer& index_buffer, std::vector<std::size_t>& offsets, std::size_t index_count, std::uint32_t image_index) const noexcept {
+    result<void> command_buffer::record(const window& w, std::vector<VkBuffer>& vertex_buffers, shader_buffer& index_buffer, VkDescriptorSet const* desc_set, std::vector<std::size_t>& offsets, std::size_t index_count, std::uint32_t image_index) const noexcept {
         VkCommandBufferBeginInfo begin_info{};
         begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
         __D2D_VULKAN_VERIFY(vkBeginCommandBuffer(handle, &begin_info));
@@ -58,6 +59,7 @@ namespace d2d {
         vkCmdBindVertexBuffers(handle, 0, vertex_buffers.size(), vertex_buffers.data(), offsets.data());
         //vkCmdBindVertexBuffers(handle, 0, 2, vertex_buffers.data(), offsets_arr.data());
         vkCmdBindIndexBuffer(handle, static_cast<VkBuffer>(index_buffer), 0, VK_INDEX_TYPE_UINT32);
+        vkCmdBindDescriptorSets(handle, VK_PIPELINE_BIND_POINT_GRAPHICS, w._pipeline_layout, 0, 1, desc_set, 0, nullptr);
 
         //Draw verticies
         vkCmdDrawIndexed(handle, index_count, 1, 0, 0, 0);

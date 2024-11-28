@@ -60,6 +60,8 @@ namespace d2d {
         template<bool OtherHoldsSize> friend constexpr vector operator*(vector lhs, const vector<Dims, UnitTy, OtherHoldsSize>& rhs) noexcept { return lhs *= rhs; }
         template<bool OtherHoldsSize> friend constexpr vector operator/(vector lhs, const vector<Dims, UnitTy, OtherHoldsSize>& rhs) noexcept { return lhs /= rhs; }
 
+        constexpr vector operator-() const noexcept { vector ret; for(std::size_t i = 0; i < Dims; ++i) ret[i] = -(*this)[i]; return ret; } 
+
     public:
         constexpr explicit operator clean_vector() const noexcept { return {*this}; }
 

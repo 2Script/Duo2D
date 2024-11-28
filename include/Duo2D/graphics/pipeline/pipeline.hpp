@@ -12,9 +12,6 @@ __D2D_DECLARE_VK_TRAITS_DEVICE(VkPipeline);
 
 namespace d2d {
     struct pipeline : pipeline_obj<VkPipeline, vkDestroyPipeline> {
-        static result<pipeline> create(logical_device& device, render_pass& associated_render_pass/*, ShaderTypes&&...*/) noexcept;
-
-    private:
-        pipeline_layout layout;
+        static result<pipeline> create(logical_device& device, render_pass& associated_render_pass, pipeline_layout& layout/*, ShaderTypes&&...*/) noexcept;
     };
 }

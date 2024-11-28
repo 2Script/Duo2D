@@ -8,7 +8,6 @@
 #include "Duo2D/error.hpp"
 #include "Duo2D/graphics/pipeline/make.hpp"
 
-
 namespace d2d {
     result<application> application::create(std::string_view name) noexcept {
         // Set application info

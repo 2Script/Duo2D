@@ -1,5 +1,6 @@
 #pragma once
 #include "Duo2D/arith/matrix.hpp"
+#include "Duo2D/arith/vector.hpp"
 #include <type_traits>
 #include <utility>
 
@@ -59,7 +60,7 @@ namespace d2d {
             break;
         case axis::z:
             m[0][0] = c; m[0][1] = -s;
-            m[1][0] = s; m[2][2] = c;
+            m[1][0] = s; m[1][1] = c;
             break;
         }
         return m;
@@ -133,8 +134,10 @@ namespace d2d {
             ret[i][0] = s[i]; 
             ret[i][1] = t[i]; 
             ret[i][2] = -f[i]; 
-            ret[i][3] = s[i]*-eye[0]+t[i]*-eye[1]-f[i]*-eye[2];
         }
+        ret[3][0] = dot(s, -eye);
+        ret[3][1] = dot(t, -eye);
+        ret[3][2] = dot(-f, -eye);
         return ret;
     }
 
@@ -149,8 +152,8 @@ namespace d2d {
         return {{{
             {{focal * screen_height / screen_width, 0, 0, 0 }},
             {{0, -focal, 0, 0 }},
-            {{0, 0, a, b }},
-            {{0, 0, -1, 0 }}
+            {{0, 0, a, -1 }},
+            {{0, 0, b, 0 }}
         }}};
     }
 
@@ -161,8 +164,30 @@ namespace d2d {
         return {{{
             {{focal * screen_height / screen_width, 0, 0, 0 }},
             {{0, -focal, 0, 0 }},
-            {{0, 0, 0, near_z }},
-            {{0, 0, -1, 0 }}
+            {{0, 0, 0, -1 }},
+            {{0, 0, near_z, 0 }}
+        }}};
+    }
+
+
+    template<std::size_t M, std::size_t N, typename T>
+    constexpr matrix<M, N, T> matrix<M, N, T>::orthographic(T screen_width, T screen_height, T near_z, T far_z) noexcept requires (M == N && N == 4) {
+        T denom = (far_z - near_z);
+        return {{{
+            {{2 / screen_width, 0, 0, 0 }},
+            {{0, 2 / screen_height, 0, 0 }},
+            {{0, 0, 1 / denom, far_z / denom }},
+            {{0, 0, 0, 1 }}
+        }}};
+    }
+
+    template<std::size_t M, std::size_t N, typename T>
+    constexpr matrix<M, N, T> matrix<M, N, T>::orthographic(T screen_width, T screen_height) noexcept requires (M == N && N == 4) {
+        return {{{
+            {{2 / screen_width, 0, 0, 0 }},
+            {{0, 2 / screen_height, 0, 0 }},
+            {{0, 0, 0, 1 }},
+            {{0, 0, 0, 1 }}
         }}};
     }
 }

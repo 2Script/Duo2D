@@ -8,6 +8,10 @@
 #include <vulkan/vulkan_core.h>
 #include "Duo2D/graphics/pipeline/command_buffer.hpp"
 #include "Duo2D/graphics/pipeline/command_pool.hpp"
+#include "Duo2D/graphics/pipeline/descriptor_pool.hpp"
+#include "Duo2D/graphics/pipeline/descriptor_set.hpp"
+#include "Duo2D/graphics/pipeline/descriptor_set_layout.hpp"
+#include "Duo2D/graphics/pipeline/device_memory.hpp"
 #include "Duo2D/graphics/pipeline/instance.hpp"
 #include "Duo2D/graphics/pipeline/logical_device.hpp"
 #include "Duo2D/graphics/pipeline/pipeline.hpp"
@@ -39,13 +43,15 @@ namespace d2d {
     private:
         window(GLFWwindow* w) noexcept : 
             handle(w, glfwDestroyWindow), logi_device_ptr(nullptr), phys_device_ptr(nullptr),
-            _surface(), _swap_chain(), _pipeline(), _command_pool(), 
+            _surface(), _swap_chain(), _pipeline(), _command_pool(), _descriptor_set_layout(), _descriptor_set(), _descriptor_pool(),
             renderable_mapping(), vertex_buffers(), vk_vertex_buffers(), buffer_offsets(),          
             frame_idx(0), command_buffers{}, render_fences{}, image_available_semaphores{}, cmd_buffer_finished_semaphores{} {}
         friend physical_device;
         friend command_buffer;
         
     private:
+        constexpr static std::size_t frames_in_flight = 2;
+
         std::unique_ptr<GLFWwindow, decltype(glfwDestroyWindow)&> handle;
         logical_device* logi_device_ptr;
         physical_device* phys_device_ptr;
@@ -53,8 +59,12 @@ namespace d2d {
         surface _surface;
         swap_chain _swap_chain;
         render_pass _render_pass;
+        pipeline_layout _pipeline_layout;
         pipeline _pipeline;
         command_pool _command_pool;
+        descriptor_set_layout _descriptor_set_layout;
+        descriptor_set<frames_in_flight> _descriptor_set;
+        descriptor_pool<frames_in_flight> _descriptor_pool;
 
         //Probably need all of these for each Renderable type
         std::unordered_map<std::string, std::size_t> renderable_mapping;
@@ -63,8 +73,10 @@ namespace d2d {
         std::vector<std::size_t> buffer_offsets;
         inline static shader_buffer index_buffer{};
         inline static std::size_t index_count = 0;
+        std::array<buffer, frames_in_flight> uniform_buffers;
+        std::array<device_memory, frames_in_flight> uniform_buffer_memories;
+        std::array<void*, frames_in_flight> uniform_buffer_maps;
         
-        constexpr static std::size_t frames_in_flight = 2;
         std::size_t frame_idx;
         std::array<command_buffer, frames_in_flight> command_buffers;
         std::array<fence, frames_in_flight> render_fences;

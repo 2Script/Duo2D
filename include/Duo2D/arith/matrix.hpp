@@ -44,6 +44,8 @@ namespace d2d {
         constexpr static matrix<M, N, T> perspective(A fov_angle, T screen_width, T screen_height, F&& tan_fn, T near_z, T far_z) noexcept requires (M == N && N == 4);
         template<typename A, typename F>
         constexpr static matrix<M, N, T> perspective(A fov_angle, T screen_width, T screen_height, F&& tan_fn, T near_z) noexcept requires (M == N && N == 4);
+        constexpr static matrix<M, N, T> orthographic(T screen_width, T screen_height, T near_z, T far_z) noexcept requires (M == N && N == 4);
+        constexpr static matrix<M, N, T> orthographic(T screen_width, T screen_height) noexcept requires (M == N && N == 4);
 
 
     public:
