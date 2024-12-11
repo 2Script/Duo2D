@@ -1,6 +1,6 @@
 #include "Duo2D/graphics/pipeline/command_buffer.hpp"
 #include "Duo2D/error.hpp"
-#include "Duo2D/graphics/prim/viewport.hpp"
+#include "Duo2D/arith/rect.hpp"
 #include "Duo2D/arith/size.hpp"
 #include <cstdint>
 #include <vulkan/vulkan_core.h>
@@ -43,7 +43,8 @@ namespace d2d {
         vkCmdBeginRenderPass(handle, &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
 
         //Set viewport
-        viewport v({}, static_cast<size2<float>>(window_swap_chain.extent));
+        const rect<float> screen_bounds = {{}, static_cast<size2<float>>(window_swap_chain.extent)};
+        VkViewport v{screen_bounds.x(), screen_bounds.y(), screen_bounds.width(), screen_bounds.height(), 0.f, 1.f};
         vkCmdSetViewport(handle, 0, 1, &v);
 
         //Set viewport crop
