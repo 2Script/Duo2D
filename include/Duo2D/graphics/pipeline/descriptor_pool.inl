@@ -4,18 +4,18 @@
 
 
 namespace d2d {
-    template<std::uint32_t FramesInFlight>
-    result<descriptor_pool<FramesInFlight>> descriptor_pool<FramesInFlight>::create(logical_device& device) noexcept {
-        descriptor_pool<FramesInFlight> ret{};
+    template<std::uint32_t FramesInFlight, std::size_t DescriptorCount>
+    result<descriptor_pool<FramesInFlight, DescriptorCount>> descriptor_pool<FramesInFlight, DescriptorCount>::create(logical_device& device) noexcept {
+        descriptor_pool ret{};
         ret.dependent_handle = device;
 
         VkDescriptorPoolSize pool_size{
             .type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-            .descriptorCount = FramesInFlight
+            .descriptorCount = FramesInFlight * DescriptorCount
         };
         VkDescriptorPoolCreateInfo pool_info{
             .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
-            .maxSets = FramesInFlight,
+            .maxSets = FramesInFlight * DescriptorCount,
             .poolSizeCount = 1,
             .pPoolSizes = &pool_size,
         };

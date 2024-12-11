@@ -1,9 +1,9 @@
 #pragma once
 #include <GLFW/glfw3.h>
 #include <cstddef>
-#include <functional>
 #include <memory>
 #include <string_view>
+#include <type_traits>
 #include <unordered_map>
 #include <vulkan/vulkan_core.h>
 #include "Duo2D/graphics/pipeline/command_buffer.hpp"
@@ -11,17 +11,16 @@
 #include "Duo2D/graphics/pipeline/descriptor_pool.hpp"
 #include "Duo2D/graphics/pipeline/descriptor_set.hpp"
 #include "Duo2D/graphics/pipeline/descriptor_set_layout.hpp"
-#include "Duo2D/graphics/pipeline/device_memory.hpp"
 #include "Duo2D/graphics/pipeline/instance.hpp"
 #include "Duo2D/graphics/pipeline/logical_device.hpp"
 #include "Duo2D/graphics/pipeline/pipeline.hpp"
 #include "Duo2D/graphics/pipeline/render_pass.hpp"
-#include "Duo2D/graphics/pipeline/shader_buffer.hpp"
 #include "Duo2D/graphics/pipeline/swap_chain.hpp"
 #include "Duo2D/graphics/pipeline/physical_device.hpp"
-#include "Duo2D/graphics/prim/vertex.hpp"
+#include "Duo2D/graphics/prim/styled_rect.hpp"
 #include "Duo2D/graphics/sync/fence.hpp"
 #include "Duo2D/graphics/sync/semaphore.hpp"
+#include "Duo2D/graphics/pipeline/renderable_buffer.hpp"
 
 namespace d2d {
     struct window {
@@ -32,8 +31,9 @@ namespace d2d {
 
         result<void> render() noexcept;
 
+        template<typename R> requires impl::RenderableType<std::remove_cvref_t<R>>
+        inline result<void> add(std::string_view name, R&& renderable);
         template<impl::RenderableType T>
-        inline result<void> add(std::string_view name, T&& renderable);
         inline result<void> remove(std::string_view name);
 
     public:
@@ -43,11 +43,9 @@ namespace d2d {
     private:
         window(GLFWwindow* w) noexcept : 
             handle(w, glfwDestroyWindow), logi_device_ptr(nullptr), phys_device_ptr(nullptr),
-            _surface(), _swap_chain(), _pipeline(), _command_pool(), _descriptor_set_layout(), _descriptor_set(), _descriptor_pool(),
-            renderable_mapping(), vertex_buffers(), vk_vertex_buffers(), buffer_offsets(),          
-            frame_idx(0), command_buffers{}, render_fences{}, image_available_semaphores{}, cmd_buffer_finished_semaphores{} {}
+            _surface(), _swap_chain(), _command_pool(), renderable_mapping(), data(),          
+            frame_idx(0), command_buffers{}, render_fences{}, semaphores{} {}
         friend physical_device;
-        friend command_buffer;
         
     private:
         constexpr static std::size_t frames_in_flight = 2;
@@ -59,28 +57,18 @@ namespace d2d {
         surface _surface;
         swap_chain _swap_chain;
         render_pass _render_pass;
-        pipeline_layout _pipeline_layout;
-        pipeline _pipeline;
         command_pool _command_pool;
-        descriptor_set_layout _descriptor_set_layout;
-        descriptor_set<frames_in_flight> _descriptor_set;
-        descriptor_pool<frames_in_flight> _descriptor_pool;
 
-        //Probably need all of these for each Renderable type
         std::unordered_map<std::string, std::size_t> renderable_mapping;
-        std::vector<shader_buffer> vertex_buffers;
-        std::vector<VkBuffer> vk_vertex_buffers;
-        std::vector<std::size_t> buffer_offsets;
-        inline static shader_buffer index_buffer{};
-        inline static std::size_t index_count = 0;
-        std::array<buffer, frames_in_flight> uniform_buffers;
-        std::array<device_memory, frames_in_flight> uniform_buffer_memories;
-        std::array<void*, frames_in_flight> uniform_buffer_maps;
+        renderable_buffer<frames_in_flight, old_rect, styled_rect> data;
         
         std::size_t frame_idx;
         std::array<command_buffer, frames_in_flight> command_buffers;
         std::array<fence, frames_in_flight> render_fences;
-        std::array<semaphore, frames_in_flight> image_available_semaphores, cmd_buffer_finished_semaphores;
+        struct semaphore_type { enum { image_available, cmd_buffer_finished, num_semaphore_types }; };
+        std::array<std::array<semaphore, frames_in_flight>, semaphore_type::num_semaphore_types> semaphores;
+
+        constexpr static auto x = d2d::styled_rect::indices()[0];
     };
 }
 

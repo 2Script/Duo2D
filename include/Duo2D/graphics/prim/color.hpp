@@ -20,6 +20,7 @@ namespace d2d {
         std::uint64_t>>>;
 
         constexpr static std::size_t component_max = std::numeric_limits<component_type>::max() >> ((sizeof(component_type) * 8) - BPC);
+        constexpr static VkFormat format = impl::vertex_traits<Channels, component_type>::format;
 
     private:
         constexpr static bool perfect_sizing = (Channels * sizeof(component_type)) == sizeof(value_type);

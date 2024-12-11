@@ -1,24 +1,25 @@
+#pragma once
 #include "Duo2D/graphics/pipeline/pipeline.hpp"
 
 #include "Duo2D/graphics/pipeline/make.hpp"
 #include "Duo2D/graphics/pipeline/pipeline_layout.hpp"
 #include "Duo2D/graphics/pipeline/shader_module.hpp"
-#include "Duo2D/graphics/prim/vertex.hpp"
 #include <vulkan/vulkan_core.h>
 
 namespace d2d {
-    result<pipeline> pipeline::create(logical_device& device, render_pass& associated_render_pass, pipeline_layout& layout) noexcept {
+    template<impl::RenderableType T>
+    result<pipeline<T>> pipeline<T>::create(logical_device& device, render_pass& associated_render_pass, pipeline_layout& layout) noexcept {
         pipeline ret{};
         ret.dependent_handle = device;
 
 
         //Specify vertex input state
-        constexpr static auto vertex_binding = vertex2::binding_desc();
-        constexpr static auto vertex_attributes = vertex2::attribute_descs();
+        constexpr static auto vertex_bindings = T::shader_type::binding_descs();
+        constexpr static auto vertex_attributes = T::shader_type::attribute_descs();
         VkPipelineVertexInputStateCreateInfo vertex_input_info {
             .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
-            .vertexBindingDescriptionCount = 1,
-            .pVertexBindingDescriptions = &vertex_binding,
+            .vertexBindingDescriptionCount = vertex_bindings.size(),
+            .pVertexBindingDescriptions = vertex_bindings.data(),
             .vertexAttributeDescriptionCount = vertex_attributes.size(),
             .pVertexAttributeDescriptions = vertex_attributes.data(),
         };
@@ -49,8 +50,8 @@ namespace d2d {
             .depthClampEnable = VK_FALSE,
             .rasterizerDiscardEnable = VK_FALSE,
             .polygonMode = VK_POLYGON_MODE_FILL,
-            .cullMode = VK_CULL_MODE_BACK_BIT,
-            .frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE,
+            .cullMode = T::cull_mode,
+            .frontFace = T::front_face,
             .depthBiasEnable = VK_FALSE,
             .depthBiasConstantFactor = 0.0f,
             .depthBiasClamp = 0.0f,
@@ -80,11 +81,9 @@ namespace d2d {
         };
 
 
-        //Create shaders (TEMP: hardcoded)
-        std::array<shader_module, 2> shader_modules; //sizeof...(ShaderTypes)
-        __D2D_TRY_MAKE(shader_modules[0], make<shader_module>(device, shaders::vertex2::vert, VK_SHADER_STAGE_VERTEX_BIT), tv);
-        __D2D_TRY_MAKE(shader_modules[1], make<shader_module>(device, shaders::vertex2::frag, VK_SHADER_STAGE_FRAGMENT_BIT), tf);
-        std::array<VkPipelineShaderStageCreateInfo, 2> shader_stages = {shader_modules[0].stage_info(), shader_modules[1].stage_info()};
+        __D2D_TRY_MAKE(shader_module vert_shader, make<shader_module>(device, T::shader_data_type::vert, VK_SHADER_STAGE_VERTEX_BIT), tv);
+        __D2D_TRY_MAKE(shader_module frag_shader, make<shader_module>(device, T::shader_data_type::frag, VK_SHADER_STAGE_FRAGMENT_BIT), tf);
+        std::array<VkPipelineShaderStageCreateInfo, 2> shader_stages = {vert_shader.stage_info(), frag_shader.stage_info()};
 
         
         VkGraphicsPipelineCreateInfo pipeline_create_info{

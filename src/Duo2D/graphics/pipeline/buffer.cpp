@@ -6,6 +6,7 @@ namespace d2d {
     result<buffer> buffer::create(logical_device& device, std::size_t size, VkBufferUsageFlags usage) noexcept {
         buffer ret{};
         ret.dependent_handle = device;
+        ret.size_bytes = size;
 
         VkBufferCreateInfo buffer_info{
             .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,

@@ -8,7 +8,7 @@
 __D2D_DECLARE_VK_TRAITS_DEVICE(VkDescriptorPool);
 
 namespace d2d {
-    template<std::uint32_t FramesInFlight>
+    template<std::uint32_t FramesInFlight, std::size_t DescriptorCount>
     struct descriptor_pool : pipeline_obj<VkDescriptorPool, vkDestroyDescriptorPool> {
         static result<descriptor_pool> create(logical_device& device) noexcept;
     };

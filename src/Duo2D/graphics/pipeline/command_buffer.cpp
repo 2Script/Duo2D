@@ -1,14 +1,12 @@
 #include "Duo2D/graphics/pipeline/command_buffer.hpp"
 #include "Duo2D/error.hpp"
-#include "Duo2D/graphics/pipeline/descriptor_set.hpp"
-#include "Duo2D/graphics/pipeline/window.hpp"
 #include "Duo2D/graphics/prim/viewport.hpp"
 #include "Duo2D/arith/size.hpp"
 #include <cstdint>
 #include <vulkan/vulkan_core.h>
 
 namespace d2d {
-    result<command_buffer> command_buffer::create(logical_device& device, command_pool& pool) noexcept {
+    result<command_buffer> command_buffer::create(logical_device& device, const command_pool& pool) noexcept {
         command_buffer ret{};
 
         VkCommandBufferAllocateInfo alloc_info{
@@ -24,7 +22,7 @@ namespace d2d {
 }
 
 namespace d2d {
-    result<void> command_buffer::record(const window& w, std::vector<VkBuffer>& vertex_buffers, shader_buffer& index_buffer, VkDescriptorSet const* desc_set, std::vector<std::size_t>& offsets, std::size_t index_count, std::uint32_t image_index) const noexcept {
+    result<void> command_buffer::begin(const swap_chain& window_swap_chain, const render_pass& window_render_pass, std::uint32_t image_index) const noexcept {
         VkCommandBufferBeginInfo begin_info{};
         begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
         __D2D_VULKAN_VERIFY(vkBeginCommandBuffer(handle, &begin_info));
@@ -33,43 +31,33 @@ namespace d2d {
         constexpr static VkClearValue clear_color = {{{0.0f, 0.0f, 0.0f, 1.0f}}};
         VkRenderPassBeginInfo render_pass_info{
             .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
-            .renderPass = w._render_pass,
-            .framebuffer = w._swap_chain.framebuffers[image_index],
+            .renderPass = window_render_pass,
+            .framebuffer = window_swap_chain.framebuffers[image_index],
             .renderArea{
                 .offset = {0, 0},
-                .extent = static_cast<VkExtent2D>(w._swap_chain.extent),
+                .extent = static_cast<VkExtent2D>(window_swap_chain.extent),
             },
             .clearValueCount = 1,
             .pClearValues = &clear_color,
         };
         vkCmdBeginRenderPass(handle, &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
 
-        //Set pipeline
-        vkCmdBindPipeline(handle, VK_PIPELINE_BIND_POINT_GRAPHICS, w._pipeline);
-
         //Set viewport
-        viewport v({}, static_cast<size2<float>>(w._swap_chain.extent));
+        viewport v({}, static_cast<size2<float>>(window_swap_chain.extent));
         vkCmdSetViewport(handle, 0, 1, &v);
 
         //Set viewport crop
-        VkRect2D scissor{{}, static_cast<VkExtent2D>(w._swap_chain.extent)};
+        VkRect2D scissor{{}, static_cast<VkExtent2D>(window_swap_chain.extent)};
         vkCmdSetScissor(handle, 0, 1, &scissor);
 
-        //Bind buffers
-        vkCmdBindVertexBuffers(handle, 0, vertex_buffers.size(), vertex_buffers.data(), offsets.data());
-        //vkCmdBindVertexBuffers(handle, 0, 2, vertex_buffers.data(), offsets_arr.data());
-        vkCmdBindIndexBuffer(handle, static_cast<VkBuffer>(index_buffer), 0, VK_INDEX_TYPE_UINT32);
-        vkCmdBindDescriptorSets(handle, VK_PIPELINE_BIND_POINT_GRAPHICS, w._pipeline_layout, 0, 1, desc_set, 0, nullptr);
+        return result<void>{std::in_place_type<void>};
+    }
 
-        //Draw verticies
-        vkCmdDrawIndexed(handle, index_count, 1, 0, 0, 0);
-
-        
+    result<void> command_buffer::end() const noexcept {
         vkCmdEndRenderPass(handle);
         __D2D_VULKAN_VERIFY(vkEndCommandBuffer(handle));
         return result<void>{std::in_place_type<void>};
     }
-
 
     result<void> command_buffer::reset() const noexcept {
         __D2D_VULKAN_VERIFY(vkResetCommandBuffer(handle, 0));
