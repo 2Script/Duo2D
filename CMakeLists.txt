@@ -6,26 +6,28 @@ set(CMAKE_CXX_STANDARD 20)
 option(BUILD_SHARED_LIBS "Build using shared libraries" ON)
 
 set(CPP_FILES
-    graphics/pipeline/application.cpp
-    graphics/pipeline/image_view.cpp
-    graphics/pipeline/instance.cpp
-    graphics/pipeline/logical_device.cpp
-    graphics/pipeline/physical_device.cpp
-    graphics/pipeline/surface.cpp
-    graphics/pipeline/swap_chain.cpp
-    graphics/pipeline/window.cpp
-    graphics/pipeline/pipeline_layout.cpp
-    graphics/pipeline/render_pass.cpp
-    graphics/pipeline/framebuffer.cpp
-    graphics/pipeline/command_pool.cpp
-    graphics/pipeline/command_buffer.cpp
-    graphics/pipeline/buffer.cpp
-    graphics/pipeline/device_memory.cpp
-    graphics/pipeline/descriptor_set_layout.cpp
+    vulkan/core/application.cpp
+    vulkan/core/command_buffer.cpp
+    vulkan/core/command_pool.cpp
+    vulkan/core/instance.cpp
+    vulkan/core/window.cpp
 
+    vulkan/device/logical_device.cpp
+    vulkan/device/physical_device.cpp
 
-    graphics/sync/semaphore.cpp
-    graphics/sync/fence.cpp
+    vulkan/display/framebuffer.cpp
+    vulkan/display/image_view.cpp
+    vulkan/display/render_pass.cpp
+    vulkan/display/surface.cpp
+    vulkan/display/swap_chain.cpp
+
+    vulkan/memory/pipeline_layout.cpp
+    vulkan/memory/buffer.cpp
+    vulkan/memory/device_memory.cpp
+    vulkan/memory/descriptor_set_layout.cpp
+
+    vulkan/sync/semaphore.cpp
+    vulkan/sync/fence.cpp
 )
 list(TRANSFORM CPP_FILES PREPEND src/Duo2D/)
 

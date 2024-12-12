@@ -6,7 +6,7 @@
 #include <result/basic_error_category.hpp>
 #include <type_traits>
 
-#include "Duo2D/hardware/device/queue_family.hpp"
+#include "Duo2D/vulkan/device/queue_family.hpp"
 
 
 namespace d2d::error {
