@@ -27,16 +27,6 @@ namespace d2d {
         constexpr static std::size_t index_count = 6;
         __D2D_DECLARE_NESTED_TRAITS(shader_traits<shader_type>);
     };
-    struct old_rect;
-    template<> struct renderable_traits<old_rect> {
-        using shader_type = vertex2;
-        using index_type = std::uint16_t;
-        using vertex_type = vertex2;
-        using instance_type = void;
-        constexpr static std::size_t vertex_count = 4;
-        constexpr static std::size_t index_count = 6;
-        __D2D_DECLARE_NESTED_TRAITS(shader_traits<shader_type>);
-    };
 }
 
 
@@ -64,31 +54,6 @@ namespace d2d {
                 {1, 0, decltype(decltype(bounds)::size)::format, offsetof(styled_rect, bounds.size)},
                 {2, 0, decltype(color)::format, offsetof(styled_rect, color)},
             }};
-        }
-    };
-
-    struct old_rect {
-        rect<float> bounds;
-        true_color color; //TEMP: only color, replace with style
-        std::uint16_t idx;
-
-        __D2D_DECLARE_RENDERABLE_TRAITS(renderable_traits<old_rect>);
-
-        constexpr std::array<vertex2, vertex_count> vertices(size2<float> screen_size = {1600,900}) const noexcept {
-            return [this, screen_size]<std::size_t... I>(std::index_sequence<I...>) noexcept {
-                vec4<float> normalized_color = color.normalize();
-                vec4<vec4<float>> colors = {normalized_color, {1.0, 0.0, 0.0, 1.0}, {0.0, 1.0, 0.0, 1.0}, {0.0, 0.0, 1.0, 1.0}};
-                std::array<point2f, 4> points = bounds.points(screen_size);
-                return std::array<vertex2, 4>{{vertex2{points[I], colors[I]}...}};
-            }(std::make_index_sequence<4>{});
-        }
-
-        constexpr std::array<index_type, index_count> indices() const noexcept {
-            constexpr std::array<index_type, index_count> idx_base = {0, 1, 2, 2, 3, 0};
-            std::array<index_type, index_count> ret;
-            for(std::size_t i = 0; i < index_count; ++i)
-                ret[i] = idx_base[i] + (idx * vertex_count);
-            return ret;
         }
     };
 }

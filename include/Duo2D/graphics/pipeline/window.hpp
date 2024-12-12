@@ -60,7 +60,7 @@ namespace d2d {
         command_pool _command_pool;
 
         std::unordered_map<std::string, std::size_t> renderable_mapping;
-        renderable_buffer<frames_in_flight, old_rect, styled_rect> data;
+        renderable_buffer<frames_in_flight, styled_rect> data;
         
         std::size_t frame_idx;
         std::array<command_buffer, frames_in_flight> command_buffers;

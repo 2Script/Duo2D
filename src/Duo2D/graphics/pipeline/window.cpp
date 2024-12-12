@@ -70,7 +70,7 @@ namespace d2d {
             __D2D_TRY_MAKE(semaphores[semaphore_type::cmd_buffer_finished][i], make<semaphore>(logi_device), cbf);
         }
 
-        __D2D_TRY_MAKE(data, (make<renderable_buffer<frames_in_flight, old_rect, styled_rect>>(logi_device, phys_device, _render_pass)), rb);
+        __D2D_TRY_MAKE(data, (make<renderable_buffer<frames_in_flight, styled_rect>>(logi_device, phys_device, _render_pass)), rb);
 
 
         return result<void>{std::in_place_type<void>};
@@ -103,16 +103,6 @@ namespace d2d {
 
         
         //update uniform buffer
-        static auto startTime = std::chrono::high_resolution_clock::now();
-        auto currentTime = std::chrono::high_resolution_clock::now();
-        float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
-        constexpr static float deg_to_rad = std::numbers::pi_v<float> / 180;
-        vertex2::uniform_type ubo {
-            .model = vk_mat4::rotating(90 * time * deg_to_rad, axis::z, std::sinf, std::cosf),
-            .view  = vk_mat4::looking_at({2,0,2}, {0,0,0}, axis::z, std::sqrtf),
-            .proj  = vk_mat4::perspective(45 * deg_to_rad, _swap_chain.extent.width(), _swap_chain.extent.height(), std::tanf, 0.1f),
-        };
-        std::memcpy(&data.uniform_map<old_rect>()[frame_idx], &ubo, sizeof(ubo));
         std::memcpy(&data.uniform_map<styled_rect>()[frame_idx], &_swap_chain.extent, sizeof(extent2));
 
 
@@ -120,7 +110,6 @@ namespace d2d {
 
         command_buffers[frame_idx].reset();
         command_buffers[frame_idx].begin(_swap_chain, _render_pass, image_index);
-        command_buffers[frame_idx].draw<old_rect>(data);
         command_buffers[frame_idx].draw<styled_rect>(data);
         command_buffers[frame_idx].end();
 

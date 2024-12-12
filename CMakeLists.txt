@@ -21,7 +21,6 @@ set(CPP_FILES
     graphics/pipeline/command_buffer.cpp
     graphics/pipeline/buffer.cpp
     graphics/pipeline/device_memory.cpp
-    graphics/pipeline/shader_buffer.cpp
     graphics/pipeline/descriptor_set_layout.cpp
 
 
@@ -31,8 +30,6 @@ set(CPP_FILES
 list(TRANSFORM CPP_FILES PREPEND src/Duo2D/)
 
 set(SHADER_INPUT_FILES
-    vertex2.vert
-    vertex2.frag
     rect.vert
     rect.frag
 )

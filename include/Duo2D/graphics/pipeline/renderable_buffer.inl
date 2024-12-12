@@ -116,6 +116,11 @@ namespace d2d {
     template<typename T, VkBufferUsageFlags BufferFlag>
     result<void> renderable_buffer<FIF, Ts...>::create_buffer(bool shrink, std::size_t size, buffer& buff, device_memory& mem) noexcept {
         const std::size_t buffer_data_size = size * std::get<std::vector<T>>(*this).size();
+        if(buffer_data_size == 0) {
+            buff = buffer{};
+            mem = device_memory{};
+            return result<void>{std::in_place_type<void>};
+        }
         //Create staging buffer
         __D2D_TRY_MAKE(buffer staging_buff, make<buffer>(*logi_device_ptr, buffer_data_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT), sb);
         __D2D_TRY_MAKE(device_memory staging_mem, 
