@@ -1,31 +1,21 @@
 #include "Duo2D/graphics/pipeline/window.hpp"
 
 #include <GLFW/glfw3.h>
-#include <chrono>
 #include <cmath>
 #include <cstring>
 #include <memory>
-#include <numbers>
 #include <vulkan/vulkan_core.h>
 
-#include "Duo2D/arith/matrix.hpp"
 #include "Duo2D/error.hpp"
 #include "Duo2D/graphics/pipeline/command_buffer.hpp"
-#include "Duo2D/graphics/pipeline/descriptor_pool.hpp"
-#include "Duo2D/graphics/pipeline/descriptor_set_layout.hpp"
-#include "Duo2D/graphics/pipeline/image_view.hpp"
 #include "Duo2D/graphics/pipeline/logical_device.hpp"
-#include "Duo2D/graphics/pipeline/pipeline.hpp"
 #include "Duo2D/graphics/pipeline/renderable_buffer.hpp"
-#include "Duo2D/graphics/pipeline/shader_module.hpp"
 #include "Duo2D/graphics/pipeline/surface.hpp"
 #include "Duo2D/graphics/pipeline/swap_chain.hpp"
 #include "Duo2D/graphics/pipeline/make.hpp"
 #include "Duo2D/graphics/prim/styled_rect.hpp"
-#include "Duo2D/graphics/prim/vertex.hpp"
 #include "Duo2D/graphics/sync/semaphore.hpp"
 #include "Duo2D/hardware/device/queue_family.hpp"
-#include "Duo2D/shaders/vertex2.hpp"
 
 namespace d2d {
     result<window> window::create(std::string_view title, std::size_t width, std::size_t height, instance const& i) noexcept {

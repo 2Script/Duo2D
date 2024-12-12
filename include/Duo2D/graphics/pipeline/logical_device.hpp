@@ -1,7 +1,7 @@
 #pragma once
 #include "Duo2D/graphics/pipeline/physical_device.hpp"
 #include "Duo2D/graphics/pipeline/pipeline_obj.hpp"
-#include "Duo2D/graphics/pipeline/vk_traits.hpp"
+#include "Duo2D/traits/vk_traits.hpp"
 #include <vulkan/vulkan_core.h>
 
 

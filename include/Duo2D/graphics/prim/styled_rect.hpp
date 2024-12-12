@@ -1,11 +1,9 @@
 #pragma once
 #include "Duo2D/arith/rect.hpp"
 #include "Duo2D/graphics/prim/color.hpp"
-#include "Duo2D/graphics/prim/renderable_traits.hpp"
-#include "Duo2D/graphics/prim/vertex.hpp"
-#include "Duo2D/arith/point.hpp"
+#include "Duo2D/traits/renderable_traits.hpp"
 #include "Duo2D/arith/size.hpp"
-#include "Duo2D/shaders/shader_traits.hpp"
+#include "Duo2D/traits/shader_traits.hpp"
 #include "Duo2D/shaders/rect.hpp"
 #include <vulkan/vulkan_core.h>
 

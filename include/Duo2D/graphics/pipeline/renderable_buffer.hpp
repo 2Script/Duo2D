@@ -21,7 +21,7 @@
 #include "Duo2D/graphics/pipeline/device_memory.hpp"
 #include "Duo2D/graphics/pipeline/pipeline.hpp"
 #include "Duo2D/graphics/pipeline/pipeline_layout.hpp"
-#include "Duo2D/graphics/prim/renderable_traits.hpp"
+#include "Duo2D/traits/renderable_traits.hpp"
 
 namespace d2d::impl {
     template <typename T, typename U, typename... Ts>

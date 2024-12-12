@@ -8,7 +8,7 @@
 #include "Duo2D/arith/size.hpp"
 #include "Duo2D/graphics/pipeline/make.hpp"
 #include "Duo2D/graphics/pipeline/command_buffer.hpp"
-#include "Duo2D/graphics/prim/renderable_traits.hpp"
+#include "Duo2D/traits/renderable_traits.hpp"
 
 
 namespace d2d {

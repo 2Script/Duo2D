@@ -2,9 +2,6 @@
 #include "Duo2D/error.hpp"
 #include "Duo2D/graphics/pipeline/window.hpp"
 
-#include "Duo2D/graphics/pipeline/make.hpp"
-#include "Duo2D/graphics/pipeline/shader_buffer.hpp"
-
 
 namespace d2d {
     template<typename R> requires impl::RenderableType<std::remove_cvref_t<R>>

@@ -5,7 +5,7 @@
 #include "Duo2D/graphics/pipeline/descriptor_pool.hpp"
 #include "Duo2D/graphics/pipeline/descriptor_set_layout.hpp"
 #include "Duo2D/graphics/pipeline/logical_device.hpp"
-#include "Duo2D/graphics/prim/renderable_traits.hpp"
+#include "Duo2D/traits/renderable_traits.hpp"
 
 
 namespace d2d {

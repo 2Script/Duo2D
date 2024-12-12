@@ -1,5 +1,5 @@
 #pragma once
-#include "Duo2D/shaders/shader_traits.hpp"
+#include "Duo2D/traits/shader_traits.hpp"
 #include <concepts>
 #include <cstddef>
 #include <cstdint>

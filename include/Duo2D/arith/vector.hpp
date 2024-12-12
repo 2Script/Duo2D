@@ -10,7 +10,8 @@
 #include <cmath>
 #include <vulkan/vulkan_core.h>
 
-#include "Duo2D/arith/vector_traits.hpp"
+#include "Duo2D/traits/vector_traits.hpp"
+#include "Duo2D/traits/vertex_traits.hpp"
 
 
 namespace d2d {

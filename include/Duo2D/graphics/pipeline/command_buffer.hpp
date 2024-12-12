@@ -7,7 +7,7 @@
 #include "Duo2D/graphics/pipeline/command_pool.hpp"
 #include "Duo2D/graphics/pipeline/render_pass.hpp"
 #include "Duo2D/graphics/pipeline/swap_chain.hpp"
-#include "Duo2D/graphics/prim/renderable_traits.hpp"
+#include "Duo2D/traits/renderable_traits.hpp"
 
 namespace d2d { template<std::size_t FiF, impl::RenderableType... Rs> requires (sizeof...(Rs) > 0) struct renderable_buffer; }
 

@@ -2,7 +2,7 @@
 #include <concepts>
 
 #include "Duo2D/error.hpp"
-#include "Duo2D/graphics/pipeline/vk_traits.hpp"
+#include "Duo2D/traits/vk_traits.hpp"
 
 namespace d2d {
     template<impl::VulkanType VkTy>

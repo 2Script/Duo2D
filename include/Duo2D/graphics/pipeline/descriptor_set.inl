@@ -1,9 +1,6 @@
 #pragma once
 #include "Duo2D/graphics/pipeline/descriptor_set.hpp"
 #include "Duo2D/error.hpp"
-#include "Duo2D/graphics/prim/vertex.hpp"
-#include <algorithm>
-#include <utility>
 #include <vulkan/vulkan_core.h>
 
 

@@ -5,8 +5,7 @@
 #include "Duo2D/graphics/pipeline/pipeline_layout.hpp"
 #include "Duo2D/graphics/pipeline/pipeline_obj.hpp"
 #include "Duo2D/graphics/pipeline/render_pass.hpp"
-#include "Duo2D/graphics/prim/renderable_traits.hpp"
-#include "Duo2D/graphics/prim/vertex.hpp"
+#include "Duo2D/traits/renderable_traits.hpp"
 
 
 __D2D_DECLARE_VK_TRAITS_DEVICE(VkPipeline);

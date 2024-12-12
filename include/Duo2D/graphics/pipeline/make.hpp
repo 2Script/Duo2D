@@ -3,7 +3,6 @@
 
 #include "Duo2D/error.hpp"
 #include "Duo2D/graphics/pipeline/pipeline_obj.hpp"
-#include "Duo2D/graphics/pipeline/vk_traits.hpp"
 
 namespace d2d {
     template<typename T, typename... Args> requires PipelineType<T, Args...>
