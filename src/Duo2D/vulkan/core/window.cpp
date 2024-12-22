@@ -88,12 +88,14 @@ namespace d2d {
             return static_cast<errc>(nir);
         }
 
-        if(std::get<std::vector<styled_rect>>(data).empty())
+        if(data.empty<styled_rect>())
             return result<void>{std::in_place_type<void>};
 
         
         //update uniform buffer
         std::memcpy(&data.uniform_map<styled_rect>()[frame_idx], &_swap_chain.extent, sizeof(extent2));
+        //update push constant
+        styled_rect::swap_extent() = &_swap_chain.extent;
 
 
         render_fences[frame_idx].reset();

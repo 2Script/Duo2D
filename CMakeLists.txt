@@ -20,8 +20,7 @@ set(CPP_FILES
     vulkan/display/render_pass.cpp
     vulkan/display/surface.cpp
     vulkan/display/swap_chain.cpp
-
-    vulkan/memory/pipeline_layout.cpp
+    
     vulkan/memory/buffer.cpp
     vulkan/memory/device_memory.cpp
     vulkan/memory/descriptor_set_layout.cpp
@@ -50,6 +49,7 @@ list(APPEND CLANG_ARGS "-Wall" "-Wextra" "-fno-exceptions" "-fno-rtti")
 
 target_compile_options(${PROJECT_NAME} PUBLIC ${CLANG_ARGS})
 target_compile_options(${PROJECT_NAME} PUBLIC "$<$<CONFIG:RELEASE>:-Werror>")
+target_compile_options(${PROJECT_NAME} PUBLIC "$<$<CONFIG:DEBUG>:-Og>")
 if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang") # clang only
     #target_compile_options(${PROJECT_NAME} PUBLIC "-Wc++20-compat-pedantic")
     target_compile_options(${PROJECT_NAME} PUBLIC "-fsized-deallocation")

@@ -73,7 +73,7 @@ namespace d2d {
             .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
         };
         __D2D_VULKAN_VERIFY(vkBeginCommandBuffer(handle, &begin_info));
-
+ 
         VkBufferCopy copy_region{};
         copy_region.size = size;
         vkCmdCopyBuffer(handle, src, dest, 1, &copy_region);

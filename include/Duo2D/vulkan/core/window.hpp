@@ -31,10 +31,23 @@ namespace d2d {
 
         result<void> render() noexcept;
 
+    public:
+        template<typename R> using value_type = std::pair<const std::string, R>;
+
         template<typename R> requires impl::RenderableType<std::remove_cvref_t<R>>
-        inline result<void> add(std::string_view name, R&& renderable);
-        template<impl::RenderableType T>
-        inline result<void> remove(std::string_view name);
+        bool insert(const value_type<R>& value) noexcept;
+        template<typename P> requires std::is_constructible_v<value_type<typename std::remove_cvref_t<P>::second_type>, P&&>
+        bool insert(P&& value) noexcept;
+        template<typename R> requires impl::RenderableType<std::remove_cvref_t<R>>
+        bool insert(value_type<R>&& value) noexcept;
+        template<typename T, typename S, typename... Args> requires std::is_constructible_v<std::string, S&&>
+        bool emplace(S&& str, Args&&... args) noexcept;
+
+        template<typename T>
+        std::size_t erase(std::string_view key) noexcept;
+
+        template<typename T>
+        result<void> apply(bool shrink = false) noexcept;
 
     public:
         constexpr operator GLFWwindow*() const noexcept { return handle.get(); }

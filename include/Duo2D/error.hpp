@@ -36,11 +36,10 @@ namespace d2d::error {
         //Internal application errors (programmer's fault)
         device_not_selected,
         device_not_initialized,
-
         window_not_found,
         window_already_exists,
-
         element_not_found,
+        buffer_outdated,
 
         unknown,
         num_codes,
