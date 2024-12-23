@@ -48,12 +48,9 @@ namespace d2d {
         attribute<std::uint32_t> border_width = {};
 
     public:
-        inline static extent2*& swap_extent() { static extent2* e; return e; }
-    public:
         consteval static std::array<index_type, index_count> indices() noexcept { return {0, 1, 2, 2, 3, 0}; }
         constexpr instance_type instance() const noexcept { return {bounds, color}; }
         constexpr attribute_types attributes() noexcept { return std::tie(transform, border_width); }
-        inline static push_constant_types push_constants() noexcept { return std::tie(*swap_extent()); }
 
     public:
         consteval static std::array<VkVertexInputBindingDescription, 2> binding_descs() noexcept {
@@ -75,10 +72,6 @@ namespace d2d {
                 {6, 1, decltype(transform2::translation)::format, sizeof(transform2::scale) + 2 * sizeof(vec2<float>)},
                 {7, 1, VK_FORMAT_R32_UINT,                        sizeof(transform2::scale) + 2 * sizeof(vec2<float>) + sizeof(transform2::translation)},
             }};
-        }
-
-        consteval static std::array<VkPushConstantRange, 1> push_constant_ranges() noexcept {
-            return {{{VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(extent2)}}};
         }
     };
 

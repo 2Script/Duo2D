@@ -94,8 +94,6 @@ namespace d2d {
         
         //update uniform buffer
         std::memcpy(&data.uniform_map<styled_rect>()[frame_idx], &_swap_chain.extent, sizeof(extent2));
-        //update push constant
-        styled_rect::swap_extent() = &_swap_chain.extent;
 
 
         render_fences[frame_idx].reset();
