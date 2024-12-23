@@ -1,4 +1,5 @@
 #include "Duo2D/vulkan/core/application.hpp"
+#include "Duo2D/vulkan/device/logical_device.hpp"
 #include "Duo2D/vulkan/device/physical_device.hpp"
 #include <vulkan/vulkan_core.h>
 #define GLFW_INCLUDE_VULKAN
@@ -115,10 +116,16 @@ namespace d2d {
 
 namespace d2d {
     result<void> application::render() noexcept {
-        glfwPollEvents();
-        for (auto& w : windows)
+        for (auto& w : windows) {
+            glfwPollEvents();
             if(auto r = w.second.render(); !r.has_value()) 
                 return r.error();
+        }
         return result<void>{std::in_place_type<void>};
+    }
+
+    result<void> application::join() noexcept {
+        __D2D_VULKAN_VERIFY(vkDeviceWaitIdle(logi_device));
+        return  result<void>{std::in_place_type<void>};
     }
 }

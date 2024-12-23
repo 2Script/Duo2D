@@ -39,6 +39,7 @@ namespace d2d {
 
     public:
         result<void> render() noexcept;
+        result<void> join() noexcept;
 
         
     private:
@@ -49,6 +50,6 @@ namespace d2d {
 
         std::map<std::string, window> windows;
     private:
-        inline static bool glfw_init = false;
+        inline static bool glfw_init = false; //not thread safe
     };
 }

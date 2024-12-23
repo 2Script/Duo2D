@@ -136,17 +136,18 @@ namespace d2d {
         std::array<bool, count> outdated;
 
         //up to (3 * sizeof...(Ts) + 2) total memory allocations
-        buffer static_data_buff;
+        //ORDER MATTERS: buffers must be destroyed before memories
         device_memory static_data_mem;
-        buffer uniform_buff;
+        buffer static_data_buff;
         device_memory uniform_mem;
+        buffer uniform_buff;
         void* uniform_buffer_map;
-        std::array<buffer, indexed_count> index_buffs;
         std::array<device_memory, indexed_count> index_mems;
-        std::array<buffer, attributed_count> attribute_buffs; //TODO allow using SSBOs instead
+        std::array<buffer, indexed_count> index_buffs;
         std::array<device_memory, attributed_count> attribute_mems;
-        std::array<buffer, count> instance_buffs;
+        std::array<buffer, attributed_count> attribute_buffs; //TODO allow using SSBOs instead
         std::array<device_memory, count> instance_mems;
+        std::array<buffer, count> instance_buffs;
         
         std::tuple<pipeline<Ts>...> pipelines;
         std::tuple<pipeline_layout<Ts>...> pipeline_layouts;

@@ -8,6 +8,8 @@
 namespace d2d {
     result<command_buffer> command_buffer::create(logical_device& device, const command_pool& pool) noexcept {
         command_buffer ret{};
+        //ret.dependent_handle = device;
+        //ret.aux_handle = pool;
 
         VkCommandBufferAllocateInfo alloc_info{
             .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,

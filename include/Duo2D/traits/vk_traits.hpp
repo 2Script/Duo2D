@@ -15,10 +15,10 @@ namespace d2d::impl {
     concept VulkanType = std::is_pointer_v<VkTy> && std::is_same_v<std::remove_cvref_t<VkTy>, VkTy>;
 
     template<typename VkTy>
-    concept DependentType = requires { typename vk_traits<VkTy>::dependent_type; };
+    concept DependentVulkanType = VulkanType<VkTy> && requires { typename vk_traits<VkTy>::dependent_type; };
 
     template<typename VkTy>
-    concept DependentVulkanType = VulkanType<VkTy> && DependentType<VkTy>;
+    concept AuxilaryVulkanType = DependentVulkanType<VkTy> && requires { typename vk_traits<VkTy>::auxilary_type; };
 }
 
 
@@ -27,6 +27,15 @@ namespace d2d::impl { \
     template<> struct vk_traits<type>{ \
         using dependent_type = VkDevice; \
         using deleter_type = void(dependent_type, type, const VkAllocationCallbacks*); \
+    }; \
+}
+
+#define __D2D_DECLARE_VK_TRAITS_DEVICE_AUX(type, aux_type) \
+namespace d2d::impl { \
+    template<> struct vk_traits<type>{ \
+        using dependent_type = VkDevice; \
+        using auxilary_type = aux_type; \
+        using deleter_type = void(dependent_type, auxilary_type, std::uint32_t, type const*); \
     }; \
 }
 

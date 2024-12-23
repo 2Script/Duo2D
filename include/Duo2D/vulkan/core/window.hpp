@@ -56,8 +56,8 @@ namespace d2d {
     private:
         window(GLFWwindow* w) noexcept : 
             handle(w, glfwDestroyWindow), logi_device_ptr(nullptr), phys_device_ptr(nullptr),
-            _surface(), _swap_chain(), _command_pool(), renderable_mapping(), data(),          
-            frame_idx(0), command_buffers{}, render_fences{}, semaphores{} {}
+            _surface(), _swap_chain(), data(), renderable_mapping(), 
+            frame_idx(0), _command_pool(), command_buffers{}, render_fences{}, semaphores{} {}
         friend physical_device;
         
     private:
@@ -70,12 +70,12 @@ namespace d2d {
         surface _surface;
         swap_chain _swap_chain;
         render_pass _render_pass;
-        command_pool _command_pool;
 
-        std::unordered_map<std::string, std::size_t> renderable_mapping;
         renderable_buffer<frames_in_flight, styled_rect> data;
+        std::unordered_map<std::string, std::size_t> renderable_mapping;
         
         std::size_t frame_idx;
+        command_pool _command_pool;
         std::array<command_buffer, frames_in_flight> command_buffers;
         std::array<fence, frames_in_flight> render_fences;
         struct semaphore_type { enum { image_available, cmd_buffer_finished, num_semaphore_types }; };

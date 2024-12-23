@@ -4,6 +4,7 @@ project(Duo2D VERSION 1.0 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 20)
 
 option(BUILD_SHARED_LIBS "Build using shared libraries" ON)
+set(CMAKE_VERBOSE_MAKEFILE ON CACHE BOOL "ON")
 
 set(CPP_FILES
     vulkan/core/application.cpp

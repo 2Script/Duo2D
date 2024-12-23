@@ -73,4 +73,29 @@ namespace d2d {
     protected:
         typename impl::vk_traits<VkTy>::dependent_type dependent_handle;
     };
+
+    template<impl::AuxilaryVulkanType VkTy, typename impl::vk_traits<VkTy>::deleter_type& DeleterFn>
+    class vulkan_ptr<VkTy, DeleterFn> : public vulkan_ptr_base<VkTy> {
+    public:
+        constexpr vulkan_ptr() noexcept = default;
+        ~vulkan_ptr() noexcept { if(this->handle) DeleterFn(dependent_handle, aux_handle, 1, &this->handle); };
+    
+    public:
+        constexpr vulkan_ptr(vulkan_ptr&& other) noexcept : 
+            vulkan_ptr_base<VkTy>(std::move(other)), dependent_handle(other.dependent_handle), aux_handle(other.aux_handle) {}
+        constexpr vulkan_ptr& operator=(vulkan_ptr&& other) noexcept { 
+            vulkan_ptr_base<VkTy>::operator=(std::move(other));
+            dependent_handle = other.dependent_handle;
+            aux_handle = other.aux_handle;
+            return *this;
+        };
+
+        vulkan_ptr(const vulkan_ptr& other) = delete;
+        vulkan_ptr& operator=(const vulkan_ptr& other) = delete;
+
+
+    protected:
+        typename impl::vk_traits<VkTy>::dependent_type dependent_handle;
+        typename impl::vk_traits<VkTy>::auxilary_type aux_handle;
+    };
 }

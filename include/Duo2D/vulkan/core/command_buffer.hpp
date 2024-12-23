@@ -9,7 +9,10 @@
 #include "Duo2D/vulkan/display/swap_chain.hpp"
 #include "Duo2D/traits/renderable_traits.hpp"
 
+__D2D_DECLARE_VK_TRAITS_DEVICE_AUX(VkCommandBuffer, VkCommandPool);
+
 namespace d2d { template<std::size_t FiF, impl::RenderableType... Rs> requires (sizeof...(Rs) > 0) struct renderable_buffer; }
+
 
 namespace d2d {
     struct command_buffer : vulkan_ptr_base<VkCommandBuffer> {

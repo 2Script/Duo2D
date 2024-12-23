@@ -57,7 +57,7 @@ namespace d2d {
             [this, &renderables]<std::size_t... Is>(std::index_sequence<Is...>) {
                 constexpr static std::array pcr = T::push_constant_ranges();
                 ([this, &renderables]<std::size_t I>(std::integral_constant<std::size_t, I>){
-                    static auto push_consts = std::get<I>(renderables.template push_constants<T>());
+                    static auto push_consts = std::get<I>(T::push_constants());
                     vkCmdPushConstants(handle, renderables.template associated_pipeline_layout<T>(), pcr[I].stageFlags, pcr[I].offset, pcr[I].size, std::addressof(push_consts));
                 }(std::integral_constant<std::size_t, Is>{}), ...);
             }(std::make_index_sequence<T::push_constant_ranges().size()>{});

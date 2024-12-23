@@ -19,7 +19,8 @@ namespace d2d {
             .ppEnabledExtensionNames = glfw_exts,
         };
 
-        #ifdef NDEBUG
+        //#define D2D_NO_VALIDATION_LAYERS
+        #if defined(NDEBUG) || defined(D2D_NO_VALIDATION_LAYERS)
         create_info.enabledLayerCount = 0;
         #else
         {

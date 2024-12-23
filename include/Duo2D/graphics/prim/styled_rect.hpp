@@ -63,7 +63,7 @@ namespace d2d {
             }};
         };
 
-        consteval static std::array<VkVertexInputAttributeDescription, 8> attribute_descs() noexcept {
+        consteval static std::array<VkVertexInputAttributeDescription, 7> attribute_descs() noexcept {
             return {{
                 {0, 0, decltype(decltype(bounds)::pos)::format, offsetof(styled_rect, bounds.pos)},
                 {1, 0, decltype(decltype(bounds)::size)::format, offsetof(styled_rect, bounds.size)},
@@ -71,8 +71,7 @@ namespace d2d {
 
                 //TEMP harcoded attributes
                 {3, 1, decltype(transform2::scale)::format,       0},
-                {4, 1, vec2<float>::format,                       sizeof(transform2::scale)},
-                {5, 1, vec2<float>::format,                       sizeof(transform2::scale) + sizeof(vec2<float>)},
+                {4, 1, VK_FORMAT_R32G32B32A32_SFLOAT,             sizeof(transform2::scale)},
                 {6, 1, decltype(transform2::translation)::format, sizeof(transform2::scale) + 2 * sizeof(vec2<float>)},
                 {7, 1, VK_FORMAT_R32_UINT,                        sizeof(transform2::scale) + 2 * sizeof(vec2<float>) + sizeof(transform2::translation)},
             }};
@@ -82,8 +81,7 @@ namespace d2d {
             return {{{VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(extent2)}}};
         }
     };
-}
 
-            //constexpr static std::size_t attribute_size = d2d::impl::extract_attribute_size<typename d2d::styled_rect::attribute_types>::value;
-            //constexpr static std::size_t a = sizeof(d2d::transform2);
-            //constexpr static std::size_t b = sizeof(std::uint32_t);
+
+    constexpr bool x = impl::has_push_constants_v<styled_rect>;
+}
