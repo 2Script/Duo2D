@@ -22,11 +22,12 @@ namespace d2d {
 
         __D2D_VULKAN_VERIFY(vkAllocateDescriptorSets(device, &alloc_info, ret.data()));
 
+        const std::size_t uniform_size = data_size / FiF;
         for (size_t i = 0; i < FiF; i++) {
             VkDescriptorBufferInfo buffer_info{
                 .buffer = uniform_buffer,
-                .offset = buffer_offset + (i * data_size),
-                .range = data_size,
+                .offset = buffer_offset + (i * uniform_size),
+                .range = uniform_size,
             };
 
             VkWriteDescriptorSet descriptor_write{

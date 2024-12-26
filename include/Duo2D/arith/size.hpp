@@ -5,7 +5,7 @@
 #include <type_traits>
 
 namespace d2d {
-    template<std::size_t Dims, typename UnitTy> using size = vector<Dims, UnitTy, true>;
+    template<std::size_t Dims, typename UnitTy> using size = vector<Dims, UnitTy, impl::vec_data_type::size>;
 }
 
 namespace d2d {

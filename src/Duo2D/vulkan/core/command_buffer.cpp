@@ -2,6 +2,7 @@
 #include "Duo2D/error.hpp"
 #include "Duo2D/arith/rect.hpp"
 #include "Duo2D/arith/size.hpp"
+#include "Duo2D/vulkan/device/logical_device.hpp"
 #include <cstdint>
 #include <vulkan/vulkan_core.h>
 
@@ -69,18 +70,31 @@ namespace d2d {
 }
 
 namespace d2d {
-    result<void> command_buffer::copy(buffer& dest, const buffer& src, std::size_t size) const noexcept {
+    result<void> command_buffer::copy_begin() const noexcept {
         VkCommandBufferBeginInfo begin_info{
             .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
             .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
         };
         __D2D_VULKAN_VERIFY(vkBeginCommandBuffer(handle, &begin_info));
- 
-        VkBufferCopy copy_region{};
-        copy_region.size = size;
-        vkCmdCopyBuffer(handle, src, dest, 1, &copy_region);
+        return result<void>{std::in_place_type<void>};
+    }
 
+    void command_buffer::copy(buffer& dest, const buffer& src, std::size_t size) const noexcept {
+        VkBufferCopy copy_region{ .size = size };
+        vkCmdCopyBuffer(handle, src, dest, 1, &copy_region);
+    }
+
+    result<void> command_buffer::copy_end(logical_device& device, const command_pool& pool) const noexcept {
         __D2D_VULKAN_VERIFY(vkEndCommandBuffer(handle));
+        
+        VkSubmitInfo submit_info{};
+        submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+        submit_info.commandBufferCount = 1;
+        submit_info.pCommandBuffers = &handle;
+        vkQueueSubmit(device.queues[queue_family::graphics], 1, &submit_info, VK_NULL_HANDLE);
+        vkQueueWaitIdle(device.queues[queue_family::graphics]);
+
+        vkFreeCommandBuffers(device, pool, 1, &handle);
         return result<void>{std::in_place_type<void>};
     }
 }

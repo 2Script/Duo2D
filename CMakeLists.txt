@@ -23,7 +23,6 @@ set(CPP_FILES
     vulkan/display/swap_chain.cpp
     
     vulkan/memory/buffer.cpp
-    vulkan/memory/device_memory.cpp
     vulkan/memory/descriptor_set_layout.cpp
 
     vulkan/sync/semaphore.cpp
@@ -34,6 +33,8 @@ list(TRANSFORM CPP_FILES PREPEND src/Duo2D/)
 set(SHADER_INPUT_FILES
     rect.vert
     rect.frag
+    debug_rect.vert
+    debug_rect.frag
 )
 list(TRANSFORM SHADER_INPUT_FILES PREPEND shaders/)
 list(TRANSFORM SHADER_INPUT_FILES REPLACE "\.[^.]*$" ".hpp" OUTPUT_VARIABLE SHADER_OUTPUT_FILES)

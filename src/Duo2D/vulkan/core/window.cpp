@@ -60,7 +60,7 @@ namespace d2d {
             __D2D_TRY_MAKE(semaphores[semaphore_type::cmd_buffer_finished][i], make<semaphore>(logi_device), cbf);
         }
 
-        __D2D_TRY_MAKE(data, (make<renderable_buffer<frames_in_flight, styled_rect>>(logi_device, phys_device, _render_pass)), rb);
+        __D2D_TRY_MAKE(data, (make<renderable_buffer<frames_in_flight, styled_rect, debug_rect, clone_rect>>(logi_device, phys_device, _render_pass)), rb);
 
 
         return result<void>{std::in_place_type<void>};
@@ -93,14 +93,18 @@ namespace d2d {
 
         
         //update uniform buffer
+        std::memcpy(&data.uniform_map<clone_rect>()[frame_idx], &_swap_chain.extent, sizeof(extent2));
         std::memcpy(&data.uniform_map<styled_rect>()[frame_idx], &_swap_chain.extent, sizeof(extent2));
+        std::memcpy(&data.uniform_map<debug_rect>()[frame_idx], &_swap_chain.extent, sizeof(extent2));
 
 
         render_fences[frame_idx].reset();
 
         command_buffers[frame_idx].reset();
         command_buffers[frame_idx].begin(_swap_chain, _render_pass, image_index);
+        command_buffers[frame_idx].draw<clone_rect>(data);
         command_buffers[frame_idx].draw<styled_rect>(data);
+        command_buffers[frame_idx].draw<debug_rect>(data);
         command_buffers[frame_idx].end();
 
         constexpr static std::array<VkPipelineStageFlags, 1> wait_stages = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};

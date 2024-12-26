@@ -4,7 +4,7 @@
 
 namespace d2d {
     template<std::size_t Dims, typename UnitTy>
-    using point = vector<Dims, UnitTy>;
+    using point = vector<Dims, UnitTy, impl::vec_data_type::point>;
 }
 
 namespace d2d {

@@ -1,5 +1,6 @@
 #pragma once
 #include "Duo2D/arith/matrix.hpp"
+#include "Duo2D/arith/point.hpp"
 #include "Duo2D/arith/vector.hpp"
 #include <type_traits>
 #include <utility>
@@ -198,8 +199,8 @@ namespace d2d {
 namespace d2d {
     template<std::size_t N, typename T>
     class scale {
-        template<std::size_t Dims, std::uint8_t Flags> using scaled_vector = vector<Dims, T, false, Flags | impl::transform_flags::scale>;
-        template<std::size_t Dims, std::uint8_t Flags> using source_vector = vector<Dims, T, false, Flags>;
+        template<std::size_t Dims, std::uint8_t Flags> using scaled_vector = vector<Dims, T, impl::vec_data_type::point, Flags | impl::transform_flags::scale>;
+        template<std::size_t Dims, std::uint8_t Flags> using source_vector = vector<Dims, T, impl::vec_data_type::point, Flags>;
 
     public:
         vector<N, T> scale_by;
@@ -218,8 +219,8 @@ namespace d2d {
 
     template<typename A, typename FS, typename FC> requires std::is_arithmetic_v<A>
     class rotate {
-        template<std::size_t N, typename T, std::uint8_t Flags> using rotated_vector = vector<N, T, false, Flags | impl::transform_flags::rotate>;
-        template<std::size_t N, typename T, std::uint8_t Flags> using source_vector  = vector<N, T, false, Flags>;
+        template<std::size_t N, typename T, std::uint8_t Flags> using rotated_vector = vector<N, T, impl::vec_data_type::point, Flags | impl::transform_flags::rotate>;
+        template<std::size_t N, typename T, std::uint8_t Flags> using source_vector  = vector<N, T, impl::vec_data_type::point, Flags>;
 
     public:
         A angle;
@@ -241,8 +242,8 @@ namespace d2d {
 
     template<std::size_t N, typename T>
     class translate {
-        template<std::size_t Dims, std::uint8_t Flags> using translated_vector = vector<Dims, T, false, Flags | impl::transform_flags::translate>;
-        template<std::size_t Dims, std::uint8_t Flags> using source_vector     = vector<Dims, T, false, Flags>;
+        template<std::size_t Dims, std::uint8_t Flags> using translated_vector = vector<Dims, T, impl::vec_data_type::point, Flags | impl::transform_flags::translate>;
+        template<std::size_t Dims, std::uint8_t Flags> using source_vector     = vector<Dims, T, impl::vec_data_type::point, Flags>;
 
     public:
         vector<N, T> translate_by;
@@ -280,12 +281,12 @@ namespace d2d {
         
         //TODO make this work with perfect forwarding?
         template<template<typename> typename TransformType, std::size_t N, typename T, std::uint8_t Flags, typename Arg>
-        constexpr decltype(auto) do_transform(vector<N, T, false, Flags> src_vec, Arg&& arg) { 
+        constexpr decltype(auto) do_transform(vector<N, T, impl::vec_data_type::point, Flags> src_vec, Arg&& arg) { 
             if constexpr(TransformType<Arg>::value) return std::forward<Arg>(arg)(src_vec);
             else return src_vec;
         }
         template<template<typename> typename TransformType, std::size_t N, typename T, std::uint8_t Flags, typename First, typename... Args>
-        constexpr decltype(auto) do_transform(vector<N, T, false, Flags> src_vec, First&& first, Args&&... args) {
+        constexpr decltype(auto) do_transform(vector<N, T, impl::vec_data_type::point, Flags> src_vec, First&& first, Args&&... args) {
             return do_transform<TransformType>(
                 do_transform<TransformType>(src_vec, std::forward<First>(first)),
             std::forward<Args>(args)...);
@@ -293,11 +294,11 @@ namespace d2d {
     }
 
     template<std::size_t Dims, typename UnitTy, typename... Args>
-    constexpr vector<Dims, UnitTy> transform(vector<Dims, UnitTy> src_vec, Args&&... args) noexcept {
+    constexpr point<Dims, UnitTy> transform(point<Dims, UnitTy> src_vec, Args&&... args) noexcept {
         auto scale_vec = impl::do_transform<impl::scale_type>(src_vec, std::forward<Args>(args)...);
         auto rotate_vec = impl::do_transform<impl::rotate_type>(scale_vec, std::forward<Args>(args)...);
         auto translate_vec = impl::do_transform<impl::translate_type>(rotate_vec, std::forward<Args>(args)...);
-        return static_cast<vector<Dims, UnitTy>>(translate_vec);
+        return static_cast<point<Dims, UnitTy>>(translate_vec);
     }
 }
 

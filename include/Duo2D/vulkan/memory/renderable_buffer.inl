@@ -1,6 +1,8 @@
 #pragma once
 #include "Duo2D/error.hpp"
+#include "Duo2D/traits/buffer_traits.hpp"
 #include "Duo2D/vulkan/core/command_pool.hpp"
+#include "Duo2D/vulkan/device/logical_device.hpp"
 #include "Duo2D/vulkan/memory/device_memory.hpp"
 #include "Duo2D/vulkan/display/render_pass.hpp"
 #include "Duo2D/vulkan/memory/renderable_buffer.hpp"
@@ -27,14 +29,16 @@ namespace d2d {
         __D2D_TRY_MAKE(ret.copy_cmd_pool, make<command_pool>(logi_device, phys_device), ccp);
 
         //If theres no static index or vertex data, skip creating their buffers
-        constexpr static std::size_t static_buffer_size = instanced_buffer_size.index + instanced_buffer_size.vertex;
+        constexpr static std::size_t static_buffer_size = instanced_buffer_size[buffer_type::index] + instanced_buffer_size[buffer_type::vertex];
         if constexpr (static_buffer_size == 0) goto create_uniform;
 
         {
+        std::array<buffer, 1> static_staging_buffs;
         //Create staging buffer for static instance data buffer
-        __D2D_TRY_MAKE(buffer static_staging_buff, make<buffer>(logi_device, static_buffer_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT), isb);
-        __D2D_TRY_MAKE(device_memory static_staging_mem, 
-            make<device_memory>(logi_device, phys_device, static_staging_buff, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT), ism);
+        __D2D_TRY_MAKE(static_staging_buffs[0], make<buffer>(logi_device, static_buffer_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT), isb);
+        __D2D_TRY_MAKE(device_memory<1> static_staging_mem, 
+            make<device_memory<1>>(logi_device, phys_device, static_staging_buffs, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT), ism);
+        static_staging_mem.bind(logi_device, static_staging_buffs, 0, ret.copy_cmd_pool);
 
         //Fill staging buffer with static instance data
         void* mapped_static_data;
@@ -43,27 +47,33 @@ namespace d2d {
         vkUnmapMemory(logi_device, static_staging_mem);
 
         //Create static instance buffer
-        __D2D_TRY_MAKE(ret.static_data_buff, make<buffer>(logi_device, static_buffer_size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT), ib);
-        __D2D_TRY_MAKE(ret.static_data_mem, make<device_memory>(logi_device, phys_device, ret.static_data_buff, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT), im);
+        std::array<buffer, 1> static_data_buffs;
+        __D2D_TRY_MAKE(static_data_buffs[0], make<buffer>(logi_device, static_buffer_size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT), ib);
+        __D2D_TRY_MAKE(ret.static_data_mem, make<device_memory<1>>(logi_device, phys_device, static_data_buffs, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT), im);
+        ret.static_data_mem.bind(logi_device, static_data_buffs, 0, ret.copy_cmd_pool);
+        ret.static_data_buff = std::move(static_data_buffs[0]);
+        
 
         //Copy from index staging buffer to index device buffer
-        if(auto c = ret.copy(ret.static_data_buff, static_staging_buff, static_buffer_size); !c.has_value())
+        if(auto c = ret.copy(ret.static_data_buff, static_staging_buffs[0], static_buffer_size); !c.has_value())
             return c.error();
         }
 
     create_uniform:
         //If theres no uniform data, just return
-        constexpr static std::size_t uniform_buffer_size = (data_size<Ts>.uniform + ...) * FiF;
+        constexpr static std::size_t uniform_buffer_size = (data_size<Ts>[buffer_type::uniform] + ...);
         if constexpr (uniform_buffer_size == 0) return ret;
 
         //Create uniform buffer
-        __D2D_TRY_MAKE(ret.uniform_buff, make<buffer>(logi_device, uniform_buffer_size, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT), ub);
-        __D2D_TRY_MAKE(ret.uniform_mem, 
-            make<device_memory>(logi_device, phys_device, ret.uniform_buff, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT), um);
-        vkMapMemory(logi_device, ret.uniform_mem, 0, uniform_buffer_size, 0, &ret.uniform_buffer_map);
+        std::array<buffer, 1> uniform_buffs;
+        __D2D_TRY_MAKE(uniform_buffs[0], make<buffer>(logi_device, uniform_buffer_size, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT), ub);
+        __D2D_TRY_MAKE(ret.host_mem, 
+            make<device_memory<1>>(logi_device, phys_device, uniform_buffs, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT), um);
+        ret.host_mem.bind(logi_device, uniform_buffs, 0, ret.copy_cmd_pool);
+        ret.uniform_buff = std::move(uniform_buffs[0]);
+        vkMapMemory(logi_device, ret.host_mem, 0, uniform_buffer_size, 0, &ret.uniform_buffer_map);
 
-
-        __D2D_TRY_MAKE(ret.desc_pool, (make<descriptor_pool<FiF, uniformed_count>>(logi_device)), dp);
+        __D2D_TRY_MAKE(ret.desc_pool, (make<descriptor_pool<FiF, count_v[impl::type_filter::has_uniform]>>(logi_device)), dp);
 
         //Create pipelines and descriptors
         ((ret.create_pipelines<Ts>(logi_device, window_render_pass)), ...);
@@ -77,22 +87,22 @@ namespace d2d {
     template<typename T>
     result<void> renderable_buffer<FiF, Ts...>::apply(bool shrink) noexcept {
         if constexpr (!T::instanced && impl::has_indices_v<T>) 
-            if(auto c = create_buffer<T, VK_BUFFER_USAGE_INDEX_BUFFER_BIT>(shrink, data_size<T>.index, index_buffs[indexed_idx<T>], index_mems[indexed_idx<T>]); !c.has_value())
+            if(auto c = create_buffer<T, impl::type_filter::has_index>(shrink, data_size<T>[buffer_type::index], index_buffs, index_device_local_mem); !c.has_value())
                 return c.error();
 
         if constexpr (!T::instanced && impl::has_vertices_v<T>) 
-            if(auto c = create_buffer<T, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT>(shrink, data_size<T>.vertex, instance_buffs[idx<T>], instance_mems[idx<T>]); !c.has_value())
+            if(auto c = create_buffer<T, impl::type_filter::none>(shrink, data_size<T>[buffer_type::vertex], data_buffs, data_device_local_mem); !c.has_value())
                 return c.error();
 
         if constexpr (T::instanced) 
-            if(auto c = create_buffer<T, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT>(shrink, data_size<T>.instance, instance_buffs[idx<T>], instance_mems[idx<T>]); !c.has_value())
+            if(auto c = create_buffer<T, impl::type_filter::none>(shrink, data_size<T>[buffer_type::instance], data_buffs, data_device_local_mem); !c.has_value())
                 return c.error();
 
         
         if constexpr (impl::has_attributes_v<T>) {
             constexpr static std::size_t attribute_size = impl::extract_attribute_size<typename T::attribute_types>::value;
-            __D2D_TRY_MAKE(void* map, (create_shared_buffer<T, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT>(shrink, attribute_size, attribute_buffs[attribute_idx<T>], attribute_mems[attribute_idx<T>])), c);
-            std::span<std::byte>& attributes_span = std::get<attribute_idx<T>>(attributes_map_tuple); //tuple<span<T0_bytes>, span<T1_bytes>>[x] => span<Tx_bytes>
+            __D2D_TRY_MAKE(void* map, (create_shared_buffer<T, impl::type_filter::has_attrib>(shrink, attribute_size, attribute_buffs)), c);
+            std::span<std::byte>& attributes_span = std::get<index_v<T>[impl::type_filter::has_attrib]>(attributes_map_tuple); //tuple<span<T0_bytes>, span<T1_bytes>>[x] => span<Tx_bytes>
             attributes_span = std::span<std::byte>(static_cast<std::byte*>(map), attribute_size * std::get<std::vector<T>>(data).size());
 
             constexpr static std::array<std::size_t, num_attributes<T>> attribute_sizes = [&]<std::size_t... I>(std::index_sequence<I...>) {
@@ -110,37 +120,40 @@ namespace d2d {
             }(std::make_index_sequence<num_attributes<T>>{});
         }
 
-        outdated[idx<T>] = false;
+        outdated[index_v<T>[impl::type_filter::none]] = false;
         return result<void>{std::in_place_type<void>};
     }
 
     template<std::size_t FiF, impl::RenderableType... Ts> requires (sizeof...(Ts) > 0)
     template<typename T>
     constexpr bool renderable_buffer<FiF, Ts...>::needs_apply() const noexcept {
-        return outdated[idx<T>];
+        return outdated[index_v<T>[impl::type_filter::none]];
     }
 }
 
 
 namespace d2d {
     template<std::size_t FiF, impl::RenderableType... Ts> requires (sizeof...(Ts) > 0)
-    template<typename T, VkBufferUsageFlags BufferFlag>
-    result<void> renderable_buffer<FiF, Ts...>::create_buffer(bool shrink, std::size_t size, buffer& buff, device_memory& mem) noexcept {
-        const std::size_t buffer_data_size = size * std::get<std::vector<T>>(data).size();
+    template<typename T, impl::type_filter::idx BuffFilter, std::size_t N>
+    result<void> renderable_buffer<FiF, Ts...>::create_buffer(bool shrink, std::size_t new_size, std::array<buffer, N>& buffs, device_memory<N>& mem) noexcept {
+        const std::size_t buffer_data_size = new_size * std::get<std::vector<T>>(data).size();
         if(buffer_data_size == 0) {
-            buff = buffer{};
-            mem = device_memory{};
+            buffs[index_v<T>[BuffFilter]] = buffer{};
             return error::invalid_argument;
         }
         //Create staging buffer
-        __D2D_TRY_MAKE(buffer staging_buff, make<buffer>(*logi_device_ptr, buffer_data_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT), sb);
-        __D2D_TRY_MAKE(device_memory staging_mem, 
-            make<device_memory>(*logi_device_ptr, *phys_device_ptr, staging_buff, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT), sm);
+        std::array<buffer, 1> staging_buffs;
+        __D2D_TRY_MAKE(staging_buffs[0], make<buffer>(*logi_device_ptr, buffer_data_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT), sb);
+        __D2D_TRY_MAKE(device_memory<1> staging_mem, 
+            make<device_memory<1>>(*logi_device_ptr, *phys_device_ptr, staging_buffs, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT), sm);
+        staging_mem.bind(*logi_device_ptr, staging_buffs, 0, copy_cmd_pool);
 
         //Fill staging buffer with data
         auto get_data = [this](std::size_t i) noexcept -> decltype(auto) {
-            if constexpr (!T::instanced && (BufferFlag & VK_BUFFER_USAGE_INDEX_BUFFER_BIT)) return std::get<std::vector<T>>(data)[i].indices();
-            else if constexpr (!T::instanced && (BufferFlag & VK_BUFFER_USAGE_VERTEX_BUFFER_BIT)) return std::get<std::vector<T>>(data)[i].vertices();
+            if constexpr (!T::instanced) { 
+                if constexpr (BuffFilter == impl::type_filter::has_index) return std::get<std::vector<T>>(data)[i].indices();
+                else return std::get<std::vector<T>>(data)[i].vertices();
+            }
             else return std::get<std::vector<T>>(data)[i].instance();
         };
 
@@ -149,47 +162,59 @@ namespace d2d {
         for(std::size_t i = 0; i < std::get<std::vector<T>>(data).size(); ++i) {
             const auto input = get_data(i);
             if constexpr(!T::instanced)
-                std::memcpy(static_cast<char*>(mapped_data) + size * i, input.data(), size);
+                std::memcpy(static_cast<char*>(mapped_data) + new_size * i, input.data(), new_size);
             else 
-                std::memcpy(static_cast<char*>(mapped_data) + size * i, &input, size);
+                std::memcpy(static_cast<char*>(mapped_data) + new_size * i, &input, new_size);
         }
         vkUnmapMemory(*logi_device_ptr, staging_mem);
 
-        //Allocate buffer if it's the wrong size
-        if(buffer_data_size > buff.size() || shrink) {
-            __D2D_TRY_MAKE(buff, make<buffer>(*logi_device_ptr, buffer_data_size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | BufferFlag), b);
-            __D2D_TRY_MAKE(mem, make<device_memory>(*logi_device_ptr, *phys_device_ptr, buff, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT), m);
+        //Re-allocate buffer if it's the wrong size
+        if(buffer_data_size > buffs[index_v<T>[BuffFilter]].size()|| shrink) {
+            __D2D_TRY_MAKE(buffs[index_v<T>[BuffFilter]], make<buffer>(*logi_device_ptr, buffer_data_size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | ((BuffFilter == impl::type_filter::has_index) ? VK_BUFFER_USAGE_INDEX_BUFFER_BIT : VK_BUFFER_USAGE_VERTEX_BUFFER_BIT)), b);
+            //Re-allocate the memory for the buffer as well if it's the wrong size
+            device_memory<N> old_mem;
+            if(buffer_data_size > mem.requirements()[index_v<T>[BuffFilter]].size || shrink) {
+                old_mem = std::move(mem); //Make sure old memory used for the rest of the buffers stays alive until after bind
+                __D2D_TRY_MAKE(mem, make<device_memory<N>>(*logi_device_ptr, *phys_device_ptr, buffs, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT), m);
+            }
+            mem.bind(*logi_device_ptr, buffs, index_v<T>[BuffFilter], copy_cmd_pool);
         }
 
-        //Copy from staging buffer to device buffer
-        if(auto c = copy(buff, staging_buff, buffer_data_size); !c.has_value())
+        //Copy from staging buffer to device buffer 
+        if(auto c = copy(buffs[index_v<T>[BuffFilter]], staging_buffs[0], buffer_data_size); !c.has_value())
             return c.error();
         return result<void>{std::in_place_type<void>};
     }
 
     template<std::size_t FiF, impl::RenderableType... Ts> requires (sizeof...(Ts) > 0)
-    template<typename T, VkBufferUsageFlags BufferFlag>
-    result<void*> renderable_buffer<FiF, Ts...>::create_shared_buffer(bool shrink, std::size_t size, buffer& buff, device_memory& mem) noexcept {
-        const std::size_t buffer_data_size = size * std::get<std::vector<T>>(data).size();
+    template<typename T, impl::type_filter::idx BuffFilter, std::size_t N>
+    result<void*> renderable_buffer<FiF, Ts...>::create_shared_buffer(bool shrink, std::size_t new_size, std::array<buffer, N>& buffs) noexcept {
+        const std::size_t buffer_data_size = new_size * std::get<std::vector<T>>(data).size();
         if(buffer_data_size == 0) {
-            buff = buffer{};
-            mem = device_memory{};
+            buffs[index_v<T>[BuffFilter]] = buffer{};
             return error::invalid_argument;
         }
 
+
         //Re-allocate buffer if it's the wrong size
-        if(buffer_data_size > buff.size() || shrink) {
-            __D2D_TRY_MAKE(buff, make<buffer>(*logi_device_ptr, buffer_data_size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | BufferFlag), b);
-            auto sm = make<device_memory>(*logi_device_ptr, *phys_device_ptr, buff, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
-            if(sm.has_value()) mem = *std::move(sm);
-            else if(sm.error() == error::device_lacks_suitable_mem_type) {
-                __D2D_TRY_MAKE(mem, make<device_memory>(*logi_device_ptr, *phys_device_ptr, buff, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT), m);
+        if(buffer_data_size > buffs[index_v<T>[BuffFilter]].size() || shrink) {
+            __D2D_TRY_MAKE(buffs[index_v<T>[BuffFilter]], make<buffer>(*logi_device_ptr, buffer_data_size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | ((BuffFilter == impl::type_filter::has_storage) ? VK_BUFFER_USAGE_STORAGE_BUFFER_BIT : VK_BUFFER_USAGE_VERTEX_BUFFER_BIT)), b);
+            //Re-allocate the memory for the buffer as well if it's the wrong size
+            device_memory<N> old_shared_mem;
+            if(buffer_data_size > shared_mem.requirements()[index_v<T>[BuffFilter]].size || shrink) {
+                old_shared_mem = std::move(shared_mem); //Make sure old memory used for the rest of the buffers stays alive until after bind
+                auto sm = make<device_memory<N>>(*logi_device_ptr, *phys_device_ptr, buffs, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+                if(sm.has_value()) shared_mem = *std::move(sm);
+                else if(sm.error() == error::device_lacks_suitable_mem_type) {
+                    __D2D_TRY_MAKE(shared_mem, make<device_memory<N>>(*logi_device_ptr, *phys_device_ptr, buffs, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT), m);
+                }
+                else return sm.error();
             }
-            else return sm.error();
+            shared_mem.bind(*logi_device_ptr, buffs, index_v<T>[BuffFilter], copy_cmd_pool);
         }
 
         void* mapped_data;
-        vkMapMemory(*logi_device_ptr, mem, 0, buffer_data_size, 0, &mapped_data);
+        vkMapMemory(*logi_device_ptr, shared_mem, 0, buffer_data_size, 0, &mapped_data);
         return mapped_data;
     }
 
@@ -198,7 +223,7 @@ namespace d2d {
     template<typename T>
     result<void> renderable_buffer<FiF, Ts...>::create_pipelines(logical_device& logi_device, render_pass& window_render_pass) noexcept {
         if constexpr (impl::has_uniform_v<T>) {
-            constexpr static std::size_t I = uniformed_idx<T>;
+            constexpr static std::size_t I = index_v<T>[impl::type_filter::has_uniform];
             //Create descriptor set layout
             __D2D_TRY_MAKE(desc_set_layouts[I], make<descriptor_set_layout>(logi_device), dsl);
 
@@ -206,7 +231,7 @@ namespace d2d {
             __D2D_TRY_MAKE(std::get<pipeline_layout<T>>(pipeline_layouts), make<pipeline_layout<T>>(logi_device, desc_set_layouts[I]), pl);
 
             //Create descriptor set and pool
-            __D2D_TRY_MAKE(desc_sets[I], (make<descriptor_set<FiF>>(logi_device, desc_pool, desc_set_layouts[I], uniform_buff, data_size<T>.uniform, offsets<T>().uniform)), ds);
+            __D2D_TRY_MAKE(desc_sets[I], (make<descriptor_set<FiF>>(logi_device, desc_pool, desc_set_layouts[I], uniform_buff, data_size<T>[buffer_type::uniform], offsets<T>()[buffer_type::uniform])), ds);
         } else {
             //Create pipeline layouts
             __D2D_TRY_MAKE(std::get<pipeline_layout<T>>(pipeline_layouts), make<pipeline_layout<T>>(logi_device), pl);
@@ -222,16 +247,10 @@ namespace d2d {
     template<std::size_t FiF, impl::RenderableType... Ts> requires (sizeof...(Ts) > 0)
     result<void> renderable_buffer<FiF, Ts...>::copy(buffer& dst, const buffer& src, std::size_t size) const noexcept {
         __D2D_TRY_MAKE(command_buffer copy_cmd_buffer, (make<command_buffer>(*logi_device_ptr, copy_cmd_pool)), ccb);
+        if(auto b = copy_cmd_buffer.copy_begin(); !b.has_value()) return b.error();
         copy_cmd_buffer.copy(dst, src, size);
+        if(auto e = copy_cmd_buffer.copy_end(*logi_device_ptr, copy_cmd_pool); !e.has_value()) return e.error();
 
-        VkSubmitInfo submit_info{};
-        submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-        submit_info.commandBufferCount = 1;
-        submit_info.pCommandBuffers = &copy_cmd_buffer;
-        vkQueueSubmit(logi_device_ptr->queues[queue_family::graphics], 1, &submit_info, VK_NULL_HANDLE);
-        vkQueueWaitIdle(logi_device_ptr->queues[queue_family::graphics]);
-
-        vkFreeCommandBuffers(*logi_device_ptr, copy_cmd_pool, 1, &copy_cmd_buffer);
         return result<void>{std::in_place_type<void>};
     }
 
@@ -240,9 +259,9 @@ namespace d2d {
     template<typename T>
     void renderable_buffer<FiF, Ts...>::copy_staging(void* data_map) noexcept {
         if constexpr (T::instanced && impl::has_indices_v<T>)
-            std::memcpy(static_cast<char*>(data_map) + buff_offsets[idx<T>].index, T::indices().data(), data_size<T>.index);
+            std::memcpy(static_cast<char*>(data_map) + offsets<T>()[buffer_type::index], T::indices().data(), data_size<T>[buffer_type::index]);
         if constexpr (T::instanced && impl::has_vertices_v<T>)
-            std::memcpy(static_cast<char*>(data_map) + buff_offsets[idx<T>].vertex, T::vertices().data(), data_size<T>.vertex);
+            std::memcpy(static_cast<char*>(data_map) + offsets<T>()[buffer_type::vertex], T::vertices().data(), data_size<T>[buffer_type::vertex]);
     }
 }
 
@@ -254,7 +273,7 @@ namespace d2d {
         using T = std::remove_cvref_t<U>;
         std::vector<T>& data_vec = std::get<std::vector<T>>(data);
         data_vec.push_back(std::forward<U>(value));
-        outdated[idx<T>] = true;
+        outdated[index_v<T>[impl::type_filter::none]] = true;
     }
 
     template<std::size_t FiF, impl::RenderableType... Ts> requires (sizeof...(Ts) > 0)
@@ -262,7 +281,7 @@ namespace d2d {
     constexpr T& renderable_buffer<FiF, Ts...>::emplace_back(Args&&... args) noexcept {
         std::vector<T>& data_vec = std::get<std::vector<T>>(data);
         T& ret = data_vec.emplace_back(std::forward<Args>(args)...);
-        outdated[idx<T>] = true;
+        outdated[index_v<T>[impl::type_filter::none]] = true;
         return ret;
     }
 
@@ -330,7 +349,7 @@ namespace d2d {
     template<typename T>
     constexpr const buffer& renderable_buffer<FiF, Ts...>::index_buffer() const noexcept requires impl::has_indices_v<T> { 
         if constexpr (T::instanced) return static_data_buff; 
-        else return index_buffs[indexed_idx<T>]; 
+        else return index_buffs[index_v<T>[impl::type_filter::has_index]]; 
     }
 
     template<std::size_t FiF, impl::RenderableType... Ts> requires (sizeof...(Ts) > 0)
@@ -343,19 +362,19 @@ namespace d2d {
     template<typename T>
     constexpr const buffer& renderable_buffer<FiF, Ts...>::vertex_buffer() const noexcept requires impl::has_vertices_v<T>  { 
         if constexpr (T::instanced) return static_data_buff; 
-        else return instance_buffs[idx<T>]; 
+        else return data_buffs[index_v<T>[impl::type_filter::none]]; 
     };
 
     template<std::size_t FiF, impl::RenderableType... Ts> requires (sizeof...(Ts) > 0)
     template<typename T> 
     constexpr const buffer& renderable_buffer<FiF, Ts...>::instance_buffer() const noexcept requires (T::instanced) { 
-        return instance_buffs[idx<T>]; 
+        return data_buffs[index_v<T>[impl::type_filter::none]]; 
     };
 
     template<std::size_t FiF, impl::RenderableType... Ts> requires (sizeof...(Ts) > 0)
     template<typename T> 
     constexpr const buffer& renderable_buffer<FiF, Ts...>::attribute_buffer() const noexcept requires impl::has_attributes_v<T> { 
-        return attribute_buffs[attribute_idx<T>]; 
+        return attribute_buffs[index_v<T>[impl::type_filter::has_attrib]]; 
     };
 
 
@@ -385,8 +404,22 @@ namespace d2d {
 
     template<std::size_t FiF, impl::RenderableType... Ts> requires (sizeof...(Ts) > 0)
     template<typename T> 
-    consteval renderable_buffer<FiF, Ts...>::bytes_t renderable_buffer<FiF, Ts...>::offsets() noexcept { 
-        return buff_offsets[idx<T>]; 
+    consteval buffer_bytes_t renderable_buffer<FiF, Ts...>::offsets() noexcept { 
+        std::array<buffer_bytes_t, count_v[impl::type_filter::none]> buff_offsets;
+        constexpr std::array<buffer_bytes_t, count_v[impl::type_filter::none]> static_sizes = {
+            (Ts::instanced ? data_size<Ts> : buffer_bytes_t{0, data_size<Ts>[buffer_type::uniform], 0, 0})...
+        };
+        
+        std::exclusive_scan(static_sizes.cbegin(), static_sizes.cend(), buff_offsets.begin(), buffer_bytes_t{},
+            [](buffer_bytes_t acc, const buffer_bytes_t& prev_size){ return buffer_bytes_t{
+                acc[buffer_type::vertex] + prev_size[buffer_type::vertex] + prev_size[buffer_type::index],
+                acc[buffer_type::uniform] + prev_size[buffer_type::uniform],
+                acc[buffer_type::vertex] + prev_size[buffer_type::vertex] + prev_size[buffer_type::index],
+                0
+            };});
+        for(std::size_t i = 0; i < count_v[impl::type_filter::none]; ++i)
+            buff_offsets[i][buffer_type::vertex] += static_sizes[i][buffer_type::index];
+        return buff_offsets[index_v<T>[impl::type_filter::none]];
     }
 }
 
@@ -394,15 +427,8 @@ namespace d2d {
     template<std::size_t FiF, impl::RenderableType... Ts> requires (sizeof...(Ts) > 0)
     template<typename T> 
     constexpr std::span<typename T::uniform_type> renderable_buffer<FiF, Ts...>::uniform_map() const noexcept requires impl::has_uniform_v<T> { 
-        return {reinterpret_cast<uniform_type<T>*>(reinterpret_cast<std::uintptr_t>(uniform_buffer_map) + buff_offsets[idx<T>].uniform), FiF}; 
+        return {reinterpret_cast<typename T::uniform_type*>(reinterpret_cast<std::uintptr_t>(uniform_buffer_map) + offsets<T>()[buffer_type::uniform]), FiF}; 
     }
-
-    template<std::size_t FiF, impl::RenderableType... Ts> requires (sizeof...(Ts) > 0)
-    template<typename T> 
-    constexpr typename T::push_constant_types renderable_buffer<FiF, Ts...>::push_constants() const noexcept requires impl::has_push_constants_v<T> {
-        return T::push_constants();
-    }
-
 
     template<std::size_t FiF, impl::RenderableType... Ts> requires (sizeof...(Ts) > 0)
     template<typename T> 
@@ -419,6 +445,6 @@ namespace d2d {
     template<std::size_t FiF, impl::RenderableType... Ts> requires (sizeof...(Ts) > 0)
     template<typename T> 
     constexpr const descriptor_set<FiF>& renderable_buffer<FiF, Ts...>::desc_set() const noexcept{ 
-        return desc_sets[uniformed_idx<T>];
+        return desc_sets[index_v<T>[impl::type_filter::has_uniform]];
     }
 }

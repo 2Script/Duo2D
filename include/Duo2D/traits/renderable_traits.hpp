@@ -59,6 +59,9 @@ namespace d2d::impl {
         std::get<0>(t.attributes());
         std::tuple_size_v<typename T::attribute_types>;
     };
+
+    template<typename T>
+    constexpr bool has_storage_v = RenderableType<T> && false; //TODO
 }
 
 
@@ -87,34 +90,4 @@ namespace d2d {
 
     template<typename... Ts>
     using make_attribute_types_t = typename make_attribute_types<Ts...>::type;
-}
-
-
-namespace d2d::impl {
-    template <typename T, typename U, typename... Ts>
-    struct type_index : std::integral_constant<std::size_t, 1 + type_index<T, Ts...>::value> {
-        constexpr static std::size_t value = 1 + type_index<T, Ts...>::value;
-        constexpr static std::size_t indexed_value = (!U::instanced && impl::has_indices_v<U>) + type_index<T, Ts...>::indexed_value;
-        constexpr static std::size_t uniformed_value = (impl::has_uniform_v<U>) + type_index<T, Ts...>::uniformed_value;
-        constexpr static std::size_t push_constant_value = (impl::has_push_constants_v<U>) + + type_index<T, Ts...>::push_constant_value;
-        constexpr static std::size_t attributed_value = (impl::has_attributes_v<U>) + type_index<T, Ts...>::attributed_value;
-    };
-    
-    template <typename T, typename... Ts>
-    struct type_index<T, T, Ts...> {
-        constexpr static std::size_t value = 0;
-        constexpr static std::size_t indexed_value = 0;
-        constexpr static std::size_t uniformed_value = 0;
-        constexpr static std::size_t push_constant_value = 0;
-        constexpr static std::size_t attributed_value = 0;
-    };
-
-    template<typename... Ts>
-    struct type_count {
-        constexpr static std::size_t value = sizeof...(Ts);
-        constexpr static std::size_t indexed_value = ((!Ts::instanced && impl::has_indices_v<Ts>) + ...);
-        constexpr static std::size_t uniformed_value = ((impl::has_uniform_v<Ts>) + ...);
-        constexpr static std::size_t push_constant_value = ((impl::has_push_constants_v<Ts>) + ...);
-        constexpr static std::size_t attributed_value = ((impl::has_attributes_v<Ts>) + ...);
-    };
 }

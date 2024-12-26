@@ -76,5 +76,5 @@ namespace d2d {
     };
 
 
-    constexpr bool x = impl::has_push_constants_v<styled_rect>;
+    struct clone_rect : styled_rect {};
 }

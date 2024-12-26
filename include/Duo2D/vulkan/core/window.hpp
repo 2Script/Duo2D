@@ -6,6 +6,7 @@
 #include <type_traits>
 #include <unordered_map>
 #include <vulkan/vulkan_core.h>
+#include "Duo2D/graphics/prim/debug_rect.hpp"
 #include "Duo2D/vulkan/core/command_buffer.hpp"
 #include "Duo2D/vulkan/core/command_pool.hpp"
 #include "Duo2D/vulkan/memory/descriptor_pool.hpp"
@@ -71,7 +72,7 @@ namespace d2d {
         swap_chain _swap_chain;
         render_pass _render_pass;
 
-        renderable_buffer<frames_in_flight, styled_rect> data;
+        renderable_buffer<frames_in_flight, styled_rect, debug_rect, clone_rect> data;
         std::unordered_map<std::string, std::size_t> renderable_mapping;
         
         std::size_t frame_idx;
@@ -80,8 +81,6 @@ namespace d2d {
         std::array<fence, frames_in_flight> render_fences;
         struct semaphore_type { enum { image_available, cmd_buffer_finished, num_semaphore_types }; };
         std::array<std::array<semaphore, frames_in_flight>, semaphore_type::num_semaphore_types> semaphores;
-
-        constexpr static auto x = d2d::styled_rect::indices()[0];
     };
 }
 

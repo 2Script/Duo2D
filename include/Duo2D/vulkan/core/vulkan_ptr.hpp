@@ -45,7 +45,12 @@ namespace d2d {
     
     public:
         constexpr vulkan_ptr(vulkan_ptr&& other) noexcept = default;
-        constexpr vulkan_ptr& operator=(vulkan_ptr&& other) noexcept = default;
+        constexpr vulkan_ptr& operator=(vulkan_ptr&& other) noexcept { 
+            if(this->handle && this->handle != other.handle) 
+                DeleterFn(this->handle, nullptr);
+            vulkan_ptr_base<VkTy>::operator=(std::move(other));
+            return *this;
+        };
         vulkan_ptr(const vulkan_ptr& other) = delete;
         vulkan_ptr& operator=(const vulkan_ptr& other) = delete;
 
@@ -61,6 +66,8 @@ namespace d2d {
         constexpr vulkan_ptr(vulkan_ptr&& other) noexcept : 
             vulkan_ptr_base<VkTy>(std::move(other)), dependent_handle(other.dependent_handle) {}
         constexpr vulkan_ptr& operator=(vulkan_ptr&& other) noexcept { 
+            if(this->handle && this->handle != other.handle) 
+                DeleterFn(dependent_handle, this->handle, nullptr);
             vulkan_ptr_base<VkTy>::operator=(std::move(other));
             dependent_handle = other.dependent_handle;
             return *this;

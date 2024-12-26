@@ -1,7 +1,7 @@
 #pragma once
 #include "Duo2D/arith/point.hpp"
 #include "Duo2D/arith/size.hpp"
-#include "Duo2D/arith/vector.hpp"
+#include "Duo2D/traits/vector_traits.hpp"
 #include <type_traits>
 #include <vulkan/vulkan_core.h>
 
@@ -9,7 +9,7 @@
 namespace d2d::impl {
     template<typename PosT, typename SizeT>
     concept VkCompatibleRectType = 
-        impl::VkCompatibleType<2, PosT, false, 0> && impl::VkCompatibleType<2, SizeT, true, 0>;
+        impl::VkCompatibleType<2, PosT, impl::vec_data_type::point, 0> && impl::VkCompatibleType<2, SizeT, impl::vec_data_type::size, 0>;
 
     template<typename PosT, typename SizeT>
     constexpr bool identity_rect = std::is_same_v<PosT, SizeT>;

@@ -11,8 +11,11 @@ namespace d2d {
         static result<buffer> create(logical_device& device, std::size_t size, VkBufferUsageFlags usage) noexcept;
 
     public:
-        std::size_t size() const noexcept { return size_bytes; } 
+        constexpr std::size_t size() const noexcept { return size_bytes; } 
+        constexpr bool empty() const noexcept { return size_bytes == 0; } 
+        constexpr VkBufferUsageFlags usage_flags() const noexcept { return flags; } 
     private:
-        std::size_t size_bytes;
+        std::size_t size_bytes = 0;
+        VkBufferUsageFlags flags;
     };
 }

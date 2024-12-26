@@ -5,6 +5,7 @@
 #include <type_traits>
 #include <utility>
 
+#include "Duo2D/arith/point.hpp"
 #include "Duo2D/arith/vector.hpp"
 #include "Duo2D/arith/axis.hpp"
 
@@ -88,7 +89,7 @@ namespace d2d {
 
     //TODO flatten/target_clones
     template<std::size_t Dims, typename UnitTy, typename... Args>
-    constexpr vector<Dims, UnitTy> transform(vector<Dims, UnitTy> src_vec, Args&&... args) noexcept;
+    constexpr point<Dims, UnitTy> transform(point<Dims, UnitTy> src_vec, Args&&... args) noexcept;
 }
 
 namespace d2d {

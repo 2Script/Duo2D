@@ -1,5 +1,6 @@
 #pragma once
 #include <cstring>
+#include <optional>
 #include <vulkan/vulkan_core.h>
 #include "Duo2D/vulkan/memory/buffer.hpp"
 #include "Duo2D/vulkan/device/logical_device.hpp"
@@ -25,7 +26,9 @@ namespace d2d {
         template<impl::RenderableType T, std::size_t FiF, impl::RenderableType... Rs>
         result<void> draw(const renderable_buffer<FiF, Rs...>& renderables) const noexcept;
         
-        result<void> copy(buffer& dest, const buffer& src, std::size_t size) const noexcept;
+        result<void> copy_begin() const noexcept;
+        void copy(buffer& dest, const buffer& src, std::size_t size) const noexcept;
+        result<void> copy_end(logical_device& device, const command_pool& pool) const noexcept;
     };
 }
 
