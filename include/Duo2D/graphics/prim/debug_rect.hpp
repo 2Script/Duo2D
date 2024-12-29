@@ -52,26 +52,6 @@ namespace d2d {
             return ret; 
         }
         constexpr attribute_types attributes() noexcept { return std::tie(transform, border_width); }
-
-    public:
-        consteval static std::array<VkVertexInputBindingDescription, 2> binding_descs() noexcept {
-            return {{
-                {0, sizeof(vertex_type), VK_VERTEX_INPUT_RATE_VERTEX},
-                {1, sizeof(transform2) + sizeof(std::uint32_t), VK_VERTEX_INPUT_RATE_INSTANCE}
-            }};
-        };
-
-        consteval static std::array<VkVertexInputAttributeDescription, 6> attribute_descs() noexcept {
-            return {{
-                {0, 0, decltype(decltype(bounds)::pos)::format, offsetof(vertex_type, pos)},
-                {1, 0, decltype(color)::format, offsetof(vertex_type, color)},
-
-                //TEMP harcoded attributes
-                {2, 1, decltype(transform2::scale)::format,       0},
-                {3, 1, VK_FORMAT_R32G32B32A32_SFLOAT,             sizeof(transform2::scale)},
-                {5, 1, decltype(transform2::translation)::format, sizeof(transform2::scale) + 2 * sizeof(vec2<float>)},
-                {6, 1, VK_FORMAT_R32_UINT,                        sizeof(transform2::scale) + 2 * sizeof(vec2<float>) + sizeof(transform2::translation)},
-            }};
-        }
+        
     };
 }

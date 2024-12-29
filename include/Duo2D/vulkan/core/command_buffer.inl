@@ -23,10 +23,7 @@ namespace d2d {
         if constexpr (T::instanced) {
             const VkBuffer vk_instance_buffer = static_cast<VkBuffer>(renderables.template instance_buffer<T>());
             constexpr static std::size_t instance_offset = renderable_buffer<FiF, Rs...>::template offsets<T>()[buffer_type::instance];
-            if constexpr (impl::has_vertices_v<T>)
-                vkCmdBindVertexBuffers(handle, 1, 1, &vk_instance_buffer, &instance_offset);
-            else
-                vkCmdBindVertexBuffers(handle, 0, 1, &vk_instance_buffer, &instance_offset);
+            vkCmdBindVertexBuffers(handle, impl::has_vertices_v<T>, 1, &vk_instance_buffer, &instance_offset);
         } 
 
         //Bind vertex buffer
@@ -39,7 +36,7 @@ namespace d2d {
         //Bind attribute buffer
         if constexpr (impl::has_attributes_v<T>) {
             const VkBuffer vk_attrib_buffer = static_cast<VkBuffer>(renderables.template attribute_buffer<T>());
-            constexpr static std::size_t attribute_binding = impl::has_vertices_v<T> + 1;
+            constexpr static std::size_t attribute_binding = impl::has_vertices_v<T> + T::instanced;
             constexpr static std::size_t attribute_offset = 0;
             vkCmdBindVertexBuffers(handle, attribute_binding, 1, &vk_attrib_buffer, &attribute_offset);
         }
