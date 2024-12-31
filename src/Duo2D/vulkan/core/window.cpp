@@ -36,7 +36,7 @@ namespace d2d {
 namespace d2d {
     result<void> window::initialize(logical_device& logi_device, physical_device& phys_device) noexcept {
         if(_swap_chain) 
-            return result<void>{std::in_place_type<void>}; //return error::window_already_initialized;
+            return {}; //return error::window_already_initialized;
 
         logi_device_ptr = std::addressof(logi_device);
         phys_device_ptr = std::addressof(phys_device);
@@ -63,7 +63,7 @@ namespace d2d {
         __D2D_TRY_MAKE(data, (make<renderable_buffer<frames_in_flight, styled_rect, debug_rect, clone_rect>>(logi_device, phys_device, _render_pass)), rb);
 
 
-        return result<void>{std::in_place_type<void>};
+        return {};
     }
 }
 
@@ -82,14 +82,14 @@ namespace d2d {
         case VK_ERROR_OUT_OF_DATE_KHR:
         case VK_SUBOPTIMAL_KHR: {
             __D2D_TRY_MAKE(_swap_chain, make<swap_chain>(*logi_device_ptr, *phys_device_ptr, _render_pass, _surface, *this), s);
-            return result<void>{std::in_place_type<void>};
+            return {};
         }
         default: 
             return static_cast<errc>(nir);
         }
 
         if(data.empty<styled_rect>())
-            return result<void>{std::in_place_type<void>};
+            return {};
 
         
         //update uniform buffer
@@ -131,7 +131,7 @@ namespace d2d {
         __D2D_VULKAN_VERIFY(vkQueuePresentKHR(logi_device_ptr->queues[queue_family::present], &present_info));
 
         frame_idx = (frame_idx + 1) % frames_in_flight;
-        return result<void>{std::in_place_type<void>};
+        return {};
     }
 }
 

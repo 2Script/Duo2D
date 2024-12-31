@@ -72,6 +72,6 @@ namespace d2d {
         
         if(auto e = copy_cmd_buffer.copy_end(device, cmd_pool); !e.has_value()) return e.error();
         associated_buffers = std::move(new_buffs); //std::swap(associated_buffers, new_buffs);
-        return result<void>{std::in_place_type<void>};
+        return {};
     }
 }

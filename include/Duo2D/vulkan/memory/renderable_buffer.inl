@@ -121,7 +121,7 @@ namespace d2d {
         }
 
         outdated[index_v<T>[impl::type_filter::none]] = false;
-        return result<void>{std::in_place_type<void>};
+        return {};
     }
 
     template<std::size_t FiF, impl::RenderableType... Ts> requires (sizeof...(Ts) > 0)
@@ -183,7 +183,7 @@ namespace d2d {
         //Copy from staging buffer to device buffer 
         if(auto c = copy(buffs[index_v<T>[BuffFilter]], staging_buffs[0], buffer_data_size); !c.has_value())
             return c.error();
-        return result<void>{std::in_place_type<void>};
+        return {};
     }
 
     template<std::size_t FiF, impl::RenderableType... Ts> requires (sizeof...(Ts) > 0)
@@ -239,7 +239,7 @@ namespace d2d {
 
         //Create pipelines
         __D2D_TRY_MAKE(std::get<pipeline<T>>(pipelines), make<pipeline<T>>(logi_device, window_render_pass, std::get<pipeline_layout<T>>(pipeline_layouts)), p);
-        return result<void>{std::in_place_type<void>};
+        return {};
     }
 }
 
@@ -251,7 +251,7 @@ namespace d2d {
         copy_cmd_buffer.copy(dst, src, size);
         if(auto e = copy_cmd_buffer.copy_end(*logi_device_ptr, copy_cmd_pool); !e.has_value()) return e.error();
 
-        return result<void>{std::in_place_type<void>};
+        return {};
     }
 
 

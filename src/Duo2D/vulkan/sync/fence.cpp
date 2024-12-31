@@ -19,11 +19,11 @@ namespace d2d {
 namespace d2d {
     result<void> fence::wait(std::uint64_t timeout) const noexcept {
         __D2D_VULKAN_VERIFY(vkWaitForFences(dependent_handle, 1, &handle, VK_TRUE, timeout));
-        return result<void>{std::in_place_type<void>};
+        return {};
     }
 
     result<void> fence::reset() const noexcept {
         __D2D_VULKAN_VERIFY(vkResetFences(dependent_handle, 1, &handle));
-        return result<void>{std::in_place_type<void>};
+        return {};
     }
 }

@@ -71,7 +71,7 @@ namespace d2d {
         //Create logical device
         __D2D_TRY_MAKE(logi_device, make<logical_device>(phys_device), ld);
 
-        return result<void>{std::in_place_type<void>};
+        return {};
     }
 }
 
@@ -96,7 +96,7 @@ namespace d2d {
     result<void> application::remove_window(std::string_view title) noexcept {
         if (auto it = windows.find(std::string(title)); it != windows.end()) {
             windows.erase(it);
-            return result<void>{std::in_place_type<void>};
+            return {};
         }
  
         return error::window_not_found;
@@ -121,11 +121,11 @@ namespace d2d {
             if(auto r = w.second.render(); !r.has_value()) 
                 return r.error();
         }
-        return result<void>{std::in_place_type<void>};
+        return {};
     }
 
     result<void> application::join() noexcept {
         __D2D_VULKAN_VERIFY(vkDeviceWaitIdle(logi_device));
-        return  result<void>{std::in_place_type<void>};
+        return  {};
     }
 }

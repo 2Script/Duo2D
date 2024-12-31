@@ -54,18 +54,18 @@ namespace d2d {
         VkRect2D scissor{{}, static_cast<VkExtent2D>(window_swap_chain.extent)};
         vkCmdSetScissor(handle, 0, 1, &scissor);
 
-        return result<void>{std::in_place_type<void>};
+        return {};
     }
 
     result<void> command_buffer::end() const noexcept {
         vkCmdEndRenderPass(handle);
         __D2D_VULKAN_VERIFY(vkEndCommandBuffer(handle));
-        return result<void>{std::in_place_type<void>};
+        return {};
     }
 
     result<void> command_buffer::reset() const noexcept {
         __D2D_VULKAN_VERIFY(vkResetCommandBuffer(handle, 0));
-        return result<void>{std::in_place_type<void>};
+        return {};
     }
 }
 
@@ -76,7 +76,7 @@ namespace d2d {
             .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
         };
         __D2D_VULKAN_VERIFY(vkBeginCommandBuffer(handle, &begin_info));
-        return result<void>{std::in_place_type<void>};
+        return {};
     }
 
     void command_buffer::copy(buffer& dest, const buffer& src, std::size_t size) const noexcept {
@@ -95,6 +95,6 @@ namespace d2d {
         vkQueueWaitIdle(device.queues[queue_family::graphics]);
 
         vkFreeCommandBuffers(device, pool, 1, &handle);
-        return result<void>{std::in_place_type<void>};
+        return {};
     }
 }

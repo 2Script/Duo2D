@@ -11,7 +11,7 @@ namespace d2d {
     template<impl::RenderableType T, std::size_t FiF, impl::RenderableType... Rs>
     result<void> command_buffer::draw(const renderable_buffer<FiF, Rs...>& renderables) const noexcept {
         if(renderables.template empty<T>())
-            return result<void>{std::in_place_type<void>};
+            return {};
 
         if(renderables.template needs_apply<T>())
             return error::buffer_outdated;
@@ -68,6 +68,6 @@ namespace d2d {
         else
             vkCmdDraw(handle, renderables.template vertex_count<T>(), renderables.template instance_count<T>(), 0, 0);
 
-        return result<void>{std::in_place_type<void>};
+        return {};
     }
 }
