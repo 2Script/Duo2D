@@ -1,5 +1,6 @@
 #pragma once 
 #include <concepts>
+#include <utility>
 
 #include "Duo2D/error.hpp"
 #include "Duo2D/traits/vk_traits.hpp"
@@ -18,13 +19,9 @@ namespace d2d {
 
     
     public:
-        constexpr vulkan_ptr_base(vulkan_ptr_base&& other) noexcept : 
-            handle(other.handle) { 
-            other.handle = VK_NULL_HANDLE; 
-        }
+        constexpr vulkan_ptr_base(vulkan_ptr_base&& other) noexcept : handle(std::exchange(other.handle, VK_NULL_HANDLE)) {}
         constexpr vulkan_ptr_base& operator=(vulkan_ptr_base&& other) noexcept {
-            handle = other.handle; 
-            other.handle = VK_NULL_HANDLE;
+            handle = std::exchange(other.handle, VK_NULL_HANDLE);
             return *this;
         };
 

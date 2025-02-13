@@ -29,7 +29,7 @@ namespace d2d {
         __D2D_TRY_MAKE(ret.copy_cmd_pool, make<command_pool>(logi_device, phys_device), ccp);
 
         //If theres no static index or vertex data, skip creating their buffers
-        constexpr static std::size_t static_buffer_size = instanced_buffer_size[buffer_type::index] + instanced_buffer_size[buffer_type::vertex];
+        constexpr static std::size_t static_buffer_size = instanced_buffer_size[buffer_data_type::index] + instanced_buffer_size[buffer_data_type::vertex];
         if constexpr (static_buffer_size == 0) goto create_uniform;
 
         {
@@ -55,13 +55,13 @@ namespace d2d {
         
 
         //Copy from index staging buffer to index device buffer
-        if(auto c = ret.copy(ret.static_data_buff, static_staging_buffs[0], static_buffer_size); !c.has_value())
+        if(auto c = ret.copy_generic(ret.static_data_buff, static_staging_buffs[0], static_buffer_size); !c.has_value())
             return c.error();
         }
 
     create_uniform:
         //If theres no uniform data, just return
-        constexpr static std::size_t uniform_buffer_size = (data_size<Ts>[buffer_type::uniform] + ...);
+        constexpr static std::size_t uniform_buffer_size = (data_size<Ts>[buffer_data_type::uniform] + ...);
         if constexpr (uniform_buffer_size == 0) return ret;
 
         //Create uniform buffer
@@ -87,15 +87,15 @@ namespace d2d {
     template<typename T>
     result<void> renderable_buffer<FiF, Ts...>::apply(bool shrink) noexcept {
         if constexpr (!T::instanced && impl::has_indices_v<T>) 
-            if(auto c = create_buffer<T, impl::type_filter::has_index>(shrink, data_size<T>[buffer_type::index], index_buffs, index_device_local_mem); !c.has_value())
+            if(auto c = create_buffer<T, impl::type_filter::has_index>(shrink, data_size<T>[buffer_data_type::index], index_buffs, index_device_local_mem); !c.has_value())
                 return c.error();
 
         if constexpr (!T::instanced && impl::has_vertices_v<T>) 
-            if(auto c = create_buffer<T, impl::type_filter::none>(shrink, data_size<T>[buffer_type::vertex], data_buffs, data_device_local_mem); !c.has_value())
+            if(auto c = create_buffer<T, impl::type_filter::none>(shrink, data_size<T>[buffer_data_type::vertex], data_buffs, data_device_local_mem); !c.has_value())
                 return c.error();
 
         if constexpr (T::instanced) 
-            if(auto c = create_buffer<T, impl::type_filter::none>(shrink, data_size<T>[buffer_type::instance], data_buffs, data_device_local_mem); !c.has_value())
+            if(auto c = create_buffer<T, impl::type_filter::none>(shrink, data_size<T>[buffer_data_type::instance], data_buffs, data_device_local_mem); !c.has_value())
                 return c.error();
 
         
@@ -181,7 +181,7 @@ namespace d2d {
         }
 
         //Copy from staging buffer to device buffer 
-        if(auto c = copy(buffs[index_v<T>[BuffFilter]], staging_buffs[0], buffer_data_size); !c.has_value())
+        if(auto c = copy_generic(buffs[index_v<T>[BuffFilter]], staging_buffs[0], buffer_data_size); !c.has_value())
             return c.error();
         return {};
     }
@@ -231,7 +231,7 @@ namespace d2d {
             __D2D_TRY_MAKE(std::get<pipeline_layout<T>>(pipeline_layouts), make<pipeline_layout<T>>(logi_device, desc_set_layouts[I]), pl);
 
             //Create descriptor set and pool
-            __D2D_TRY_MAKE(desc_sets[I], (make<descriptor_set<FiF>>(logi_device, desc_pool, desc_set_layouts[I], uniform_buff, data_size<T>[buffer_type::uniform], offsets<T>()[buffer_type::uniform])), ds);
+            __D2D_TRY_MAKE(desc_sets[I], (make<descriptor_set<FiF>>(logi_device, desc_pool, desc_set_layouts[I], uniform_buff, data_size<T>[buffer_data_type::uniform], offsets<T>()[buffer_data_type::uniform])), ds);
         } else {
             //Create pipeline layouts
             __D2D_TRY_MAKE(std::get<pipeline_layout<T>>(pipeline_layouts), make<pipeline_layout<T>>(logi_device), pl);
@@ -245,10 +245,10 @@ namespace d2d {
 
 namespace d2d {
     template<std::size_t FiF, impl::RenderableType... Ts> requires (sizeof...(Ts) > 0)
-    result<void> renderable_buffer<FiF, Ts...>::copy(buffer& dst, const buffer& src, std::size_t size) const noexcept {
+    result<void> renderable_buffer<FiF, Ts...>::copy_generic(buffer& dst, const buffer& src, std::size_t size) const noexcept {
         __D2D_TRY_MAKE(command_buffer copy_cmd_buffer, (make<command_buffer>(*logi_device_ptr, copy_cmd_pool)), ccb);
         if(auto b = copy_cmd_buffer.copy_begin(); !b.has_value()) return b.error();
-        copy_cmd_buffer.copy(dst, src, size);
+        copy_cmd_buffer.copy_generic(dst, src, size);
         if(auto e = copy_cmd_buffer.copy_end(*logi_device_ptr, copy_cmd_pool); !e.has_value()) return e.error();
 
         return {};
@@ -259,9 +259,9 @@ namespace d2d {
     template<typename T>
     void renderable_buffer<FiF, Ts...>::copy_staging(void* data_map) noexcept {
         if constexpr (T::instanced && impl::has_indices_v<T>)
-            std::memcpy(static_cast<char*>(data_map) + offsets<T>()[buffer_type::index], T::indices().data(), data_size<T>[buffer_type::index]);
+            std::memcpy(static_cast<char*>(data_map) + offsets<T>()[buffer_data_type::index], T::indices().data(), data_size<T>[buffer_data_type::index]);
         if constexpr (T::instanced && impl::has_vertices_v<T>)
-            std::memcpy(static_cast<char*>(data_map) + offsets<T>()[buffer_type::vertex], T::vertices().data(), data_size<T>[buffer_type::vertex]);
+            std::memcpy(static_cast<char*>(data_map) + offsets<T>()[buffer_data_type::vertex], T::vertices().data(), data_size<T>[buffer_data_type::vertex]);
     }
 }
 
@@ -407,18 +407,18 @@ namespace d2d {
     consteval buffer_bytes_t renderable_buffer<FiF, Ts...>::offsets() noexcept { 
         std::array<buffer_bytes_t, count_v[impl::type_filter::none]> buff_offsets;
         constexpr std::array<buffer_bytes_t, count_v[impl::type_filter::none]> static_sizes = {
-            (Ts::instanced ? data_size<Ts> : buffer_bytes_t{0, data_size<Ts>[buffer_type::uniform], 0, 0})...
+            (Ts::instanced ? data_size<Ts> : buffer_bytes_t{0, data_size<Ts>[buffer_data_type::uniform], 0, 0})...
         };
         
         std::exclusive_scan(static_sizes.cbegin(), static_sizes.cend(), buff_offsets.begin(), buffer_bytes_t{},
             [](buffer_bytes_t acc, const buffer_bytes_t& prev_size){ return buffer_bytes_t{
-                acc[buffer_type::vertex] + prev_size[buffer_type::vertex] + prev_size[buffer_type::index],
-                acc[buffer_type::uniform] + prev_size[buffer_type::uniform],
-                acc[buffer_type::vertex] + prev_size[buffer_type::vertex] + prev_size[buffer_type::index],
+                acc[buffer_data_type::vertex] + prev_size[buffer_data_type::vertex] + prev_size[buffer_data_type::index],
+                acc[buffer_data_type::uniform] + prev_size[buffer_data_type::uniform],
+                acc[buffer_data_type::vertex] + prev_size[buffer_data_type::vertex] + prev_size[buffer_data_type::index],
                 0
             };});
         for(std::size_t i = 0; i < count_v[impl::type_filter::none]; ++i)
-            buff_offsets[i][buffer_type::vertex] += static_sizes[i][buffer_type::index];
+            buff_offsets[i][buffer_data_type::vertex] += static_sizes[i][buffer_data_type::index];
         return buff_offsets[index_v<T>[impl::type_filter::none]];
     }
 }
@@ -427,7 +427,7 @@ namespace d2d {
     template<std::size_t FiF, impl::RenderableType... Ts> requires (sizeof...(Ts) > 0)
     template<typename T> 
     constexpr std::span<typename T::uniform_type> renderable_buffer<FiF, Ts...>::uniform_map() const noexcept requires impl::has_uniform_v<T> { 
-        return {reinterpret_cast<typename T::uniform_type*>(reinterpret_cast<std::uintptr_t>(uniform_buffer_map) + offsets<T>()[buffer_type::uniform]), FiF}; 
+        return {reinterpret_cast<typename T::uniform_type*>(reinterpret_cast<std::uintptr_t>(uniform_buffer_map) + offsets<T>()[buffer_data_type::uniform]), FiF}; 
     }
 
     template<std::size_t FiF, impl::RenderableType... Ts> requires (sizeof...(Ts) > 0)

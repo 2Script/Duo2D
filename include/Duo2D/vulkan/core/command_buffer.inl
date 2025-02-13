@@ -22,14 +22,14 @@ namespace d2d {
         //Bind instance buffer
         if constexpr (T::instanced) {
             const VkBuffer vk_instance_buffer = static_cast<VkBuffer>(renderables.template instance_buffer<T>());
-            constexpr static std::size_t instance_offset = renderable_buffer<FiF, Rs...>::template offsets<T>()[buffer_type::instance];
+            constexpr static std::size_t instance_offset = renderable_buffer<FiF, Rs...>::template offsets<T>()[buffer_data_type::instance];
             vkCmdBindVertexBuffers(handle, impl::has_vertices_v<T>, 1, &vk_instance_buffer, &instance_offset);
         } 
 
         //Bind vertex buffer
         if constexpr (!T::instanced || impl::has_vertices_v<T>) {
             const VkBuffer vk_vertex_buffer = static_cast<VkBuffer>(renderables.template vertex_buffer<T>());
-            constexpr static std::size_t vertex_offset = T::instanced ? renderable_buffer<FiF, Rs...>::template offsets<T>()[buffer_type::vertex] : 0;
+            constexpr static std::size_t vertex_offset = T::instanced ? renderable_buffer<FiF, Rs...>::template offsets<T>()[buffer_data_type::vertex] : 0;
             vkCmdBindVertexBuffers(handle, 0, 1, &vk_vertex_buffer, &vertex_offset);
         }
 
@@ -43,7 +43,7 @@ namespace d2d {
 
         //Bind index buffer
         if constexpr (impl::has_indices_v<T>) {
-            constexpr static std::size_t index_offset = T::instanced ? renderable_buffer<FiF, Rs...>::template offsets<T>()[buffer_type::index] : 0;
+            constexpr static std::size_t index_offset = T::instanced ? renderable_buffer<FiF, Rs...>::template offsets<T>()[buffer_data_type::index] : 0;
             vkCmdBindIndexBuffer(handle, static_cast<VkBuffer>(renderables.template index_buffer<T>()), index_offset, sizeof(typename T::index_type) == 4 ? VK_INDEX_TYPE_UINT32 : VK_INDEX_TYPE_UINT16);
         }
 

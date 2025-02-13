@@ -79,9 +79,20 @@ namespace d2d {
         return {};
     }
 
-    void command_buffer::copy(buffer& dest, const buffer& src, std::size_t size) const noexcept {
+    void command_buffer::copy_generic(buffer& dest, const buffer& src, std::size_t size) const noexcept {
         VkBufferCopy copy_region{ .size = size };
-        vkCmdCopyBuffer(handle, src, dest, 1, &copy_region);
+        vkCmdCopyBuffer(handle, static_cast<VkBuffer>(src), static_cast<VkBuffer>(dest), 1, &copy_region);
+    }
+
+    void command_buffer::copy_image(buffer& dest, const buffer& src, extent2 size) const noexcept {
+        VkImageCopy copy_region{
+            .srcSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1},
+            .srcOffset = {0, 0, 0},
+            .dstSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1},
+            .dstOffset = {0, 0, 0},
+            .extent = {size.width(), size.height(), 1}
+        };
+        vkCmdCopyImage(handle, static_cast<VkImage>(src), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, static_cast<VkImage>(dest), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, &copy_region);
     }
 
     result<void> command_buffer::copy_end(logical_device& device, const command_pool& pool) const noexcept {

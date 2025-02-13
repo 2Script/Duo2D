@@ -40,6 +40,7 @@ namespace d2d::error {
         window_already_exists,
         element_not_found,
         buffer_outdated,
+        invalid_buffer_type,
 
         unknown,
         num_codes,

@@ -6,12 +6,12 @@
 
 
 namespace d2d {
-    struct buffer_type{ enum {
+    struct buffer_data_type{ enum {
         index, uniform, vertex, instance,
         count
     };};
 
-    using buffer_bytes_t = vector<buffer_type::count, std::size_t>;
+    using buffer_bytes_t = vector<buffer_data_type::count, std::size_t>;
 }
 
 namespace d2d::impl {

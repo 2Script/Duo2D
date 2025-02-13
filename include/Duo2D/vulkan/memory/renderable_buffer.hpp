@@ -102,7 +102,7 @@ namespace d2d {
         template<typename T> 
         result<void> create_pipelines(logical_device& logi_device, render_pass& window_render_pass) noexcept;
 
-        result<void> copy(buffer& dst, const buffer& src, std::size_t size) const noexcept;
+        result<void> copy_generic(buffer& dst, const buffer& src, std::size_t size) const noexcept;
         template<typename T>
         static void copy_staging(void* data_map) noexcept;
 

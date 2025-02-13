@@ -24,10 +24,11 @@ namespace d2d {
         result<void> reset() const noexcept;
 
         template<impl::RenderableType T, std::size_t FiF, impl::RenderableType... Rs>
-        result<void> draw(const renderable_buffer<FiF, Rs...>& renderables) const noexcept;
+        result<void> draw(const renderable_buffer<FiF, Rs...>& renderables) const noexcept; 
         
         result<void> copy_begin() const noexcept;
-        void copy(buffer& dest, const buffer& src, std::size_t size) const noexcept;
+        void copy_generic(buffer& dest, const buffer& src, std::size_t size) const noexcept;
+        void copy_image(buffer& dest, const buffer& src, extent2 size) const noexcept;
         result<void> copy_end(logical_device& device, const command_pool& pool) const noexcept;
     };
 }
