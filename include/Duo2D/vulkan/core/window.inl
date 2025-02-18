@@ -56,7 +56,7 @@ namespace d2d {
 
 namespace d2d {
     template<typename T>
-    result<void> window::apply(bool shrink) noexcept {
-        return data.apply<T>(shrink);
+    result<void> window::apply() noexcept {
+        return data.apply<T>();
     }
 }

@@ -14,7 +14,7 @@
 
 namespace d2d {
     template<std::size_t N>
-    result<device_memory<N>> device_memory<N>::create(logical_device& logi_device, physical_device& phys_device, const std::array<buffer, N>& associated_buffers, VkMemoryPropertyFlags properties) noexcept {
+    result<device_memory<N>> device_memory<N>::create(logical_device& logi_device, physical_device& phys_device, std::span<buffer, N> associated_buffers, VkMemoryPropertyFlags properties) noexcept {
         device_memory ret{};
         ret.dependent_handle = logi_device;
 
@@ -64,30 +64,48 @@ namespace d2d {
 
 namespace d2d {
     template<std::size_t N>
-    result<void> device_memory<N>::bind(logical_device& device, std::array<buffer, N>& associated_buffers, std::size_t buff_idx, command_pool& cmd_pool) const noexcept {
-        RESULT_TRY_MOVE_UNSCOPED(command_buffer copy_cmd_buffer, (make<command_buffer>(device, cmd_pool)), ccb);
-        if(auto b = copy_cmd_buffer.copy_begin(); !b.has_value()) return b.error();
+    void device_memory<N>::unmap(logical_device& device) const noexcept {
+        mapped = false;
+        return vkUnmapMemory(device, handle);
+    }
 
-        std::array<buffer, N> new_buffs = {};
-        std::size_t mem_offset = 0;
-        for(std::size_t i = 0; i < N; ++i) {
-            if(associated_buffers[i].empty()) continue;
-            RESULT_TRY_MOVE(new_buffs[i], associated_buffers[i].clone(device));
-            switch(associated_buffers[i].type()){
-            case buffer_type::generic:
-                vkBindBufferMemory(device, static_cast<VkBuffer>(new_buffs[i]), handle, mem_offset);
-                if(i != buff_idx) copy_cmd_buffer.copy_generic(new_buffs[i], associated_buffers[i], new_buffs[i].size());
-                break;
-            case buffer_type::image:
-                vkBindImageMemory(device, static_cast<VkImage>(new_buffs[i]), handle, mem_offset);
-                if(i != buff_idx) copy_cmd_buffer.copy_image(new_buffs[i], associated_buffers[i], new_buffs[i].image_size());
-                break;
-            }
-            mem_offset += (new_buffs[i].size() + mem_reqs[i].alignment - 1) & ~(mem_reqs[i].alignment - 1);
+    template<std::size_t N>
+    result<void*> device_memory<N>::map(logical_device& device, std::size_t size, std::size_t offset) const noexcept {
+        if(mapped) unmap(device);
+        void* map;
+        __D2D_VULKAN_VERIFY(vkMapMemory(device, handle, offset, size, 0, &map));
+        mapped = true;
+        return map;
+    }
+
+
+    template<std::size_t N>
+    result<void> device_memory<N>::bind(logical_device& device, buffer& buff, std::size_t offset) const noexcept {
+        switch(buff.type()){
+        case buffer_type::generic:
+            __D2D_VULKAN_VERIFY(vkBindBufferMemory(device, static_cast<VkBuffer>(buff), handle, offset));
+            break;
+        case buffer_type::image:
+            __D2D_VULKAN_VERIFY(vkBindImageMemory(device, static_cast<VkImage>(buff), handle, offset));
+            break;
         }
-        
-        if(auto e = copy_cmd_buffer.copy_end(device, cmd_pool); !e.has_value()) return e.error();
-        associated_buffers = std::move(new_buffs); //std::swap(associated_buffers, new_buffs);
         return {};
+    }
+}
+
+
+namespace d2d {
+    template<std::size_t N>
+    constexpr device_memory<N>::device_memory(device_memory&& other) noexcept : 
+        vulkan_ptr<VkDeviceMemory, vkFreeMemory>(std::move(other)), 
+        mem_reqs(other.mem_reqs),
+        mapped(other.mapped) {}
+
+    template<std::size_t N>
+    constexpr device_memory<N>& device_memory<N>::operator=(device_memory&& other) noexcept { 
+        vulkan_ptr<VkDeviceMemory, vkFreeMemory>::operator=(std::move(other));
+        mem_reqs = other.mem_reqs;
+        mapped = other.mapped;
+        return *this;
     }
 }

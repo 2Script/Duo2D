@@ -8,6 +8,7 @@ layout(binding = 0) uniform UBO {
 layout(location = 0) in vec2 pos_in;
 layout(location = 1) in uvec4 color_in;
 
+//per-instance attributes
 layout(location = 2) in vec2 scale;
 layout(location = 3) in mat2x2 rotate;
 layout(location = 5) in vec2 translate;

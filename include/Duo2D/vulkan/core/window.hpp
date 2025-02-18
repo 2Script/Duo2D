@@ -48,7 +48,7 @@ namespace d2d {
         std::size_t erase(std::string_view key) noexcept;
 
         template<typename T>
-        result<void> apply(bool shrink = false) noexcept;
+        result<void> apply() noexcept;
 
     public:
         constexpr operator GLFWwindow*() const noexcept { return handle.get(); }

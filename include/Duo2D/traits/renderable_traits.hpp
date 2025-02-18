@@ -107,7 +107,7 @@ namespace d2d {
             std::uint32_t i = 0;
             if constexpr(has_vertices)   ret[i++] = {i, sizeof(typename traits_type::vertex_type), VK_VERTEX_INPUT_RATE_VERTEX};
             if constexpr(T::instanced)   ret[i++] = {i, sizeof(typename traits_type::instance_type), VK_VERTEX_INPUT_RATE_INSTANCE};
-            if constexpr(has_attributes) ret[i++] = {i, impl::extract_attribute_size<typename traits_type::attribute_types>::value, static_cast<VkVertexInputRate>(T::instanced)};
+            if constexpr(has_attributes) ret[i++] = {i, impl::extract_attribute_size<typename traits_type::attribute_types>::value, VK_VERTEX_INPUT_RATE_INSTANCE};//static_cast<VkVertexInputRate>(T::instanced)};
             return ret;
         }
         
@@ -148,17 +148,25 @@ namespace d2d::impl {
     template<typename T>
     constexpr bool has_indices_v = RenderableType<T> && requires {
         requires (requires(T t) {{t.indices()} noexcept;}) || (requires{ {T::indices()} noexcept;});
-        {T::index_count} -> std::same_as<const std::size_t&>;
-        requires T::index_count > 0;
         requires std::is_same_v<typename T::index_type, std::uint16_t> || std::is_same_v<typename T::index_type, std::uint32_t>;
     };
 
     template<typename T>
     constexpr bool has_vertices_v = RenderableType<T> && requires {
         requires (requires(T t) {{t.vertices()} noexcept;}) || (requires{ {T::vertices()} noexcept;});
+        typename T::vertex_type;
+    };
+
+    template<typename T>
+    constexpr bool has_fixed_indices_v = RenderableType<T> && has_indices_v<T> && requires {
+        {T::index_count} -> std::same_as<const std::size_t&>;
+        requires T::index_count > 0;
+    };
+
+    template<typename T>
+    constexpr bool has_fixed_vertices_v = RenderableType<T> && has_vertices_v<T> && requires {
         {T::vertex_count} -> std::same_as<const std::size_t&>;
         requires T::vertex_count > 0;
-        typename T::vertex_type;
     };
 
     template<typename T>

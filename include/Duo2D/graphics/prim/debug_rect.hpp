@@ -11,6 +11,7 @@
 #include "Duo2D/vulkan/memory/attribute.hpp"
 #include <cstddef>
 #include <tuple>
+#include <vector>
 #include <vulkan/vulkan_core.h>
 
 namespace d2d {
@@ -44,9 +45,9 @@ namespace d2d {
         attribute<std::uint32_t> border_width = {};
 
     public:
-        constexpr std::array<index_type, index_count> indices() noexcept { return {0, 1, 2, 2, 3, 0}; }
-        constexpr std::array<vertex_type, vertex_count> vertices() const noexcept {
-            std::array<vertex_type, vertex_count> ret = {};
+        constexpr std::vector<index_type> indices() noexcept { return {0, 1, 2, 2, 3, 0}; }
+        constexpr std::vector<vertex_type> vertices() const noexcept {
+            std::vector<vertex_type> ret(vertex_count);
             for(std::size_t i = 0; i < vertex_count; ++i)
                 ret[i] = {bounds.points()[i], color};
             return ret; 
