@@ -57,8 +57,9 @@ namespace d2d {
     private:
         window(GLFWwindow* w) noexcept : 
             handle(w, glfwDestroyWindow), logi_device_ptr(nullptr), phys_device_ptr(nullptr),
-            _surface(), _swap_chain(), data(), renderable_mapping(), 
-            frame_idx(0), _command_pool(), command_buffers{}, render_fences{}, semaphores{} {}
+            _surface(), _swap_chain(), _render_pass(),
+            frame_idx(0), _command_pool(), command_buffers{}, render_fences{}, frame_semaphores{}, submit_semaphores(),
+            data(), renderable_mapping() {}
         friend physical_device;
         
     private:
@@ -72,15 +73,16 @@ namespace d2d {
         swap_chain _swap_chain;
         render_pass _render_pass;
 
-        renderable_buffer<frames_in_flight, styled_rect, debug_rect, clone_rect> data;
-        std::unordered_map<std::string, std::size_t> renderable_mapping;
-        
         std::size_t frame_idx;
         command_pool _command_pool;
         std::array<command_buffer, frames_in_flight> command_buffers;
         std::array<fence, frames_in_flight> render_fences;
-        struct semaphore_type { enum { image_available, cmd_buffer_finished, num_semaphore_types }; };
-        std::array<std::array<semaphore, frames_in_flight>, semaphore_type::num_semaphore_types> semaphores;
+        struct semaphore_type { enum { image_available, /*cmd_buffer_finished,*/ num_semaphore_types }; };
+        std::array<std::array<semaphore, frames_in_flight>, semaphore_type::num_semaphore_types> frame_semaphores;
+        std::vector<semaphore> submit_semaphores;
+
+        renderable_buffer<frames_in_flight, styled_rect, debug_rect, clone_rect> data;
+        std::unordered_map<std::string, std::size_t> renderable_mapping;
     };
 }
 

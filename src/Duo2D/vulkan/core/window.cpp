@@ -4,6 +4,7 @@
 #include <cmath>
 #include <cstring>
 #include <memory>
+#include <result/verify.h>
 #include <vulkan/vulkan_core.h>
 
 #include "Duo2D/error.hpp"
@@ -29,7 +30,7 @@ namespace d2d {
         //Create surface
         __D2D_TRY_MAKE(ret._surface, make<surface>(ret, i), s);
 
-        return ret;
+        return std::move(ret);
     }
 }
 
@@ -56,8 +57,14 @@ namespace d2d {
 
             //Create fences & sempahores
             __D2D_TRY_MAKE(render_fences[i], make<fence>(logi_device), f);
-            __D2D_TRY_MAKE(semaphores[semaphore_type::image_available][i], make<semaphore>(logi_device), ia);
-            __D2D_TRY_MAKE(semaphores[semaphore_type::cmd_buffer_finished][i], make<semaphore>(logi_device), cbf);
+            __D2D_TRY_MAKE(frame_semaphores[semaphore_type::image_available][i], make<semaphore>(logi_device), ia);
+        }
+        
+        //Create submit sempahores
+        submit_semaphores.reserve(_swap_chain.image_count);
+        for(std::size_t i = 0; i < _swap_chain.image_count; ++i) {
+            RESULT_VERIFY_UNSCOPED(make<semaphore>(logi_device), submit_semaphore);
+            submit_semaphores.push_back(*std::move(submit_semaphore));
         }
 
         __D2D_TRY_MAKE(data, (make<renderable_buffer<frames_in_flight, styled_rect, debug_rect, clone_rect>>(logi_device, phys_device, _render_pass)), rb);
@@ -73,7 +80,7 @@ namespace d2d {
         render_fences[frame_idx].wait();
 
         uint32_t image_index;
-        VkResult nir = vkAcquireNextImageKHR(*logi_device_ptr, _swap_chain, UINT64_MAX, semaphores[semaphore_type::image_available][frame_idx], VK_NULL_HANDLE, &image_index);
+        VkResult nir = vkAcquireNextImageKHR(*logi_device_ptr, _swap_chain, UINT64_MAX, frame_semaphores[semaphore_type::image_available][frame_idx], VK_NULL_HANDLE, &image_index);
         
         //Re-create swap chain if needed 
         switch(nir) {
@@ -111,19 +118,19 @@ namespace d2d {
         VkSubmitInfo submit_info{
             .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
             .waitSemaphoreCount = 1,
-            .pWaitSemaphores = &semaphores[semaphore_type::image_available][frame_idx],
+            .pWaitSemaphores = &frame_semaphores[semaphore_type::image_available][frame_idx],
             .pWaitDstStageMask = wait_stages.data(),
             .commandBufferCount = 1,
             .pCommandBuffers = &command_buffers[frame_idx],
             .signalSemaphoreCount = 1,
-            .pSignalSemaphores = &semaphores[semaphore_type::cmd_buffer_finished][frame_idx],
+            .pSignalSemaphores = &submit_semaphores[image_index],
         };
         __D2D_VULKAN_VERIFY(vkQueueSubmit(logi_device_ptr->queues[queue_family::graphics], 1, &submit_info, render_fences[frame_idx]));
 
         VkPresentInfoKHR present_info{
             .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
             .waitSemaphoreCount = 1,
-            .pWaitSemaphores = &semaphores[semaphore_type::cmd_buffer_finished][frame_idx],
+            .pWaitSemaphores = &submit_semaphores[image_index],
             .swapchainCount = 1,
             .pSwapchains = &_swap_chain,
             .pImageIndices = &image_index,
