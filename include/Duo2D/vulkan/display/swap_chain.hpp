@@ -17,7 +17,8 @@ namespace d2d {
         static result<swap_chain> create(logical_device& logi_deivce, physical_device& phys_device, render_pass& window_render_pass, surface& window_surface, window& w) noexcept;
 
     private:
-        extent2 extent;
+        extent2 extent{};
+        std::uint32_t image_count = 0;
         //TEMP:
         std::vector<VkImage> images;
         std::vector<image_view> image_views;
@@ -25,6 +26,6 @@ namespace d2d {
     
     private:
         friend struct command_buffer;
-        friend window; //TODO just make an extent() function
+        friend window; //TODO just make an extent() function?
     };
 }

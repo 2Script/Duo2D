@@ -39,8 +39,9 @@ namespace d2d::error {
         window_not_found,
         window_already_exists,
         element_not_found,
-        buffer_outdated,
+        buffer_needs_changes_applied,
         invalid_buffer_type,
+        descriptors_not_initialized,
 
         unknown,
         num_codes,

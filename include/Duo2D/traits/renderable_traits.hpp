@@ -60,9 +60,17 @@ namespace d2d::impl {
     struct extract_attribute_size<std::tuple<attribute<Ts>&...>> : 
         std::integral_constant<std::size_t, (sizeof(Ts) + ...)> {};
 
+    template<typename T> struct extract_attribute_sizes;
+    template<typename... Ts> 
+    struct extract_attribute_sizes<std::tuple<attribute<Ts>&...>> {
+        constexpr static std::array<std::size_t, sizeof...(Ts)> value{ sizeof(Ts)... };
+    };
+
     template<typename T> struct extract_attribute_members;
     template<typename... Ts> 
-    struct extract_attribute_members<std::tuple<attribute<Ts>&...>> { using type = decltype(std::tuple_cat(to_tuple(size_constant<member_count<Ts>()>{}, std::declval<Ts>())...));};
+    struct extract_attribute_members<std::tuple<attribute<Ts>&...>> { 
+        using type = decltype(std::tuple_cat(to_tuple(size_constant<member_count<Ts>()>{}, std::declval<Ts>())...));
+    };
 
 
     template<typename T> struct extract_attribute_member_count;

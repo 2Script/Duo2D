@@ -53,7 +53,11 @@ namespace d2d {
         __D2D_VULKAN_VERIFY(vkEnumeratePhysicalDevices(vk_instance, &device_count, devices.data()));
 
         //Create dummy window
-        __D2D_TRY_MAKE(window dummy, make<window>("dummy", 1280, 720, vk_instance), var_name);
+        //__D2D_TRY_MAKE(window dummy, make<window>("dummy", 1280, 720, vk_instance), var_name);
+        auto var_name = make<window>("dummy", 1280, 720, vk_instance);
+        if (!var_name.has_value())
+          return var_name.error();
+        window dummy = *std ::move(var_name);
 
 
         std::set<physical_device> ret{};

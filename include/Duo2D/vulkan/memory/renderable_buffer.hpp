@@ -18,6 +18,7 @@
 #include "Duo2D/vulkan/device/physical_device.hpp"
 #include "Duo2D/vulkan/memory/buffer.hpp"
 #include "Duo2D/vulkan/memory/device_memory.hpp"
+#include "Duo2D/vulkan/memory/local_renderable.hpp"
 #include "Duo2D/vulkan/memory/pipeline.hpp"
 #include "Duo2D/vulkan/memory/pipeline_layout.hpp"
 #include "Duo2D/traits/renderable_traits.hpp"
@@ -26,9 +27,11 @@
 #include "zstring.hpp"
 
 namespace d2d {
-    template<std::size_t FramesInFlight, impl::RenderableType... Ts> requires (sizeof...(Ts) > 0)
+    template<std::size_t FramesInFlight, impl::RenderableType... Ts> //requires (sizeof...(Ts) > 0)
     struct renderable_buffer {
-        //could benefit from SIMD (just a target_clones)
+        static_assert(sizeof...(Ts) > 0, "renderable_buffer needs at least 1 renderable type");
+    public:
+        //could benefit from SIMD? (just a target_clones)
         static result<renderable_buffer> create(logical_device& logi_device, physical_device& phys_device, render_pass& window_render_pass) noexcept;
     
     public:
@@ -37,8 +40,10 @@ namespace d2d {
         template<typename T, typename... Args>
         constexpr T& emplace_back(Args&&... args) noexcept;
 
+        //TODO: rename/refactor to apply_changes
         template<typename T>
         result<void> apply() noexcept;
+        //TODO: rename/refactor to has_changes
         template<typename T>
         constexpr bool needs_apply() const noexcept;
 
@@ -86,25 +91,14 @@ namespace d2d {
 
 
     private:
-
-        constexpr static std::array<std::size_t, impl::type_filter::count> count_v = impl::type_count<Ts...>::value;
-        template<typename T> constexpr static std::array<std::size_t, impl::type_filter::count> index_v = impl::type_index<T, Ts...>::value;
-        static_assert(count_v[impl::type_filter::has_attrib] == std::tuple_size_v<impl::attributes_tuple<Ts...>>);
-        
-        template<typename T> constexpr static buffer_bytes_t fixed_size = {
-            [](){if constexpr (impl::has_fixed_indices_v<T>)  return T::index_count * sizeof(typename T::index_type);                  return static_cast<std::size_t>(0); }(),
-            [](){if constexpr (impl::has_uniform_v<T>)        return FramesInFlight * sizeof(typename T::uniform_type);                return static_cast<std::size_t>(0); }(),
-            [](){if constexpr (impl::has_fixed_vertices_v<T>) return T::vertex_count * sizeof(typename T::vertex_type);                return static_cast<std::size_t>(0); }(),
-            [](){if constexpr (T::instanced)                  return sizeof(typename T::instance_type);                                return static_cast<std::size_t>(0); }(), 
-            [](){if constexpr (impl::has_attributes_v<T>)     return impl::extract_attribute_size<typename T::attribute_types>::value; return static_cast<std::size_t>(0); }(), 
-        };
-        constexpr static buffer_bytes_t instanced_buffer_size = ((Ts::instanced ? fixed_size<Ts> : buffer_bytes_t{}) + ...); 
-        template<typename T> constexpr static std::size_t num_attributes = std::tuple_size_v<decltype(std::declval<T>().attributes())>;
-        
-        template<typename T> constexpr static std::array<std::byte, fixed_size<T>[buffer_data_type::index]> fixed_index_bytes = 
-            std::bit_cast<std::array<std::byte, fixed_size<T>[buffer_data_type::index]>>(T::indices());
-        template<typename T> constexpr static std::array<std::byte, fixed_size<T>[buffer_data_type::vertex]> fixed_vertex_bytes = 
-            std::bit_cast<std::array<std::byte, fixed_size<T>[buffer_data_type::vertex]>>(T::vertices());
+        template<typename T>
+        constexpr local_renderable<T, FramesInFlight>& renderable_for() noexcept {
+            return std::get<local_renderable<T, FramesInFlight>>(local_renderables);
+        }
+        template<typename T>
+        constexpr local_renderable<T, FramesInFlight> const& renderable_for() const noexcept {
+            return std::get<local_renderable<T, FramesInFlight>>(local_renderables);
+        }
 
     private:
         template<typename InputContainerT>
@@ -114,41 +108,35 @@ namespace d2d {
         template<std::size_t I, std::size_t N>
         result<void> staging_to_device_local(std::span<buffer, N> device_local_buffs, buffer const& staging_buff) noexcept;
         
-        template<typename T> 
-        result<void> create_pipelines(logical_device& logi_device, render_pass& window_render_pass) noexcept;
-
-
-        template<std::size_t I, typename T>
-        constexpr void emplace_attribute(std::span<std::byte> attributes_span, std::array<std::size_t, num_attributes<T>> attribute_offsets, std::size_t attribute_size) noexcept;
 
     private:
-        std::tuple<std::vector<Ts>...> data;
-        impl::attributes_tuple<Ts...> attributes_map_tuple; //tuple<span<T0_bytes>, span<T1_bytes>, ...>
-        std::array<bool, count_v[impl::type_filter::none]> outdated;
+        std::tuple<local_renderable<Ts, FramesInFlight>...> local_renderables;
 
-        //up to 5 total memory allocations
+        constexpr static std::size_t renderable_count = sizeof...(Ts);
+        constexpr static std::size_t renderable_count_with_attrib = (static_cast<bool>(local_renderable<Ts, FramesInFlight>::attribute_data_size) + ...);
+        //TODO: Find a better strategy than these manual index calculation shenanigans
+        template<typename T>
+        constexpr static std::size_t renderable_index = impl::type_index<T, Ts...>::value;
+        template<typename T>
+        constexpr static std::size_t renderable_index_with_attrib = impl::type_index<T, Ts...>::with_attrib_value;
+
+
+        //up to 4 total memory allocations
         //ORDER MATTERS: buffers must be destroyed before memories
-        device_memory<count_v[impl::type_filter::none]> device_local_mem;
-        device_memory<1> static_device_local_mem;
-        device_memory<1> host_mem;
-        device_memory<count_v[impl::type_filter::has_attrib]> shared_mem;
-        std::array<buffer, count_v[impl::type_filter::none]> data_buffs;
+        device_memory<renderable_count> device_local_mem; //used for vertex and index data of non-instanced types
+        device_memory<1> static_device_local_mem; //used for vertex and index data of instanced types
+        device_memory<1> host_mem; //used for uniform
+        device_memory<renderable_count_with_attrib> shared_mem; //used for attributes
+
+        std::array<buffer, renderable_count> data_buffs;
         buffer static_data_buff;
         buffer uniform_buff;
-        std::array<buffer, count_v[impl::type_filter::has_attrib]> attribute_buffs;
+        std::array<buffer, renderable_count_with_attrib> attribute_buffs;
         void* uniform_buffer_map;
-        std::array<std::size_t, count_v[impl::type_filter::has_index]> vertex_offsets;
-        std::array<std::vector<std::uint32_t>, count_v[impl::type_filter::has_index]> index_firsts;
-        std::array<std::vector<std::uint32_t>, count_v[impl::type_filter::not_instanced]> vertex_firsts;
-        std::array<std::vector<std::uint32_t>, count_v[impl::type_filter::not_instanced]> non_instanced_counts;
-        
-        std::tuple<pipeline<Ts>...> pipelines;
-        std::tuple<pipeline_layout<Ts>...> pipeline_layouts;
 
-        descriptor_pool<FramesInFlight, count_v[impl::type_filter::has_uniform]> desc_pool;
-        std::array<descriptor_set<FramesInFlight>, count_v[impl::type_filter::has_uniform]> desc_sets;
-        std::array<descriptor_set_layout, count_v[impl::type_filter::has_uniform]> desc_set_layouts;
+        descriptor_pool<FramesInFlight> desc_pool;
 
+        //TODO use std::reference_wrapper to better show intent?
         logical_device* logi_device_ptr;
         physical_device* phys_device_ptr;
         command_pool copy_cmd_pool;

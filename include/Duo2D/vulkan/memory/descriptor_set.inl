@@ -7,8 +7,7 @@
 
 namespace d2d {
     template<std::size_t FiF>
-    template<std::size_t DC>
-    result<descriptor_set<FiF>> descriptor_set<FiF>::create(logical_device& device, descriptor_pool<FiF, DC>& pool, descriptor_set_layout& layout, const buffer& uniform_buffer, std::size_t data_size, std::size_t buffer_offset) noexcept {
+    result<descriptor_set<FiF>> descriptor_set<FiF>::create(logical_device& device, descriptor_pool<FiF>& pool, descriptor_set_layout& layout, const buffer& uniform_buffer, std::size_t data_size, std::size_t buffer_offset) noexcept {
         descriptor_set ret{};
 
         std::array<VkDescriptorSetLayout, FiF> layouts;

@@ -11,8 +11,7 @@
 namespace d2d {
     template<std::size_t FramesInFlight>
     struct descriptor_set : std::array<VkDescriptorSet, FramesInFlight> {
-        template<std::size_t DC>
-        static result<descriptor_set> create(logical_device& device, descriptor_pool<FramesInFlight, DC>& pool, descriptor_set_layout& layout, const buffer& uniform_buffer, std::size_t data_size, std::size_t buffer_offset) noexcept;
+        static result<descriptor_set> create(logical_device& device, descriptor_pool<FramesInFlight>& pool, descriptor_set_layout& layout, const buffer& uniform_buffer, std::size_t data_size, std::size_t buffer_offset) noexcept;
     };
 }
 

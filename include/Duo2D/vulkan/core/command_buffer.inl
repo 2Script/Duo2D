@@ -1,4 +1,5 @@
 #pragma once
+#include "Duo2D/error.hpp"
 #include "Duo2D/traits/renderable_traits.hpp"
 #include "Duo2D/vulkan/core/command_buffer.hpp"
 #include "Duo2D/vulkan/memory/renderable_buffer.hpp"
@@ -14,7 +15,7 @@ namespace d2d {
             return {};
 
         if(renderables.template needs_apply<T>())
-            return error::buffer_outdated;
+            return error::buffer_needs_changes_applied;
         
         //Set pipeline
         vkCmdBindPipeline(handle, VK_PIPELINE_BIND_POINT_GRAPHICS, renderables.template associated_pipeline<T>());

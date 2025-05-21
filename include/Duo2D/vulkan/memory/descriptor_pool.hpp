@@ -8,9 +8,9 @@
 __D2D_DECLARE_VK_TRAITS_DEVICE(VkDescriptorPool);
 
 namespace d2d {
-    template<std::uint32_t FramesInFlight, std::size_t DescriptorCount>
+    template<std::uint32_t FramesInFlight>
     struct descriptor_pool : vulkan_ptr<VkDescriptorPool, vkDestroyDescriptorPool> {
-        static result<descriptor_pool> create(logical_device& device) noexcept;
+        static result<descriptor_pool> create(logical_device& device, std::uint32_t descriptor_count) noexcept;
     };
 }
 

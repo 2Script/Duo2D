@@ -12,7 +12,7 @@
 
 __D2D_DECLARE_VK_TRAITS_DEVICE_AUX(VkCommandBuffer, VkCommandPool);
 
-namespace d2d { template<std::size_t FiF, impl::RenderableType... Rs> requires (sizeof...(Rs) > 0) struct renderable_buffer; }
+namespace d2d { template<std::size_t FiF, impl::RenderableType... Rs> /*requires (sizeof...(Rs) > 0)*/ struct renderable_buffer; }
 
 
 namespace d2d {

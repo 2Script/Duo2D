@@ -22,33 +22,14 @@ namespace d2d::impl {
 
     template <typename T, typename U, typename... Ts>
     struct type_index {
-        constexpr static std::array<std::size_t, type_filter::count> value = {
-            1                                         + type_index<T, Ts...>::value[type_filter::none],
-            (!U::instanced)                           + type_index<T, Ts...>::value[type_filter::not_instanced],
-            (!U::instanced && impl::has_indices_v<T>) + type_index<T, Ts...>::value[type_filter::has_index],
-            (impl::has_uniform_v<U>)                  + type_index<T, Ts...>::value[type_filter::has_uniform],
-            (impl::has_push_constants_v<U>)           + type_index<T, Ts...>::value[type_filter::has_push_const],
-            (impl::has_attributes_v<U>)               + type_index<T, Ts...>::value[type_filter::has_attrib],
-            (impl::has_storage_v<U>)                  + type_index<T, Ts...>::value[type_filter::has_storage],
-        };
+        constexpr static std::size_t value = 1 + type_index<T, Ts...>::value;
+        constexpr static std::size_t with_attrib_value = (impl::has_attributes_v<U>) + type_index<T, Ts...>::with_attrib_value;
     };
     
     template <typename T, typename... Ts>
     struct type_index<T, T, Ts...> {
-        constexpr static std::array<std::size_t, type_filter::count> value = {};
-    };
-
-    template<typename... Ts>
-    struct type_count {
-        constexpr static std::array<std::size_t, type_filter::count> value = {
-            sizeof...(Ts),
-            ((!Ts::instanced)                            + ...),
-            ((!Ts::instanced && impl::has_indices_v<Ts>) + ...),
-            ((impl::has_uniform_v<Ts>)                   + ...),
-            ((impl::has_push_constants_v<Ts>)            + ...),
-            ((impl::has_attributes_v<Ts>)                + ...),
-            ((impl::has_storage_v<Ts>)                   + ...),
-        };
+        constexpr static std::size_t value = 0;
+        constexpr static std::size_t with_attrib_value = 0;
     };
 }
 

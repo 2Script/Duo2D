@@ -67,21 +67,21 @@ namespace d2d {
 
         //Get swap chain images
         {
-        std::uint32_t image_count = 0;
-        vkGetSwapchainImagesKHR(logi_device, ret.handle, &image_count, nullptr);
-        ret.images.resize(image_count);
-        vkGetSwapchainImagesKHR(logi_device, ret.handle, &image_count, ret.images.data());
+        ret.image_count = 0;
+        vkGetSwapchainImagesKHR(logi_device, ret.handle, &ret.image_count, nullptr);
+        ret.images.resize(ret.image_count);
+        vkGetSwapchainImagesKHR(logi_device, ret.handle, &ret.image_count, ret.images.data());
         }
 
         //Create swap chain image views
-        ret.image_views.resize(ret.images.size());
-        for (size_t i = 0; i < ret.images.size(); i++) {
+        ret.image_views.resize(ret.image_count);
+        for (size_t i = 0; i < ret.image_count; i++) {
             __D2D_TRY_MAKE(ret.image_views[i], make<image_view>(logi_device, ret.images[i], logi_device.format.format_id), iv);
         }
 
         //Create framebuffers
-        ret.framebuffers.resize(ret.image_views.size());
-        for (size_t i = 0; i < ret.image_views.size(); i++) {
+        ret.framebuffers.resize(ret.image_count);
+        for (size_t i = 0; i < ret.image_count; i++) {
             __D2D_TRY_MAKE(ret.framebuffers[i], make<framebuffer>(logi_device, ret.image_views[i], window_render_pass, ret.extent), f);
         }
 
