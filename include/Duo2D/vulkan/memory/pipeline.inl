@@ -7,7 +7,7 @@
 #include <vulkan/vulkan_core.h>
 
 namespace d2d {
-    template<impl::RenderableType T>
+    template<impl::renderable_like T>
     result<pipeline<T>> pipeline<T>::create(logical_device& device, render_pass& associated_render_pass, pipeline_layout<T>& layout) noexcept {
         pipeline ret{};
         ret.dependent_handle = device;

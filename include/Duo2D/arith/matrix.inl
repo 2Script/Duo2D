@@ -207,7 +207,7 @@ namespace d2d {
 
         template<std::uint8_t Flags>
         constexpr scaled_vector<N, Flags> operator()(source_vector<N, Flags> src_vec) const noexcept
-        requires (impl::Cartesian<N> && source_vector<N + 1, Flags>::scalable) {
+        requires (impl::within_cartesian_coordinates<N> && source_vector<N + 1, Flags>::scalable) {
             return {src_vec * scale_by}; 
         }
         template<std::uint8_t Flags>
@@ -250,7 +250,7 @@ namespace d2d {
 
         template<std::uint8_t Flags>
         constexpr translated_vector<N, Flags> operator()(source_vector<N, Flags> src_vec) const noexcept 
-        requires (impl::Cartesian<N> && source_vector<N + 1, Flags>::translatable) {
+        requires (impl::within_cartesian_coordinates<N> && source_vector<N + 1, Flags>::translatable) {
             return {src_vec + translate_by}; 
         }
         template<std::uint8_t Flags>

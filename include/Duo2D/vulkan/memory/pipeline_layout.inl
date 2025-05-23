@@ -2,7 +2,7 @@
 #include "Duo2D/vulkan/memory/pipeline_layout.hpp"
 
 namespace d2d {
-    template<impl::RenderableType T>
+    template<impl::renderable_like T>
     result<pipeline_layout<T>> pipeline_layout<T>::create(logical_device& device, descriptor_set_layout& set_layout) noexcept {
         pipeline_layout ret{};
         ret.dependent_handle = device;
@@ -12,7 +12,7 @@ namespace d2d {
             .setLayoutCount = 1,
             .pSetLayouts = &set_layout,
         };
-        if constexpr (impl::has_push_constants_v<T>) {
+        if constexpr (T::has_push_constants) {
             constexpr static std::array ranges = T::push_constant_ranges();
             pipeline_layout_create_info.pushConstantRangeCount = ranges.size();
             pipeline_layout_create_info.pPushConstantRanges = ranges.data();
@@ -23,7 +23,7 @@ namespace d2d {
         return ret;
     }
 
-    template<impl::RenderableType T>
+    template<impl::renderable_like T>
     result<pipeline_layout<T>> pipeline_layout<T>::create(logical_device& device) noexcept {
         pipeline_layout ret{};
         ret.dependent_handle = device;
@@ -32,7 +32,7 @@ namespace d2d {
             .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
             .setLayoutCount = 0,
         };
-        if constexpr (impl::has_push_constants_v<T>) {
+        if constexpr (T::has_push_constants) {
             constexpr static std::array ranges = T::push_constant_ranges();
             pipeline_layout_create_info.pushConstantRangeCount = ranges.size();
             pipeline_layout_create_info.pPushConstantRanges = ranges.data();

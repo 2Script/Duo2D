@@ -10,7 +10,7 @@ namespace d2d {
 
 namespace d2d::impl {
     template<typename T>
-    concept ShaderType = requires {
+    concept shader_like = requires {
         //requires std::is_same_v<typename T::traits_type, shader_traits<T>>;
         {T::binding_descs()} noexcept;
         {T::attribute_descs()} noexcept;

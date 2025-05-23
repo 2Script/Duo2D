@@ -81,7 +81,7 @@ namespace d2d {
         std::array<std::array<semaphore, frames_in_flight>, semaphore_type::num_semaphore_types> frame_semaphores;
         std::vector<semaphore> submit_semaphores;
 
-        renderable_buffer<frames_in_flight, styled_rect, debug_rect, clone_rect> data;
+        renderable_tuple<frames_in_flight, styled_rect, debug_rect, clone_rect> data;
         std::unordered_map<std::string, std::size_t> renderable_mapping;
     };
 }

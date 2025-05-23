@@ -23,7 +23,7 @@ namespace d2d::impl {
     template <typename T, typename U, typename... Ts>
     struct type_index {
         constexpr static std::size_t value = 1 + type_index<T, Ts...>::value;
-        constexpr static std::size_t with_attrib_value = (impl::has_attributes_v<U>) + type_index<T, Ts...>::with_attrib_value;
+        constexpr static std::size_t with_attrib_value = (U::has_attributes) + type_index<T, Ts...>::with_attrib_value;
     };
     
     template <typename T, typename... Ts>

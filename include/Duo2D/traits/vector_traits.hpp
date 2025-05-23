@@ -32,11 +32,11 @@ namespace d2d::impl {
     };
     
     template<std::size_t Dims>
-    concept Cartesian = Dims == 2 || Dims == 3;
+    concept within_cartesian_coordinates = Dims == 2 || Dims == 3;
 
     template<std::size_t Dims>
-    concept Graphical = Cartesian<Dims> || Dims == 4;
+    concept within_graphical_coordinates = within_cartesian_coordinates<Dims> || Dims == 4;
 
     template<std::size_t Dims, typename T, vec_data_type HoldsData, std::uint8_t TransformFlags>
-    concept VkCompatibleType = Cartesian<Dims> && std::is_convertible_v<T, typename vector_traits<Dims, T, HoldsData, TransformFlags>::vk_component_type>; 
+    concept vk_vector_compatible = within_cartesian_coordinates<Dims> && std::is_convertible_v<T, typename vector_traits<Dims, T, HoldsData, TransformFlags>::vk_component_type>; 
 }

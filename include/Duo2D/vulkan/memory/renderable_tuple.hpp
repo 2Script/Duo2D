@@ -18,7 +18,7 @@
 #include "Duo2D/vulkan/device/physical_device.hpp"
 #include "Duo2D/vulkan/memory/buffer.hpp"
 #include "Duo2D/vulkan/memory/device_memory.hpp"
-#include "Duo2D/vulkan/memory/local_renderable.hpp"
+#include "Duo2D/vulkan/memory/renderable_data.hpp"
 #include "Duo2D/vulkan/memory/pipeline.hpp"
 #include "Duo2D/vulkan/memory/pipeline_layout.hpp"
 #include "Duo2D/traits/renderable_traits.hpp"
@@ -27,15 +27,15 @@
 #include "zstring.hpp"
 
 namespace d2d {
-    template<std::size_t FramesInFlight, impl::RenderableType... Ts> //requires (sizeof...(Ts) > 0)
-    struct renderable_buffer {
-        static_assert(sizeof...(Ts) > 0, "renderable_buffer needs at least 1 renderable type");
+    template<std::size_t FramesInFlight, impl::renderable_like... Ts> //requires (sizeof...(Ts) > 0)
+    struct renderable_tuple {
+        static_assert(sizeof...(Ts) > 0, "renderable_tuple needs at least 1 renderable type");
     public:
         //could benefit from SIMD? (just a target_clones)
-        static result<renderable_buffer> create(logical_device& logi_device, physical_device& phys_device, render_pass& window_render_pass) noexcept;
+        static result<renderable_tuple> create(logical_device& logi_device, physical_device& phys_device, render_pass& window_render_pass) noexcept;
     
     public:
-        template<typename U> requires impl::RenderableType<std::remove_cvref_t<U>>
+        template<typename U> requires impl::renderable_like<std::remove_cvref_t<U>>
         constexpr void push_back(U&& value) noexcept;
         template<typename T, typename... Args>
         constexpr T& emplace_back(Args&&... args) noexcept;
@@ -53,6 +53,10 @@ namespace d2d {
         constexpr typename std::vector<T>::iterator erase(typename std::vector<T>::const_iterator first, typename std::vector<T>::const_iterator last) noexcept;
 
         template<typename T>
+        constexpr typename std::vector<T>::iterator begin() noexcept;
+        template<typename T>
+        constexpr typename std::vector<T>::iterator end() noexcept;
+        template<typename T>
         constexpr typename std::vector<T>::const_iterator cbegin() const noexcept;
         template<typename T>
         constexpr typename std::vector<T>::const_iterator cend() const noexcept;
@@ -63,26 +67,26 @@ namespace d2d {
         constexpr std::size_t size() const noexcept;
 
     public:
-        template<typename T> constexpr const buffer& index_buffer() const noexcept requires impl::has_indices_v<T>;
-        template<typename T> constexpr const buffer& uniform_buffer() const noexcept requires impl::has_uniform_v<T>;
-        template<typename T> constexpr const buffer& vertex_buffer() const noexcept requires impl::has_vertices_v<T>;
+        template<typename T> constexpr const buffer& index_buffer() const noexcept requires T::has_indices;
+        template<typename T> constexpr const buffer& uniform_buffer() const noexcept requires T::has_uniform;
+        template<typename T> constexpr const buffer& vertex_buffer() const noexcept requires T::has_vertices;
         template<typename T> constexpr const buffer& instance_buffer() const noexcept requires (T::instanced);
-        template<typename T> constexpr const buffer& attribute_buffer() const noexcept requires impl::has_attributes_v<T>;
+        template<typename T> constexpr const buffer& attribute_buffer() const noexcept requires T::has_attributes;
 
 
-        template<typename T> constexpr std::uint32_t index_count(std::size_t i) const noexcept requires (!T::instanced && impl::has_indices_v<T>);
-        template<typename T> constexpr std::uint32_t vertex_count(std::size_t i) const noexcept requires (!T::instanced && impl::has_vertices_v<T>);
+        template<typename T> constexpr std::uint32_t index_count(std::size_t i) const noexcept requires (!T::instanced && T::has_indices);
+        template<typename T> constexpr std::uint32_t vertex_count(std::size_t i) const noexcept requires (!T::instanced && T::has_vertices);
         template<typename T> constexpr std::size_t instance_count() const noexcept;
 
-        template<typename T> constexpr std::uint32_t first_index(std::size_t i) const noexcept requires (!T::instanced && impl::has_indices_v<T>); 
-        template<typename T> constexpr std::uint32_t first_vertex(std::size_t i) const noexcept requires (!T::instanced && impl::has_vertices_v<T>); 
-        template<typename T> constexpr std::size_t vertex_buffer_offset() const noexcept requires (!T::instanced && impl::has_vertices_v<T>); 
+        template<typename T> constexpr std::uint32_t first_index(std::size_t i) const noexcept requires (!T::instanced && T::has_indices); 
+        template<typename T> constexpr std::uint32_t first_vertex(std::size_t i) const noexcept requires (!T::instanced && T::has_vertices); 
+        template<typename T> constexpr std::size_t vertex_buffer_offset() const noexcept requires (!T::instanced && T::has_vertices); 
         template<typename T> consteval static buffer_bytes_t static_offsets() noexcept;
 
 
         //template<typename T> constexpr const attribute_types<T>& attributes() const noexcept;
-        template<typename T> constexpr std::span<typename T::uniform_type> uniform_map() const noexcept requires impl::has_uniform_v<T>;
-        template<typename T> constexpr typename T::push_constant_types push_constants() const noexcept requires impl::has_push_constants_v<T>;
+        template<typename T> constexpr std::span<typename T::uniform_type> uniform_map() const noexcept requires T::has_uniform;
+        template<typename T> constexpr typename T::push_constant_types push_constants() const noexcept requires T::has_push_constants;
 
         template<typename T> constexpr const pipeline<T>& associated_pipeline() const noexcept;
         template<typename T> constexpr const pipeline_layout<T>& associated_pipeline_layout() const noexcept;
@@ -92,12 +96,12 @@ namespace d2d {
 
     private:
         template<typename T>
-        constexpr local_renderable<T, FramesInFlight>& renderable_for() noexcept {
-            return std::get<local_renderable<T, FramesInFlight>>(local_renderables);
+        constexpr renderable_data<T, FramesInFlight>& renderable_data_of() noexcept {
+            return std::get<renderable_data<T, FramesInFlight>>(renderable_datas);
         }
         template<typename T>
-        constexpr local_renderable<T, FramesInFlight> const& renderable_for() const noexcept {
-            return std::get<local_renderable<T, FramesInFlight>>(local_renderables);
+        constexpr renderable_data<T, FramesInFlight> const& renderable_data_of() const noexcept {
+            return std::get<renderable_data<T, FramesInFlight>>(renderable_datas);
         }
 
     private:
@@ -110,10 +114,10 @@ namespace d2d {
         
 
     private:
-        std::tuple<local_renderable<Ts, FramesInFlight>...> local_renderables;
+        std::tuple<renderable_data<Ts, FramesInFlight>...> renderable_datas;
 
         constexpr static std::size_t renderable_count = sizeof...(Ts);
-        constexpr static std::size_t renderable_count_with_attrib = (static_cast<bool>(local_renderable<Ts, FramesInFlight>::attribute_data_size) + ...);
+        constexpr static std::size_t renderable_count_with_attrib = (static_cast<bool>(renderable_data<Ts, FramesInFlight>::attribute_data_size) + ...);
         //TODO: Find a better strategy than these manual index calculation shenanigans
         template<typename T>
         constexpr static std::size_t renderable_index = impl::type_index<T, Ts...>::value;
@@ -143,4 +147,4 @@ namespace d2d {
     };
 }
 
-#include "Duo2D/vulkan/memory/renderable_buffer.inl"
+#include "Duo2D/vulkan/memory/renderable_tuple.inl"

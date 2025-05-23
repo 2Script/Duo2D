@@ -10,7 +10,7 @@
 #include "Duo2D/error.hpp"
 #include "Duo2D/vulkan/core/command_buffer.hpp"
 #include "Duo2D/vulkan/device/logical_device.hpp"
-#include "Duo2D/vulkan/memory/renderable_buffer.hpp"
+#include "Duo2D/vulkan/memory/renderable_tuple.hpp"
 #include "Duo2D/vulkan/display/surface.hpp"
 #include "Duo2D/vulkan/display/swap_chain.hpp"
 #include "Duo2D/vulkan/make.hpp"
@@ -67,7 +67,7 @@ namespace d2d {
             submit_semaphores.push_back(*std::move(submit_semaphore));
         }
 
-        __D2D_TRY_MAKE(data, (make<renderable_buffer<frames_in_flight, styled_rect, debug_rect, clone_rect>>(logi_device, phys_device, _render_pass)), rb);
+        __D2D_TRY_MAKE(data, (make<renderable_tuple<frames_in_flight, styled_rect, debug_rect, clone_rect>>(logi_device, phys_device, _render_pass)), rb);
 
 
         return {};

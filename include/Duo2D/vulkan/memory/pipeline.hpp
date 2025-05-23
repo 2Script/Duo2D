@@ -11,7 +11,7 @@
 __D2D_DECLARE_VK_TRAITS_DEVICE(VkPipeline);
 
 namespace d2d {
-    template<impl::RenderableType T>
+    template<impl::renderable_like T>
     struct pipeline : vulkan_ptr<VkPipeline, vkDestroyPipeline> {
         static result<pipeline> create(logical_device& device, render_pass& associated_render_pass, pipeline_layout<T>& layout) noexcept;
     };

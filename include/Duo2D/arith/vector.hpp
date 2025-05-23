@@ -31,20 +31,20 @@ namespace d2d {
 
 
     public:
-        constexpr       UnitTy& x()       noexcept requires (impl::Graphical<Dims> && HoldsData == impl::vec_data_type::point) { return (*this)[0]; }
-        constexpr const UnitTy& x() const noexcept requires (impl::Graphical<Dims> && HoldsData == impl::vec_data_type::point) { return (*this)[0]; }
-        constexpr       UnitTy& y()       noexcept requires (impl::Graphical<Dims> && HoldsData == impl::vec_data_type::point) { return (*this)[1]; }
-        constexpr const UnitTy& y() const noexcept requires (impl::Graphical<Dims> && HoldsData == impl::vec_data_type::point) { return (*this)[1]; }
+        constexpr       UnitTy& x()       noexcept requires (impl::within_graphical_coordinates<Dims> && HoldsData == impl::vec_data_type::point) { return (*this)[0]; }
+        constexpr const UnitTy& x() const noexcept requires (impl::within_graphical_coordinates<Dims> && HoldsData == impl::vec_data_type::point) { return (*this)[0]; }
+        constexpr       UnitTy& y()       noexcept requires (impl::within_graphical_coordinates<Dims> && HoldsData == impl::vec_data_type::point) { return (*this)[1]; }
+        constexpr const UnitTy& y() const noexcept requires (impl::within_graphical_coordinates<Dims> && HoldsData == impl::vec_data_type::point) { return (*this)[1]; }
         constexpr       UnitTy& z()       noexcept requires ((Dims == 3 || Dims == 4) && HoldsData == impl::vec_data_type::point) { return (*this)[2]; }
         constexpr const UnitTy& z() const noexcept requires ((Dims == 3 || Dims == 4) && HoldsData == impl::vec_data_type::point) { return (*this)[2]; }
         constexpr       UnitTy& w()       noexcept requires (Dims == 4 && HoldsData == impl::vec_data_type::point) { return (*this)[3]; }
         constexpr const UnitTy& w() const noexcept requires (Dims == 4 && HoldsData == impl::vec_data_type::point) { return (*this)[3]; }
 
     public:
-        constexpr       UnitTy& width()        noexcept requires (impl::Cartesian<Dims> && HoldsData == impl::vec_data_type::size) { return (*this)[0]; }
-        constexpr const UnitTy& width()  const noexcept requires (impl::Cartesian<Dims> && HoldsData == impl::vec_data_type::size) { return (*this)[0]; }
-        constexpr       UnitTy& height()       noexcept requires (impl::Cartesian<Dims> && HoldsData == impl::vec_data_type::size) { return (*this)[1]; }
-        constexpr const UnitTy& height() const noexcept requires (impl::Cartesian<Dims> && HoldsData == impl::vec_data_type::size) { return (*this)[1]; }
+        constexpr       UnitTy& width()        noexcept requires (impl::within_cartesian_coordinates<Dims> && HoldsData == impl::vec_data_type::size) { return (*this)[0]; }
+        constexpr const UnitTy& width()  const noexcept requires (impl::within_cartesian_coordinates<Dims> && HoldsData == impl::vec_data_type::size) { return (*this)[0]; }
+        constexpr       UnitTy& height()       noexcept requires (impl::within_cartesian_coordinates<Dims> && HoldsData == impl::vec_data_type::size) { return (*this)[1]; }
+        constexpr const UnitTy& height() const noexcept requires (impl::within_cartesian_coordinates<Dims> && HoldsData == impl::vec_data_type::size) { return (*this)[1]; }
         constexpr       UnitTy& depth()        noexcept requires (Dims == 3 && HoldsData == impl::vec_data_type::size) { return (*this)[2]; }
         constexpr const UnitTy& depth()  const noexcept requires (Dims == 3 && HoldsData == impl::vec_data_type::size) { return (*this)[2]; }
 
@@ -72,7 +72,7 @@ namespace d2d {
         constexpr explicit operator std::pair<UnitTy, UnitTy>() const noexcept requires (Dims == 2) { return {(*this)[0], (*this)[1]}; }
 
     public:
-        constexpr explicit operator vk_type() const noexcept requires (impl::VkCompatibleType<Dims, UnitTy, HoldsData, TransformFlags>) {
+        constexpr explicit operator vk_type() const noexcept requires (impl::vk_vector_compatible<Dims, UnitTy, HoldsData, TransformFlags>) {
             return to<vk_type, vk_component_type>(std::make_index_sequence<Dims>{});
         }
 

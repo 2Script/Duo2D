@@ -6,7 +6,7 @@
 #include "Duo2D/traits/vk_traits.hpp"
 
 namespace d2d {
-    template<impl::VulkanType VkTy>
+    template<impl::vulkan_like VkTy>
     class vulkan_ptr_base {
     public:
         constexpr vulkan_ptr_base() noexcept = default;
@@ -34,7 +34,7 @@ namespace d2d {
 }
 
 namespace d2d {
-    template<impl::VulkanType VkTy, typename impl::vk_traits<VkTy>::deleter_type& DeleterFn>
+    template<impl::vulkan_like VkTy, typename impl::vk_traits<VkTy>::deleter_type& DeleterFn>
     class vulkan_ptr : public vulkan_ptr_base<VkTy> {
     public:
         constexpr vulkan_ptr() noexcept = default;
@@ -53,7 +53,7 @@ namespace d2d {
 
     };
 
-    template<impl::DependentVulkanType VkTy, typename impl::vk_traits<VkTy>::deleter_type& DeleterFn>
+    template<impl::dependent_vulkan_like VkTy, typename impl::vk_traits<VkTy>::deleter_type& DeleterFn>
     class vulkan_ptr<VkTy, DeleterFn> : public vulkan_ptr_base<VkTy> {
     public:
         constexpr vulkan_ptr() noexcept = default;
@@ -78,7 +78,7 @@ namespace d2d {
         typename impl::vk_traits<VkTy>::dependent_type dependent_handle;
     };
 
-    template<impl::AuxilaryVulkanType VkTy, typename impl::vk_traits<VkTy>::deleter_type& DeleterFn>
+    template<impl::multiple_dependent_vulkan_like VkTy, typename impl::vk_traits<VkTy>::deleter_type& DeleterFn>
     class vulkan_ptr<VkTy, DeleterFn> : public vulkan_ptr_base<VkTy> {
     public:
         constexpr vulkan_ptr() noexcept = default;

@@ -21,17 +21,20 @@ namespace d2d::impl {
     };
 }
 
+/*
 namespace d2d::impl {
     template<typename T>
-    concept ShaderInputType = requires {
+    concept shader_input_like = requires {
         shader_input_traits<T>::format;
         shader_input_traits<T>::location_size;
     };
 }
+*/
 
 
 //Fundamental Types
 namespace d2d::impl {
+    //TODO: rename to fixed_integral and fixed_floating, respectively
     template<typename T, std::size_t Size, bool Signed>
     concept Integral = std::is_integral_v<T> && sizeof(T) == Size && std::is_signed_v<T> == Signed;
     template<typename T, std::size_t Size>
