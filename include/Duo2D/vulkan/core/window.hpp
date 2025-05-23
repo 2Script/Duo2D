@@ -7,21 +7,17 @@
 #include <unordered_map>
 #include <vulkan/vulkan_core.h>
 #include "Duo2D/graphics/prim/debug_rect.hpp"
+#include "Duo2D/graphics/prim/renderable.hpp"
+#include "Duo2D/graphics/prim/styled_rect.hpp"
 #include "Duo2D/vulkan/core/command_buffer.hpp"
 #include "Duo2D/vulkan/core/command_pool.hpp"
-#include "Duo2D/vulkan/memory/descriptor_pool.hpp"
-#include "Duo2D/vulkan/memory/descriptor_set.hpp"
-#include "Duo2D/vulkan/memory/descriptor_set_layout.hpp"
 #include "Duo2D/vulkan/core/instance.hpp"
 #include "Duo2D/vulkan/device/logical_device.hpp"
-#include "Duo2D/vulkan/memory/pipeline.hpp"
 #include "Duo2D/vulkan/display/render_pass.hpp"
 #include "Duo2D/vulkan/display/swap_chain.hpp"
 #include "Duo2D/vulkan/device/physical_device.hpp"
-#include "Duo2D/graphics/prim/styled_rect.hpp"
 #include "Duo2D/vulkan/sync/fence.hpp"
 #include "Duo2D/vulkan/sync/semaphore.hpp"
-#include "Duo2D/vulkan/memory/renderable_buffer.hpp"
 
 namespace d2d {
     struct window {
@@ -33,20 +29,53 @@ namespace d2d {
         result<void> render() noexcept;
 
     public:
-        template<typename R> using value_type = std::pair<const std::string, R>;
+        template<typename R> using value_type = std::pair<std::string_view, R>;
+        template<typename R> using iterator = typename std::unordered_map<std::string_view, R>::iterator;
+        template<typename R> using const_iterator = typename std::unordered_map<std::string_view, R>::const_iterator;
 
-        template<typename R> requires impl::RenderableType<std::remove_cvref_t<R>>
-        bool insert(const value_type<R>& value) noexcept;
+        template<typename R> requires impl::renderable_like<std::remove_cvref_t<R>>
+        std::pair<iterator<R>, bool> insert(const value_type<R>& value) noexcept;
+        template<typename R> requires impl::renderable_like<std::remove_cvref_t<R>>
+        std::pair<iterator<R>, bool> insert(value_type<R>&& value) noexcept;
         template<typename P> requires std::is_constructible_v<value_type<typename std::remove_cvref_t<P>::second_type>, P&&>
-        bool insert(P&& value) noexcept;
-        template<typename R> requires impl::RenderableType<std::remove_cvref_t<R>>
-        bool insert(value_type<R>&& value) noexcept;
-        template<typename T, typename S, typename... Args> requires std::is_constructible_v<std::string, S&&>
-        bool emplace(S&& str, Args&&... args) noexcept;
+        std::pair<iterator<typename std::remove_cvref_t<P>::second_type>, bool> insert(P&& value) noexcept;
 
+        template<typename T, typename... Args>
+        std::pair<iterator<T>, bool> emplace(Args&&... args) noexcept;
+        template<typename T, typename... Args>
+        std::pair<iterator<T>, bool> try_emplace(std::string_view str, Args&&... args) noexcept;
+        template<typename T, typename S, typename... Args> requires std::is_constructible_v<std::string, S&&>
+        std::pair<iterator<T>, bool> try_emplace(S&& str, Args&&... args) noexcept;
+
+        template<typename T>
+        iterator<T> erase(iterator<T> pos) noexcept;
+        template<typename T>
+        iterator<T> erase(const_iterator<T> pos) noexcept;
+        template<typename T>
+        iterator<T> erase(const_iterator<T> first, const_iterator<T> last) noexcept;
         template<typename T>
         std::size_t erase(std::string_view key) noexcept;
 
+        template<typename T>
+        iterator<T> end() noexcept;
+        template<typename T>
+        const_iterator<T> end() const noexcept;
+        template<typename T>
+        const_iterator<T> cend() const noexcept;
+
+        template<typename T>
+        iterator<T> begin() noexcept;
+        template<typename T>
+        const_iterator<T> begin() const noexcept;
+        template<typename T>
+        const_iterator<T> cbegin() const noexcept;
+
+        template<typename T>
+        bool empty() const noexcept;
+        template<typename T>
+        std::size_t size() const noexcept;
+
+    public:
         template<typename T>
         result<void> apply() noexcept;
 
@@ -59,7 +88,7 @@ namespace d2d {
             handle(w, glfwDestroyWindow), logi_device_ptr(nullptr), phys_device_ptr(nullptr),
             _surface(), _swap_chain(), _render_pass(),
             frame_idx(0), _command_pool(), command_buffers{}, render_fences{}, frame_semaphores{}, submit_semaphores(),
-            data(), renderable_mapping() {}
+            data() {}
         friend physical_device;
         
     private:
@@ -82,7 +111,6 @@ namespace d2d {
         std::vector<semaphore> submit_semaphores;
 
         renderable_tuple<frames_in_flight, styled_rect, debug_rect, clone_rect> data;
-        std::unordered_map<std::string, std::size_t> renderable_mapping;
     };
 }
 

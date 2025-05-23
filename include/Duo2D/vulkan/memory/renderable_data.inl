@@ -14,11 +14,16 @@ namespace d2d::impl {
         using attribute_value_type = typename attribute_type::value_type; //V
         static_assert(std::is_lvalue_reference_v<attribute_ref_type> && !std::is_const_v<attribute_type>);
         
-        for(std::size_t i = 0; i < input_renderables.size(); ++i){
-            attribute_ref_type attribute = std::get<I>(input_renderables[i].attributes()); //tuple<attribute<Tx_Ai>&, attribute<Tx_Bi>&, ..., attribute<Tx_Ni&>[I] => attribute<Tx_Ii>&
-            attribute_value_type old_value = attribute.get_ref(); //value = attribute<Tx_Ii>
-            attribute = attribute_type(reinterpret_cast<attribute_value_type*>(&attributes_span[(attribute_data_size * i) + attribute_offsets[I]])); //attribute<Tx_Ii>& = attribute<Tx_Ii>(&span<Tx_I>[i])
-            attribute.get_ref() = old_value;
+        std::vector<attribute_value_type> old_values;
+        old_values.reserve(input_renderables.size());
+        for(auto input_renderable_pair : input_renderables)
+            old_values.push_back(std::get<I>(input_renderable_pair.second.attributes()).get_ref());
+
+        std::size_t i = 0;
+        for(auto iter = input_renderables.begin(); iter !=  input_renderables.end(); ++iter, ++i){
+            attribute_ref_type attribute = std::get<I>(iter->second.attributes());
+            attribute = attribute_type(reinterpret_cast<attribute_value_type*>(&attributes_span[(attribute_data_size * i) + attribute_offsets[I]]));
+            attribute.get_ref() = old_values[i];
         }
     }
 
@@ -56,8 +61,8 @@ namespace d2d::impl {
 
         std::vector<std::span<const std::byte>> input_bytes;
         input_bytes.reserve(this->input_renderables.size());
-        for(std::size_t i = 0; i < this->input_renderables.size(); ++i) {
-            instance_inputs.push_back(this->input_renderables[i].instance());
+        for(const auto& input_pair : this->input_renderables) {
+            instance_inputs.push_back(input_pair.second.instance());
             
             std::byte const* input_begin = reinterpret_cast<std::byte const*>(&instance_inputs.back());
             input_bytes.emplace_back(input_begin, input_begin + sizeof(instance_input_type));
@@ -76,8 +81,8 @@ namespace d2d::impl {
 
         std::vector<std::span<const std::byte>> input_bytes;
         input_bytes.reserve(this->input_renderables.size());
-        for(std::size_t i = 0; i < this->input_renderables.size(); ++i) {
-            vertex_inputs.push_back(this->input_renderables[i].vertices());
+        for(const auto& input_pair : this->input_renderables) {
+            vertex_inputs.push_back(input_pair.second.vertices());
             
             const auto& input = vertex_inputs.back();
             std::byte const* input_begin = reinterpret_cast<std::byte const*>(input.data());
@@ -101,14 +106,13 @@ namespace d2d::impl {
 
         std::vector<std::span<const std::byte>> input_bytes;
         input_bytes.reserve(this->input_renderables.size() * 2);
-        for(std::size_t i = 0; i < this->input_renderables.size(); ++i) {
-            index_inputs.push_back(this->input_renderables[i].indices());
+        for(const auto& input_pair : this->input_renderables) {
+            index_inputs.push_back(input_pair.second.indices());
             
             const auto& input = index_inputs.back();
             std::byte const* input_begin = reinterpret_cast<std::byte const*>(input.data());
             input_bytes.emplace_back(input_begin, input_begin + (input.size() * (sizeof input[0])));
             index_input_size += (input.size() * (sizeof input[0]));
-            
             index_firsts.push_back(std::accumulate(index_counts.begin(), index_counts.end(), 0));
             index_counts.push_back(input.size());
         }

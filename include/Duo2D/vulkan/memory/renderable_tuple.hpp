@@ -35,36 +35,14 @@ namespace d2d {
         static result<renderable_tuple> create(logical_device& logi_device, physical_device& phys_device, render_pass& window_render_pass) noexcept;
     
     public:
-        template<typename U> requires impl::renderable_like<std::remove_cvref_t<U>>
-        constexpr void push_back(U&& value) noexcept;
-        template<typename T, typename... Args>
-        constexpr T& emplace_back(Args&&... args) noexcept;
-
         //TODO: rename/refactor to apply_changes
         template<typename T>
         result<void> apply() noexcept;
         //TODO: rename/refactor to has_changes
         template<typename T>
         constexpr bool needs_apply() const noexcept;
-
-        template<typename T>
-        constexpr typename std::vector<T>::iterator erase(typename std::vector<T>::const_iterator pos) noexcept;
-        template<typename T>
-        constexpr typename std::vector<T>::iterator erase(typename std::vector<T>::const_iterator first, typename std::vector<T>::const_iterator last) noexcept;
-
-        template<typename T>
-        constexpr typename std::vector<T>::iterator begin() noexcept;
-        template<typename T>
-        constexpr typename std::vector<T>::iterator end() noexcept;
-        template<typename T>
-        constexpr typename std::vector<T>::const_iterator cbegin() const noexcept;
-        template<typename T>
-        constexpr typename std::vector<T>::const_iterator cend() const noexcept;
-        
         template<typename T>
         constexpr bool empty() const noexcept;
-        template<typename T>
-        constexpr std::size_t size() const noexcept;
 
     public:
         template<typename T> constexpr const buffer& index_buffer() const noexcept requires T::has_indices;
@@ -103,6 +81,8 @@ namespace d2d {
         constexpr renderable_data<T, FramesInFlight> const& renderable_data_of() const noexcept {
             return std::get<renderable_data<T, FramesInFlight>>(renderable_datas);
         }
+
+        friend struct window;
 
     private:
         template<typename InputContainerT>

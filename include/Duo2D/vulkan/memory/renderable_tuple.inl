@@ -227,74 +227,9 @@ namespace d2d {
 
 namespace d2d {
     template<std::size_t FiF, impl::renderable_like... Ts> //requires (sizeof...(Ts) > 0)
-    template<typename U> requires impl::renderable_like<std::remove_cvref_t<U>>
-    constexpr void renderable_tuple<FiF, Ts...>::push_back(U&& value) noexcept {
-        using T = std::remove_cvref_t<U>;
-        renderable_data_of<T>().input_renderables.push_back(std::forward<U>(value));
-        renderable_data_of<T>().outdated = true;
-    }
-
-    template<std::size_t FiF, impl::renderable_like... Ts> //requires (sizeof...(Ts) > 0)
-    template<typename T, typename... Args>
-    constexpr T& renderable_tuple<FiF, Ts...>::emplace_back(Args&&... args) noexcept {
-        T& ret = renderable_data_of<T>().input_renderables.emplace_back(std::forward<Args>(args)...);
-        renderable_data_of<T>().outdated = true;
-        return ret;
-    }
-
-
-    template<std::size_t FiF, impl::renderable_like... Ts> //requires (sizeof...(Ts) > 0)
-    template<typename T>
-    constexpr typename std::vector<T>::iterator renderable_tuple<FiF, Ts...>::erase(typename std::vector<T>::const_iterator pos) noexcept {
-        typename std::vector<T>::iterator ret = renderable_data_of<T>().input_renderables.erase(pos);
-        renderable_data_of<T>().outdated = true;
-        return ret;
-    }
-    
-    template<std::size_t FiF, impl::renderable_like... Ts> //requires (sizeof...(Ts) > 0)
-    template<typename T>
-    constexpr typename std::vector<T>::iterator renderable_tuple<FiF, Ts...>::erase(typename std::vector<T>::const_iterator f, typename std::vector<T>::const_iterator l) noexcept {
-        typename std::vector<T>::iterator ret = renderable_data_of<T>().input_renderables.erase(f, l);
-        renderable_data_of<T>().outdated = true;
-        return ret;
-    }
-
-
-    template<std::size_t FiF, impl::renderable_like... Ts> //requires (sizeof...(Ts) > 0)
-    template<typename T>
-    constexpr typename std::vector<T>::iterator renderable_tuple<FiF, Ts...>::begin() noexcept {
-        return renderable_data_of<T>().input_renderables.begin();
-    }
-    
-    template<std::size_t FiF, impl::renderable_like... Ts> //requires (sizeof...(Ts) > 0)
-    template<typename T>
-    constexpr typename std::vector<T>::iterator renderable_tuple<FiF, Ts...>::end() noexcept {
-        return renderable_data_of<T>().input_renderables.end();
-    }
-
-    template<std::size_t FiF, impl::renderable_like... Ts> //requires (sizeof...(Ts) > 0)
-    template<typename T>
-    constexpr typename std::vector<T>::const_iterator renderable_tuple<FiF, Ts...>::cbegin() const noexcept {
-        return renderable_data_of<T>().input_renderables.cbegin();
-    }
-    
-    template<std::size_t FiF, impl::renderable_like... Ts> //requires (sizeof...(Ts) > 0)
-    template<typename T>
-    constexpr typename std::vector<T>::const_iterator renderable_tuple<FiF, Ts...>::cend() const noexcept {
-        return renderable_data_of<T>().input_renderables.cend();
-    }
-
-
-    template<std::size_t FiF, impl::renderable_like... Ts> //requires (sizeof...(Ts) > 0)
     template<typename T>
     constexpr bool renderable_tuple<FiF, Ts...>::empty() const noexcept {
         return renderable_data_of<T>().input_renderables.empty();
-    }
-    
-    template<std::size_t FiF, impl::renderable_like... Ts> //requires (sizeof...(Ts) > 0)
-    template<typename T>
-    constexpr std::size_t renderable_tuple<FiF, Ts...>::size() const noexcept {
-        return renderable_data_of<T>().input_renderables.size();
     }
 }
 

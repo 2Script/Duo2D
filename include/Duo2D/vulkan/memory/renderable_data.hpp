@@ -1,6 +1,7 @@
 #pragma once
 #include <cstdint>
 #include <cstddef>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 #include <vulkan/vulkan_core.h>
@@ -22,7 +23,7 @@ namespace d2d::impl {
         constexpr static std::size_t attribute_data_size = 0;
         constexpr static std::size_t num_attributes = 0;
     protected:
-        std::vector<T> input_renderables;
+        std::unordered_map<std::string_view, T> input_renderables;
 
     public:
         std::size_t emplace_attributes(std::size_t& buff_offset, void*, VkDeviceSize) noexcept { return buff_offset; }
@@ -35,7 +36,7 @@ namespace d2d::impl {
     private:
         std::span<std::byte> attributes_span;
     protected:
-        std::vector<T> input_renderables;
+        std::unordered_map<std::string_view, T> input_renderables;
     public:
         constexpr static std::size_t attribute_data_size = impl::attribute_traits<typename T::attribute_types>::total_size;
         constexpr static std::size_t num_attributes = std::tuple_size_v<decltype(std::declval<T>().attributes())>;
@@ -203,6 +204,7 @@ namespace d2d {
 
         template<std::size_t FramesInFlight, impl::renderable_like... Ts>
         friend struct renderable_tuple;
+        friend struct window;
     };
 }
 

@@ -8,6 +8,7 @@
 #include <vulkan/vulkan_core.h>
 
 #include "Duo2D/error.hpp"
+#include "Duo2D/graphics/prim/debug_rect.hpp"
 #include "Duo2D/vulkan/core/command_buffer.hpp"
 #include "Duo2D/vulkan/device/logical_device.hpp"
 #include "Duo2D/vulkan/memory/renderable_tuple.hpp"
@@ -95,7 +96,7 @@ namespace d2d {
             return static_cast<errc>(nir);
         }
 
-        if(data.empty<styled_rect>())
+        if(empty<styled_rect>() && empty<debug_rect>())
             return {};
 
         
