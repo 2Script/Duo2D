@@ -14,6 +14,7 @@ namespace d2d::impl {
         using attribute_value_type = typename attribute_type::value_type; //V
         static_assert(std::is_lvalue_reference_v<attribute_ref_type> && !std::is_const_v<attribute_type>);
         
+        //Old values must be retrieved before ANY modifications are done so that attributes with existing references arent overwritten
         std::vector<attribute_value_type> old_values;
         old_values.reserve(input_renderables.size());
         for(auto input_renderable_pair : input_renderables)
