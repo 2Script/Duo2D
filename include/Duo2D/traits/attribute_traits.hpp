@@ -23,7 +23,7 @@ namespace d2d::impl {
     template<typename T>
     struct attributes_span_type { using type = std::tuple<>; };
 
-    template<typename T> requires T::has_attributes
+    template<typename T> requires renderable_constraints<T>::has_attributes
     struct attributes_span_type<T> { using type = std::tuple<std::span<std::byte>>; };
 
     template<typename... Ts>

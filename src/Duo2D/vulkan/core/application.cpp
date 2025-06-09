@@ -19,7 +19,7 @@ namespace d2d {
             VK_MAKE_VERSION(1, 0, 0), //App Version (temp)
             "Duo2D",                  //Engine Name
             VK_MAKE_VERSION(1, 0, 0), //Engine Version (temp)
-            VK_API_VERSION_1_0        //API Version
+            VK_API_VERSION_1_2        //API Version
         };
         
         // Initialize GLFW
@@ -88,7 +88,7 @@ namespace d2d {
         
         result<window> w = make<window>(title, 1280, 720, vk_instance);
         if(!w.has_value()) return w.error();
-        w->initialize(logi_device, phys_device);
+        RESULT_VERIFY(w->initialize(logi_device, phys_device));
         auto new_window = windows.emplace(title, *std::move(w));
         if(!new_window.second) 
             return error::window_already_exists;

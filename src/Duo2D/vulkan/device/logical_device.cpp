@@ -1,5 +1,6 @@
 #include "Duo2D/vulkan/device/logical_device.hpp"
 #include "Duo2D/vulkan/device/physical_device.hpp"
+#include <vulkan/vulkan_core.h>
 
 
 namespace d2d {
@@ -26,7 +27,16 @@ namespace d2d {
         }
 
         //Set desired features
-        VkPhysicalDeviceFeatures desired_features{};
+        VkPhysicalDeviceFeatures desired_base_feaures {
+            .samplerAnisotropy = VK_TRUE,
+        };
+        VkPhysicalDeviceVulkan12Features desired_features{
+            .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
+            .descriptorIndexing = VK_TRUE,
+            .shaderUniformBufferArrayNonUniformIndexing = VK_TRUE,
+            .shaderSampledImageArrayNonUniformIndexing = VK_TRUE,
+            .runtimeDescriptorArray = VK_TRUE,
+        };
 
         //Set extensions
         //TODO improve with lookup table?
@@ -38,12 +48,13 @@ namespace d2d {
         //Create logical device
         VkDeviceCreateInfo device_create_info{
             .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
+            .pNext = &desired_features,
             .queueCreateInfoCount = queue_create_infos.size(),
             .pQueueCreateInfos = queue_create_infos.data(),
             .enabledLayerCount = 0,
             .enabledExtensionCount = static_cast<std::uint32_t>(enabled_extensions.size()),
             .ppEnabledExtensionNames = enabled_extensions.data(),
-            .pEnabledFeatures = &desired_features,
+            .pEnabledFeatures = &desired_base_feaures,
         };
 
         logical_device ret{};

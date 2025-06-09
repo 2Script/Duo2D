@@ -7,9 +7,9 @@
 #include <unordered_map>
 #include <vulkan/vulkan_core.h>
 #include "Duo2D/graphics/prim/debug_rect.hpp"
-#include "Duo2D/graphics/prim/renderable.hpp"
 #include "Duo2D/graphics/prim/styled_rect.hpp"
 #include "Duo2D/vulkan/core/command_buffer.hpp"
+#include "Duo2D/vulkan/memory/renderable_tuple.hpp"
 #include "Duo2D/vulkan/core/command_pool.hpp"
 #include "Duo2D/vulkan/core/instance.hpp"
 #include "Duo2D/vulkan/device/logical_device.hpp"
@@ -111,6 +111,9 @@ namespace d2d {
         std::vector<semaphore> submit_semaphores;
 
         renderable_tuple<frames_in_flight, styled_rect, debug_rect, clone_rect> data;
+
+        //constexpr static std::size_t x = decltype(data)::template static_offsets<clone_rect>()[buffer_data_type::index];
+        //constexpr static std::size_t y = renderable_data<clone_rect, 2>::static_index_data_bytes.size();
     };
 }
 

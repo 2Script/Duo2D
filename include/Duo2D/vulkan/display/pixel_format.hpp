@@ -32,6 +32,11 @@ namespace d2d {
         enum compression_method : std::uint_fast8_t {
             none, S3TC, ETC, ASTC, PVRTC
         } compression = none;
+        enum image_aspect : VkImageAspectFlags {
+            color = VK_IMAGE_ASPECT_COLOR_BIT,
+            plane2 = VK_IMAGE_ASPECT_PLANE_0_BIT | VK_IMAGE_ASPECT_PLANE_1_BIT,
+            plane3 = VK_IMAGE_ASPECT_PLANE_0_BIT | VK_IMAGE_ASPECT_PLANE_1_BIT | VK_IMAGE_ASPECT_PLANE_2_BIT,
+        } aspect = color; //TODO
 
         //constexpr std::vector<channel::name> order() const noexcept;
     };
@@ -257,11 +262,11 @@ namespace d2d {
         {{8,16,8}, 32, false, pixel_format_info::unsigned_normalized}, //VK_FORMAT_G8B8G8R8_422_UNORM
         {{8,16,8}, 32, false, pixel_format_info::unsigned_normalized}, //VK_FORMAT_B8G8R8G8_422_UNORM
         
-        {{8,8,8}, 24, false, pixel_format_info::unsigned_normalized}, //VK_FORMAT_G8_B8_R8_3PLANE_420_UNORM
-        {{8,8,8}, 24, false, pixel_format_info::unsigned_normalized}, //VK_FORMAT_G8_B8R8_2PLANE_420_UNORM
-        {{8,8,8}, 24, false, pixel_format_info::unsigned_normalized}, //VK_FORMAT_G8_B8_R8_3PLANE_422_UNORM
-        {{8,8,8}, 24, false, pixel_format_info::unsigned_normalized}, //VK_FORMAT_G8_B8R8_2PLANE_422_UNORM
-        {{8,8,8}, 24, false, pixel_format_info::unsigned_normalized}, //VK_FORMAT_G8_B8_R8_3PLANE_444_UNORM
+        {{8,8,8}, 24, false, pixel_format_info::unsigned_normalized, pixel_format_info::none, pixel_format_info::plane3}, //VK_FORMAT_G8_B8_R8_3PLANE_420_UNORM
+        {{8,8,8}, 24, false, pixel_format_info::unsigned_normalized, pixel_format_info::none, pixel_format_info::plane2}, //VK_FORMAT_G8_B8R8_2PLANE_420_UNORM
+        {{8,8,8}, 24, false, pixel_format_info::unsigned_normalized, pixel_format_info::none, pixel_format_info::plane3}, //VK_FORMAT_G8_B8_R8_3PLANE_422_UNORM
+        {{8,8,8}, 24, false, pixel_format_info::unsigned_normalized, pixel_format_info::none, pixel_format_info::plane2}, //VK_FORMAT_G8_B8R8_2PLANE_422_UNORM
+        {{8,8,8}, 24, false, pixel_format_info::unsigned_normalized, pixel_format_info::none, pixel_format_info::plane3}, //VK_FORMAT_G8_B8_R8_3PLANE_444_UNORM
         
         {{10}, 16, true, pixel_format_info::unsigned_normalized}, //VK_FORMAT_R10X6_UNORM_PACK16
         
@@ -273,11 +278,11 @@ namespace d2d {
         {{10,20,10}, 64, true, pixel_format_info::unsigned_normalized}, //VK_FORMAT_G10X6B10X6G10X6R10X6_422_UNORM_4PACK16
         {{10,20,10}, 64, true, pixel_format_info::unsigned_normalized}, //VK_FORMAT_B10X6G10X6R10X6G10X6_422_UNORM_4PACK16
         
-        {{10,10,10}, 48, true, pixel_format_info::unsigned_normalized}, //VK_FORMAT_G10X6_B10X6_R10X6_3PLANE_420_UNORM_3PACK16
-        {{10,10,10}, 48, true, pixel_format_info::unsigned_normalized}, //VK_FORMAT_G10X6_B10X6R10X6_2PLANE_420_UNORM_3PACK16
-        {{10,10,10}, 48, true, pixel_format_info::unsigned_normalized}, //VK_FORMAT_G10X6_B10X6_R10X6_3PLANE_422_UNORM_3PACK16
-        {{10,10,10}, 48, true, pixel_format_info::unsigned_normalized}, //VK_FORMAT_G10X6_B10X6R10X6_2PLANE_422_UNORM_3PACK16
-        {{10,10,10}, 48, true, pixel_format_info::unsigned_normalized}, //VK_FORMAT_G10X6_B10X6_R10X6_3PLANE_444_UNORM_3PACK16
+        {{10,10,10}, 48, true, pixel_format_info::unsigned_normalized, pixel_format_info::none, pixel_format_info::plane3}, //VK_FORMAT_G10X6_B10X6_R10X6_3PLANE_420_UNORM_3PACK16
+        {{10,10,10}, 48, true, pixel_format_info::unsigned_normalized, pixel_format_info::none, pixel_format_info::plane2}, //VK_FORMAT_G10X6_B10X6R10X6_2PLANE_420_UNORM_3PACK16
+        {{10,10,10}, 48, true, pixel_format_info::unsigned_normalized, pixel_format_info::none, pixel_format_info::plane3}, //VK_FORMAT_G10X6_B10X6_R10X6_3PLANE_422_UNORM_3PACK16
+        {{10,10,10}, 48, true, pixel_format_info::unsigned_normalized, pixel_format_info::none, pixel_format_info::plane2}, //VK_FORMAT_G10X6_B10X6R10X6_2PLANE_422_UNORM_3PACK16
+        {{10,10,10}, 48, true, pixel_format_info::unsigned_normalized, pixel_format_info::none, pixel_format_info::plane3}, //VK_FORMAT_G10X6_B10X6_R10X6_3PLANE_444_UNORM_3PACK16
         
         {{12}, 16, true, pixel_format_info::unsigned_normalized}, //VK_FORMAT_R12X4_UNORM_PACK16
         
@@ -288,28 +293,28 @@ namespace d2d {
         {{12,24,12}, 64, true, pixel_format_info::unsigned_normalized}, //VK_FORMAT_G12X4B12X4G12X4R12X4_422_UNORM_4PACK16
         {{12,24,12}, 64, true, pixel_format_info::unsigned_normalized}, //VK_FORMAT_B12X4G12X4R12X4G12X4_422_UNORM_4PACK16
         
-        {{12,12,12}, 48, true, pixel_format_info::unsigned_normalized}, //VK_FORMAT_G12X4_B12X4_R12X4_3PLANE_420_UNORM_3PACK16
-        {{12,12,12}, 48, true, pixel_format_info::unsigned_normalized}, //VK_FORMAT_G12X4_B12X4R12X4_2PLANE_420_UNORM_3PACK16
-        {{12,12,12}, 48, true, pixel_format_info::unsigned_normalized}, //VK_FORMAT_G12X4_B12X4_R12X4_3PLANE_422_UNORM_3PACK16
-        {{12,12,12}, 48, true, pixel_format_info::unsigned_normalized}, //VK_FORMAT_G12X4_B12X4R12X4_2PLANE_422_UNORM_3PACK16
-        {{12,12,12}, 48, true, pixel_format_info::unsigned_normalized}, //VK_FORMAT_G12X4_B12X4_R12X4_3PLANE_444_UNORM_3PACK16
+        {{12,12,12}, 48, true, pixel_format_info::unsigned_normalized, pixel_format_info::none, pixel_format_info::plane3}, //VK_FORMAT_G12X4_B12X4_R12X4_3PLANE_420_UNORM_3PACK16
+        {{12,12,12}, 48, true, pixel_format_info::unsigned_normalized, pixel_format_info::none, pixel_format_info::plane2}, //VK_FORMAT_G12X4_B12X4R12X4_2PLANE_420_UNORM_3PACK16
+        {{12,12,12}, 48, true, pixel_format_info::unsigned_normalized, pixel_format_info::none, pixel_format_info::plane3}, //VK_FORMAT_G12X4_B12X4_R12X4_3PLANE_422_UNORM_3PACK16
+        {{12,12,12}, 48, true, pixel_format_info::unsigned_normalized, pixel_format_info::none, pixel_format_info::plane2}, //VK_FORMAT_G12X4_B12X4R12X4_2PLANE_422_UNORM_3PACK16
+        {{12,12,12}, 48, true, pixel_format_info::unsigned_normalized, pixel_format_info::none, pixel_format_info::plane3}, //VK_FORMAT_G12X4_B12X4_R12X4_3PLANE_444_UNORM_3PACK16
         
         {{16, 32, 16}, 64, true, pixel_format_info::unsigned_normalized}, //VK_FORMAT_G16B16G16R16_422_UNORM
         {{16, 32, 16}, 64, true, pixel_format_info::unsigned_normalized}, //VK_FORMAT_B16G16R16G16_422_UNORM
         
-        {{16,16,16}, 48, true, pixel_format_info::unsigned_normalized}, //VK_FORMAT_G16_B16_R16_3PLANE_420_UNORM
-        {{16,16,16}, 48, true, pixel_format_info::unsigned_normalized}, //VK_FORMAT_G16_B16R16_2PLANE_420_UNORM
-        {{16,16,16}, 48, true, pixel_format_info::unsigned_normalized}, //VK_FORMAT_G16_B16_R16_3PLANE_422_UNORM
-        {{16,16,16}, 48, true, pixel_format_info::unsigned_normalized}, //VK_FORMAT_G16_B16R16_2PLANE_422_UNORM
-        {{16,16,16}, 48, true, pixel_format_info::unsigned_normalized}, //VK_FORMAT_G16_B16_R16_3PLANE_444_UNORM
+        {{16,16,16}, 48, true, pixel_format_info::unsigned_normalized, pixel_format_info::none, pixel_format_info::plane3}, //VK_FORMAT_G16_B16_R16_3PLANE_420_UNORM
+        {{16,16,16}, 48, true, pixel_format_info::unsigned_normalized, pixel_format_info::none, pixel_format_info::plane2}, //VK_FORMAT_G16_B16R16_2PLANE_420_UNORM
+        {{16,16,16}, 48, true, pixel_format_info::unsigned_normalized, pixel_format_info::none, pixel_format_info::plane3}, //VK_FORMAT_G16_B16_R16_3PLANE_422_UNORM
+        {{16,16,16}, 48, true, pixel_format_info::unsigned_normalized, pixel_format_info::none, pixel_format_info::plane2}, //VK_FORMAT_G16_B16R16_2PLANE_422_UNORM
+        {{16,16,16}, 48, true, pixel_format_info::unsigned_normalized, pixel_format_info::none, pixel_format_info::plane3}, //VK_FORMAT_G16_B16_R16_3PLANE_444_UNORM
         
-        {{8,8,8}, 24, false, pixel_format_info::unsigned_normalized}, //VK_FORMAT_G8_B8R8_2PLANE_444_UNORM
+        {{8,8,8}, 24, false, pixel_format_info::unsigned_normalized, pixel_format_info::none, pixel_format_info::plane2}, //VK_FORMAT_G8_B8R8_2PLANE_444_UNORM
         
-        {{10,10,10}, 48, true, pixel_format_info::unsigned_normalized}, //VK_FORMAT_G10X6_B10X6R10X6_2PLANE_444_UNORM_3PACK16
+        {{10,10,10}, 48, true, pixel_format_info::unsigned_normalized, pixel_format_info::none, pixel_format_info::plane2}, //VK_FORMAT_G10X6_B10X6R10X6_2PLANE_444_UNORM_3PACK16
         
-        {{12,12,12}, 48, true, pixel_format_info::unsigned_normalized}, //VK_FORMAT_G12X4_B12X4R12X4_2PLANE_444_UNORM_3PACK16
+        {{12,12,12}, 48, true, pixel_format_info::unsigned_normalized, pixel_format_info::none, pixel_format_info::plane2}, //VK_FORMAT_G12X4_B12X4R12X4_2PLANE_444_UNORM_3PACK16
         
-        {{16,16,16}, 48, false, pixel_format_info::unsigned_normalized}, //VK_FORMAT_G16_B16R16_2PLANE_444_UNORM
+        {{16,16,16}, 48, false, pixel_format_info::unsigned_normalized, pixel_format_info::none, pixel_format_info::plane2}, //VK_FORMAT_G16_B16R16_2PLANE_444_UNORM
         
         {{4,4,4,4}, 16, true, pixel_format_info::unsigned_normalized}, //VK_FORMAT_A4R4G4B4_UNORM_PACK16
         {{4,4,4,4}, 16, true, pixel_format_info::unsigned_normalized}, //VK_FORMAT_A4B4G4R4_UNORM_PACK16

@@ -4,27 +4,25 @@
 #include <cstdlib>
 #include <utility>
 #include <tuple>
-#include <type_traits>
 #include <vector>
 #include <vulkan/vulkan.h>
-#include <vulkan/vulkan_core.h>
+#include <zstring.hpp>
+#include "Duo2D/graphics/core/texture.hpp"
 #include "Duo2D/traits/buffer_traits.hpp"
 #include "Duo2D/vulkan/core/command_pool.hpp"
-#include "Duo2D/vulkan/memory/descriptor_pool.hpp"
-#include "Duo2D/vulkan/memory/descriptor_set.hpp"
-#include "Duo2D/vulkan/memory/descriptor_set_layout.hpp"
+#include "Duo2D/vulkan/display/render_pass.hpp"
 #include "Duo2D/vulkan/memory/device_memory.hpp"
 #include "Duo2D/vulkan/device/logical_device.hpp"
 #include "Duo2D/vulkan/device/physical_device.hpp"
 #include "Duo2D/vulkan/memory/buffer.hpp"
-#include "Duo2D/vulkan/memory/device_memory.hpp"
+#include "Duo2D/vulkan/memory/texture_map.hpp"
+#include "Duo2D/vulkan/memory/renderable_allocator.hpp"
 #include "Duo2D/vulkan/memory/renderable_data.hpp"
 #include "Duo2D/vulkan/memory/pipeline.hpp"
 #include "Duo2D/vulkan/memory/pipeline_layout.hpp"
 #include "Duo2D/traits/renderable_traits.hpp"
 
 #include "Duo2D/graphics/prim/styled_rect.hpp"
-#include "zstring.hpp"
 
 namespace d2d {
     template<std::size_t FramesInFlight, impl::renderable_like... Ts> //requires (sizeof...(Ts) > 0)
@@ -37,7 +35,7 @@ namespace d2d {
     public:
         //TODO: rename/refactor to apply_changes
         template<typename T>
-        result<void> apply() noexcept;
+        result<void> apply(render_pass& window_render_pass) noexcept;
         //TODO: rename/refactor to has_changes
         template<typename T>
         constexpr bool needs_apply() const noexcept;
@@ -45,30 +43,34 @@ namespace d2d {
         constexpr bool empty() const noexcept;
 
     public:
-        template<typename T> constexpr const buffer& index_buffer() const noexcept requires T::has_indices;
-        template<typename T> constexpr const buffer& uniform_buffer() const noexcept requires T::has_uniform;
-        template<typename T> constexpr const buffer& vertex_buffer() const noexcept requires T::has_vertices;
-        template<typename T> constexpr const buffer& instance_buffer() const noexcept requires (T::instanced);
-        template<typename T> constexpr const buffer& attribute_buffer() const noexcept requires T::has_attributes;
+        template<typename T> constexpr const buffer& index_buffer() const noexcept requires renderable_constraints<T>::has_indices;
+        template<typename T> constexpr const buffer& uniform_buffer() const noexcept requires renderable_constraints<T>::has_uniform;
+        template<typename T> constexpr const buffer& vertex_buffer() const noexcept requires renderable_constraints<T>::has_vertices;
+        template<typename T> constexpr const buffer& instance_buffer() const noexcept requires (renderable_constraints<T>::instanced);
+        template<typename T> constexpr const buffer& attribute_buffer() const noexcept requires renderable_constraints<T>::has_attributes;
+        template<typename T> constexpr const buffer& texture_idx_buffer() const noexcept requires renderable_constraints<T>::has_textures;
 
 
-        template<typename T> constexpr std::uint32_t index_count(std::size_t i) const noexcept requires (!T::instanced && T::has_indices);
-        template<typename T> constexpr std::uint32_t vertex_count(std::size_t i) const noexcept requires (!T::instanced && T::has_vertices);
+        template<typename T> constexpr std::uint32_t index_count(std::size_t i) const noexcept requires (!renderable_constraints<T>::instanced && renderable_constraints<T>::has_indices);
+        template<typename T> constexpr std::uint32_t vertex_count(std::size_t i) const noexcept requires (!renderable_constraints<T>::instanced && renderable_constraints<T>::has_vertices);
         template<typename T> constexpr std::size_t instance_count() const noexcept;
 
-        template<typename T> constexpr std::uint32_t first_index(std::size_t i) const noexcept requires (!T::instanced && T::has_indices); 
-        template<typename T> constexpr std::uint32_t first_vertex(std::size_t i) const noexcept requires (!T::instanced && T::has_vertices); 
-        template<typename T> constexpr std::size_t vertex_buffer_offset() const noexcept requires (!T::instanced && T::has_vertices); 
+        template<typename T> constexpr std::uint32_t first_index(std::size_t i) const noexcept requires (!renderable_constraints<T>::instanced && renderable_constraints<T>::has_indices); 
+        template<typename T> constexpr std::uint32_t first_vertex(std::size_t i) const noexcept requires (!renderable_constraints<T>::instanced && renderable_constraints<T>::has_vertices); 
+
+        template<typename T> constexpr std::size_t vertex_buffer_offset() const noexcept requires (renderable_constraints<T>::has_vertices); 
+        template<typename T> constexpr std::size_t index_buffer_offset() const noexcept requires (renderable_constraints<T>::has_indices); 
+        template<typename T> constexpr std::size_t texture_idx_buffer_offset() const noexcept requires (renderable_constraints<T>::has_textures); 
         template<typename T> consteval static buffer_bytes_t static_offsets() noexcept;
 
 
         //template<typename T> constexpr const attribute_types<T>& attributes() const noexcept;
-        template<typename T> constexpr std::span<typename T::uniform_type> uniform_map() const noexcept requires T::has_uniform;
-        template<typename T> constexpr typename T::push_constant_types push_constants() const noexcept requires T::has_push_constants;
+        template<typename T> constexpr std::span<typename T::uniform_type> uniform_map() const noexcept requires renderable_constraints<T>::has_uniform;
+        template<typename T> constexpr typename T::push_constant_types push_constants() const noexcept requires renderable_constraints<T>::has_push_constants;
 
         template<typename T> constexpr const pipeline<T>& associated_pipeline() const noexcept;
         template<typename T> constexpr const pipeline_layout<T>& associated_pipeline_layout() const noexcept;
-        template<typename T> constexpr const descriptor_set<FramesInFlight>& desc_set() const noexcept;
+        template<typename T> constexpr const std::array<VkDescriptorSet, FramesInFlight>& desc_set() const noexcept;
 
 
 
@@ -85,29 +87,24 @@ namespace d2d {
         friend struct window;
 
     private:
-        template<typename InputContainerT>
-        result<std::pair<buffer, device_memory<1>>> stage(std::size_t total_buffer_size, InputContainerT&& inputs) noexcept;
-        template<std::size_t I, VkFlags BufferUsage, VkMemoryPropertyFlags MemProps, VkMemoryPropertyFlags FallbackMemProps, std::size_t N>
-        result<void> alloc_buffer(std::span<buffer, N> buffs, std::size_t total_buffer_size, device_memory<N>& mem) noexcept;
-        template<std::size_t I, std::size_t N>
-        result<void> staging_to_device_local(std::span<buffer, N> device_local_buffs, buffer const& staging_buff) noexcept;
-        
-
-    private:
         std::tuple<renderable_data<Ts, FramesInFlight>...> renderable_datas;
 
         constexpr static std::size_t renderable_count = sizeof...(Ts);
         constexpr static std::size_t renderable_count_with_attrib = (static_cast<bool>(renderable_data<Ts, FramesInFlight>::attribute_data_size) + ...);
+        constexpr static std::size_t renderable_count_with_textures = (renderable_constraints<Ts>::has_textures + ...);
         //TODO: Find a better strategy than these manual index calculation shenanigans
         template<typename T>
         constexpr static std::size_t renderable_index = impl::type_index<T, Ts...>::value;
         template<typename T>
         constexpr static std::size_t renderable_index_with_attrib = impl::type_index<T, Ts...>::with_attrib_value;
+        template<typename T>
+        constexpr static std::size_t renderable_index_with_textures = impl::type_index<T, Ts...>::with_textures_value;
 
 
-        //up to 4 total memory allocations
+        //up to 5 total memory allocations
         //ORDER MATTERS: buffers must be destroyed before memories
         device_memory<renderable_count> device_local_mem; //used for vertex and index data of non-instanced types
+        device_memory<std::dynamic_extent> texture_mem; //used for texture data
         device_memory<1> static_device_local_mem; //used for vertex and index data of instanced types
         device_memory<1> host_mem; //used for uniform
         device_memory<renderable_count_with_attrib> shared_mem; //used for attributes
@@ -116,14 +113,16 @@ namespace d2d {
         buffer static_data_buff;
         buffer uniform_buff;
         std::array<buffer, renderable_count_with_attrib> attribute_buffs;
+        texture_map textures;
+        buffer texture_size_buffer;
         void* uniform_buffer_map;
-
-        descriptor_pool<FramesInFlight> desc_pool;
 
         //TODO use std::reference_wrapper to better show intent?
         logical_device* logi_device_ptr;
         physical_device* phys_device_ptr;
         command_pool copy_cmd_pool;
+
+        //renderable_allocator allocator;
     };
 }
 

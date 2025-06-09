@@ -5,6 +5,7 @@
 #include <cstring>
 #include <memory>
 #include <result/verify.h>
+#include <type_traits>
 #include <vulkan/vulkan_core.h>
 
 #include "Duo2D/error.hpp"
@@ -70,6 +71,10 @@ namespace d2d {
 
         __D2D_TRY_MAKE(data, (make<renderable_tuple<frames_in_flight, styled_rect, debug_rect, clone_rect>>(logi_device, phys_device, _render_pass)), rb);
 
+        //update uniform buffer
+        std::memcpy(&data.uniform_map<clone_rect>()[frame_idx], &_swap_chain.extent, sizeof(extent2));
+        std::memcpy(&data.uniform_map<styled_rect>()[frame_idx], &_swap_chain.extent, sizeof(extent2));
+        std::memcpy(&data.uniform_map<debug_rect>()[frame_idx], &_swap_chain.extent, sizeof(extent2));
 
         return {};
     }
@@ -78,7 +83,7 @@ namespace d2d {
 namespace d2d {
     result<void> window::render() noexcept {
         //wait for rendering to finish last frame
-        render_fences[frame_idx].wait();
+        RESULT_VERIFY(render_fences[frame_idx].wait());
 
         uint32_t image_index;
         VkResult nir = vkAcquireNextImageKHR(*logi_device_ptr, _swap_chain, UINT64_MAX, frame_semaphores[semaphore_type::image_available][frame_idx], VK_NULL_HANDLE, &image_index);
@@ -90,6 +95,9 @@ namespace d2d {
         case VK_ERROR_OUT_OF_DATE_KHR:
         case VK_SUBOPTIMAL_KHR: {
             __D2D_TRY_MAKE(_swap_chain, make<swap_chain>(*logi_device_ptr, *phys_device_ptr, _render_pass, _surface, *this), s);
+            std::memcpy(&data.uniform_map<clone_rect>()[frame_idx], &_swap_chain.extent, sizeof(extent2));
+            std::memcpy(&data.uniform_map<styled_rect>()[frame_idx], &_swap_chain.extent, sizeof(extent2));
+            std::memcpy(&data.uniform_map<debug_rect>()[frame_idx], &_swap_chain.extent, sizeof(extent2));
             return {};
         }
         default: 
@@ -100,20 +108,16 @@ namespace d2d {
             return {};
 
         
-        //update uniform buffer
-        std::memcpy(&data.uniform_map<clone_rect>()[frame_idx], &_swap_chain.extent, sizeof(extent2));
-        std::memcpy(&data.uniform_map<styled_rect>()[frame_idx], &_swap_chain.extent, sizeof(extent2));
-        std::memcpy(&data.uniform_map<debug_rect>()[frame_idx], &_swap_chain.extent, sizeof(extent2));
 
 
-        render_fences[frame_idx].reset();
+        RESULT_VERIFY(render_fences[frame_idx].reset());
 
-        command_buffers[frame_idx].reset();
-        command_buffers[frame_idx].begin(_swap_chain, _render_pass, image_index);
-        command_buffers[frame_idx].draw<clone_rect>(data);
-        command_buffers[frame_idx].draw<styled_rect>(data);
-        command_buffers[frame_idx].draw<debug_rect>(data);
-        command_buffers[frame_idx].end();
+        RESULT_VERIFY(command_buffers[frame_idx].reset());
+        RESULT_VERIFY(command_buffers[frame_idx].render_begin(_swap_chain, _render_pass, image_index));
+        RESULT_VERIFY(command_buffers[frame_idx].draw<clone_rect>(data));
+        RESULT_VERIFY(command_buffers[frame_idx].draw<styled_rect>(data));
+        RESULT_VERIFY(command_buffers[frame_idx].draw<debug_rect>(data));
+        RESULT_VERIFY(command_buffers[frame_idx].render_end());
 
         constexpr static std::array<VkPipelineStageFlags, 1> wait_stages = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
         VkSubmitInfo submit_info{

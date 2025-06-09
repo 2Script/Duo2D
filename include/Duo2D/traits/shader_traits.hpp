@@ -16,7 +16,7 @@ namespace d2d::impl {
         {T::attribute_descs()} noexcept;
         requires std::is_same_v<typename T::shader_type, T>;
         typename T::shader_data_type;
-        {T::instanced} -> std::same_as<const bool&>;
+        {renderable_constraints<T>::instanced} -> std::same_as<const bool&>;
         {T::cull_mode} -> std::same_as<const VkCullModeFlags&>;
         {T::front_face} -> std::same_as<const VkFrontFace&>;
     };

@@ -1,7 +1,7 @@
 #include "Duo2D/vulkan/display/image_view.hpp"
 
 namespace d2d {
-    result<image_view> image_view::create(logical_device& device, VkImage& img, VkFormat format) noexcept {
+    result<image_view> image_view::create(logical_device& device, VkImage img, VkFormat format) noexcept {
         image_view ret{};
         ret.dependent_handle = device;
         VkImageViewCreateInfo image_view_create_info{

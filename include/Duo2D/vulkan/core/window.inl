@@ -120,6 +120,6 @@ namespace d2d {
 namespace d2d {
     template<typename T>
     result<void> window::apply() noexcept {
-        return data.apply<T>();
+        return data.apply<T>(_render_pass);
     }
 }

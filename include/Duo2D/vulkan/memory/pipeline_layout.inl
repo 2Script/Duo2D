@@ -12,7 +12,7 @@ namespace d2d {
             .setLayoutCount = 1,
             .pSetLayouts = &set_layout,
         };
-        if constexpr (T::has_push_constants) {
+        if constexpr (renderable_constraints<T>::has_push_constants) {
             constexpr static std::array ranges = T::push_constant_ranges();
             pipeline_layout_create_info.pushConstantRangeCount = ranges.size();
             pipeline_layout_create_info.pPushConstantRanges = ranges.data();
@@ -32,7 +32,7 @@ namespace d2d {
             .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
             .setLayoutCount = 0,
         };
-        if constexpr (T::has_push_constants) {
+        if constexpr (renderable_constraints<T>::has_push_constants) {
             constexpr static std::array ranges = T::push_constant_ranges();
             pipeline_layout_create_info.pushConstantRangeCount = ranges.size();
             pipeline_layout_create_info.pPushConstantRanges = ranges.data();

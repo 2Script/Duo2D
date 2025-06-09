@@ -11,6 +11,7 @@
 
 namespace d2d::error {
     enum code : std::int_fast16_t {
+        unknown,
         __glfw_mask = 0xFFFF,
 
         //GLFW errors
@@ -40,10 +41,9 @@ namespace d2d::error {
         window_already_exists,
         element_not_found,
         buffer_needs_changes_applied,
-        invalid_buffer_type,
+        invalid_image_initialization,
         descriptors_not_initialized,
 
-        unknown,
         num_codes,
     };
 }

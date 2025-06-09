@@ -60,6 +60,8 @@ namespace d2d {
         constexpr point2<T> center() const noexcept requires (impl::identity_rect<T, SizeT>) { return pos + (size / 2); }
 
     public:
+        constexpr static std::size_t member_count = 2;
+    public:
         point2<T> pos;
         size2<SizeT> size;
     };

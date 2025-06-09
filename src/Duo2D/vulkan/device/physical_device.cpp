@@ -118,6 +118,7 @@ namespace d2d {
         physical_device ret{
             .name = device_properties.deviceName,
             .type = static_cast<device_type>(device_properties.deviceType),
+            .limits = device_properties.limits,
             .queue_family_idxs = device_idxs,
             .extensions = device_extensions,
             .features = std::bit_cast<d2d::features_t>(device_features),

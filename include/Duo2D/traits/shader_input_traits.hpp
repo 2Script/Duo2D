@@ -4,7 +4,7 @@
 #include <vulkan/vulkan_core.h>
 #include "Duo2D/arith/matrix.hpp"
 #include "Duo2D/arith/vector.hpp"
-#include "Duo2D/graphics/prim/color.hpp"
+#include "Duo2D/graphics/core/color.hpp"
 #include "Duo2D/traits/vector_traits.hpp"
 
 

@@ -1,9 +1,9 @@
 #pragma once
 #include "Duo2D/arith/rect.hpp"
 #include "Duo2D/arith/vector.hpp"
-#include "Duo2D/graphics/prim/color.hpp"
+#include "Duo2D/graphics/core/color.hpp"
 #include "Duo2D/graphics/prim/styled_rect.hpp"
-#include "Duo2D/graphics/prim/renderable.hpp"
+#include "Duo2D/graphics/core/renderable.hpp"
 #include "Duo2D/traits/renderable_traits.hpp"
 #include "Duo2D/arith/size.hpp"
 #include "Duo2D/arith/matrix.hpp"

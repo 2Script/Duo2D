@@ -4,6 +4,7 @@
 #include <set>
 #include <compare>
 #include <vulkan/vulkan.h>
+#include <vulkan/vulkan_core.h>
 
 #include "Duo2D/error.hpp"
 #include "Duo2D/vulkan/core/vulkan_ptr.hpp"
@@ -25,6 +26,7 @@ namespace d2d {
         std::string_view name;
         device_type type = device_type::unknown;
 
+        VkPhysicalDeviceLimits limits{};
         queue_family_idxs_t queue_family_idxs{};
         extensions_t extensions{};
         features_t features{};

@@ -19,7 +19,7 @@ layout(location = 0) out vec4 color_out;
 layout(location = 1) out uvec2 debug;
 
 void main() {
-    gl_Position = vec4(pos_in/ubo.extent, 0.0, 1.0);
+    gl_Position = vec4(((pos_in * 2)/ubo.extent) - 1, 0.0, 1.0);
     debug = ubo.extent;
     color_out = color_in/255.0;
 }

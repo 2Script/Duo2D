@@ -3,6 +3,7 @@
 #include "Duo2D/arith/rect.hpp"
 #include "Duo2D/arith/size.hpp"
 #include "Duo2D/vulkan/device/logical_device.hpp"
+#include <cstddef>
 #include <cstdint>
 #include <vulkan/vulkan_core.h>
 
@@ -25,7 +26,7 @@ namespace d2d {
 }
 
 namespace d2d {
-    result<void> command_buffer::begin(const swap_chain& window_swap_chain, const render_pass& window_render_pass, std::uint32_t image_index) const noexcept {
+    result<void> command_buffer::render_begin(const swap_chain& window_swap_chain, const render_pass& window_render_pass, std::uint32_t image_index) const noexcept {
         VkCommandBufferBeginInfo begin_info{};
         begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
         __D2D_VULKAN_VERIFY(vkBeginCommandBuffer(handle, &begin_info));
@@ -57,7 +58,7 @@ namespace d2d {
         return {};
     }
 
-    result<void> command_buffer::end() const noexcept {
+    result<void> command_buffer::render_end() const noexcept {
         vkCmdEndRenderPass(handle);
         __D2D_VULKAN_VERIFY(vkEndCommandBuffer(handle));
         return {};
@@ -70,7 +71,7 @@ namespace d2d {
 }
 
 namespace d2d {
-    result<void> command_buffer::copy_begin() const noexcept {
+    result<void> command_buffer::generic_begin() const noexcept {
         VkCommandBufferBeginInfo begin_info{
             .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
             .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
@@ -79,12 +80,20 @@ namespace d2d {
         return {};
     }
 
-    void command_buffer::copy_generic(buffer& dest, const buffer& src, std::size_t size) const noexcept {
-        VkBufferCopy copy_region{ .size = size };
-        vkCmdCopyBuffer(handle, static_cast<VkBuffer>(src), static_cast<VkBuffer>(dest), 1, &copy_region);
+
+    void command_buffer::copy_alike(buffer& dest, const buffer& src, std::size_t size, std::size_t offset) const noexcept {
+        VkBufferCopy copy_region{ 
+            .srcOffset = offset,
+            .dstOffset = offset,
+            .size = size,
+        };
+        vkCmdCopyBuffer(handle, src, dest, 1, &copy_region);
     }
 
-    void command_buffer::copy_image(buffer& dest, const buffer& src, extent2 size) const noexcept {
+    void command_buffer::copy_alike(image& dest, image& src, extent2 size) const noexcept {
+        VkImageLayout original_dest_layout = dest.layout();
+        VkImageLayout original_src_layout = src.layout();
+
         VkImageCopy copy_region{
             .srcSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1},
             .srcOffset = {0, 0, 0},
@@ -92,10 +101,69 @@ namespace d2d {
             .dstOffset = {0, 0, 0},
             .extent = {size.width(), size.height(), 1}
         };
-        vkCmdCopyImage(handle, static_cast<VkImage>(src), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, static_cast<VkImage>(dest), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, &copy_region);
+        transition_image(src,  VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, original_src_layout );
+        transition_image(dest, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, original_dest_layout);
+        vkCmdCopyImage(handle, src, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, dest, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copy_region);
+        //transition_image(src,  original_src_layout,  VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+        transition_image(dest, original_src_layout, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
     }
 
-    result<void> command_buffer::copy_end(logical_device& device, const command_pool& pool) const noexcept {
+    void command_buffer::copy_buffer_to_image(image& dest, const buffer& src, extent2 image_size, std::size_t buffer_offset) const noexcept {
+        VkBufferImageCopy copy_region{
+            .bufferOffset = buffer_offset,
+            .bufferRowLength = 0,
+            .bufferImageHeight = 0,
+
+            .imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1},
+            .imageOffset = {0, 0, 0},
+            .imageExtent = {image_size.width(), image_size.height(), 1},
+        };
+        
+        vkCmdCopyBufferToImage(handle, src, dest, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copy_region);
+    }
+
+
+    void command_buffer::transition_image(image& img, VkImageLayout new_layout, VkImageLayout old_layout) const noexcept {
+        constexpr auto access_mask_from_layout = [](VkImageLayout layout) noexcept -> VkAccessFlags {
+            switch(layout) {
+            case VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL:     return VK_ACCESS_TRANSFER_READ_BIT;
+            case VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL:     return VK_ACCESS_TRANSFER_WRITE_BIT;
+            case VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL: return VK_ACCESS_SHADER_READ_BIT;
+            default:                                       return 0;
+            };
+        };
+        constexpr auto pipeline_stage_from_layout = [](VkImageLayout layout) noexcept -> VkPipelineStageFlags {
+            switch(layout) {
+            case VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL:     return VK_PIPELINE_STAGE_TRANSFER_BIT;
+            case VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL:     return VK_PIPELINE_STAGE_TRANSFER_BIT;
+            case VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL: return VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+            default:                                       return VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+            };
+        };
+        VkImageMemoryBarrier barrier{
+            .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+            .srcAccessMask = access_mask_from_layout(old_layout),
+            .dstAccessMask = access_mask_from_layout(new_layout),
+            .oldLayout = old_layout,
+            .newLayout = new_layout,
+            .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .image = img,
+            .subresourceRange = {
+                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                .baseMipLevel = 0,
+                .levelCount = 1,
+                .baseArrayLayer = 0,
+                .layerCount = 1,
+            },
+        };
+
+        vkCmdPipelineBarrier(handle, pipeline_stage_from_layout(old_layout), pipeline_stage_from_layout(new_layout), 0, 0, nullptr, 0, nullptr, 1, &barrier);
+        img.layout() = new_layout;
+    }
+
+
+    result<void> command_buffer::generic_end(logical_device& device, const command_pool& pool) const noexcept {
         __D2D_VULKAN_VERIFY(vkEndCommandBuffer(handle));
         
         VkSubmitInfo submit_info{};
