@@ -24,7 +24,7 @@ namespace d2d {
         
         // Initialize GLFW
         if(int code; !glfw_init && !glfwInit() && (code = glfwGetError(nullptr)))
-            return __D2D_GLFW_ERR;
+            return static_cast<errc>(code);
         glfw_init = true;
 
         // Check for vulkan support
