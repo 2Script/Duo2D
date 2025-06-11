@@ -23,16 +23,16 @@ namespace d2d {
         };
         
         // Initialize GLFW
-        if(int code; !glfw_init && !glfwInit() && (code = glfwGetError(nullptr)))
+        application ret{};
+        if(int code; decltype(glfw_init)::instance_count == 0 && !glfwInit() && (code = glfwGetError(nullptr)))
             return static_cast<errc>(code);
-        glfw_init = true;
+        ++decltype(glfw_init)::instance_count;
 
         // Check for vulkan support
         if(!glfwVulkanSupported()) 
             return error::vulkan_not_supported;
 
         // Create instance
-        application ret{};
         __D2D_TRY_MAKE(ret.vk_instance, make<instance>(app_info), v)
         ret.name = name;
 
@@ -119,6 +119,13 @@ namespace d2d {
 
 
 namespace d2d {
+    bool application::open() const noexcept {
+        for (auto& w : windows)
+            if(!glfwWindowShouldClose(w.second))
+                return true;
+        return false;
+    }
+
     result<void> application::render() noexcept {
         for (auto& w : windows) {
             glfwPollEvents();

@@ -8,6 +8,7 @@
 
 #include "Duo2D/error.hpp"
 #include "Duo2D/vulkan/core/instance.hpp"
+#include "Duo2D/vulkan/core/instance_local.hpp"
 #include "Duo2D/vulkan/device/logical_device.hpp"
 #include "Duo2D/vulkan/device/physical_device.hpp"
 #include "Duo2D/vulkan/core/window.hpp"
@@ -30,7 +31,7 @@ namespace d2d {
 
 
     public:
-        //TODO return reference to window instead of completely rework how to grab windows
+        //TODO return reference to window instead of pointer
         result<window*> add_window(std::string_view title) noexcept;
         result<void> remove_window(std::string_view title) noexcept;
 
@@ -38,6 +39,7 @@ namespace d2d {
         result<void> remove_window() noexcept;
 
     public:
+        bool open() const noexcept;
         result<void> render() noexcept;
         result<void> join() noexcept;
 
@@ -50,6 +52,6 @@ namespace d2d {
 
         std::map<std::string, window> windows;
     private:
-        inline static bool glfw_init = false; //not thread safe
+        impl::instance_local<application, void, glfwTerminate> glfw_init;
     };
 }

@@ -220,8 +220,8 @@ namespace d2d {
 
 
 namespace d2d::error {
-    inline std::string& last_glfw_desc() {
-        static std::string last_glfw_str;
+    inline std::string_view& last_glfw_desc() {
+        static std::string_view last_glfw_str;
         return last_glfw_str;
     }
 }
@@ -231,6 +231,6 @@ namespace d2d::error {
 #define __D2D_GLFW_VERIFY(cond) \
 if(const char* desc; !cond) { \
     __D2D_GLFW_POP_ERR(&desc); \
-    __D2D_GLFW_STORE_ERR(std::string(desc)); \
+    __D2D_GLFW_STORE_ERR(std::string_view(desc)); \
     return static_cast<error::code>(code); \
 }
