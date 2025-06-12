@@ -3,7 +3,7 @@
 
 #include "Duo2D/graphics/core/texture.hpp"
 #include "Duo2D/vulkan/memory/buffer.hpp"
-#include "Duo2D/error.hpp"
+#include "Duo2D/core/error.hpp"
 #include "Duo2D/vulkan/device/physical_device.hpp"
 #include <numeric>
 #include <result/verify.h>

@@ -1,6 +1,6 @@
 #pragma once
 #include "Duo2D/vulkan/memory/shader_module.hpp"
-#include "Duo2D/error.hpp"
+#include "Duo2D/core/error.hpp"
 #include <cstdint>
 #include <vulkan/vulkan_core.h>
 

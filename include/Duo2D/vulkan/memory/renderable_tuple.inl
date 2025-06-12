@@ -1,5 +1,5 @@
 #pragma once
-#include "Duo2D/error.hpp"
+#include "Duo2D/core/error.hpp"
 #include "Duo2D/graphics/core/texture.hpp"
 #include "Duo2D/traits/buffer_traits.hpp"
 #include "Duo2D/traits/renderable_traits.hpp"

@@ -1,5 +1,5 @@
 #include "Duo2D/vulkan/display/framebuffer.hpp"
-#include "Duo2D/error.hpp"
+#include "Duo2D/core/error.hpp"
 #include <vulkan/vulkan_core.h>
 
 namespace d2d {

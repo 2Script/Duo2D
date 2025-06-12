@@ -6,7 +6,7 @@
 #include <GLFW/glfw3.h>
 #include <utility>
 
-#include "Duo2D/error.hpp"
+#include "Duo2D/core/error.hpp"
 #include "Duo2D/vulkan/make.hpp"
 
 namespace d2d {

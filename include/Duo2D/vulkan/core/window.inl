@@ -1,5 +1,5 @@
 #pragma once
-#include "Duo2D/error.hpp"
+#include "Duo2D/core/error.hpp"
 #include "Duo2D/traits/renderable_traits.hpp"
 #include "Duo2D/vulkan/core/window.hpp"
 

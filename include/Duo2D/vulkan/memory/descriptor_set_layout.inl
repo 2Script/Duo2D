@@ -1,6 +1,6 @@
 #pragma once
 #include "Duo2D/vulkan/memory/descriptor_set_layout.hpp"
-#include "Duo2D/error.hpp"
+#include "Duo2D/core/error.hpp"
 #include "Duo2D/vulkan/make.hpp"
 #include "Duo2D/vulkan/device/physical_device.hpp"
 #include <bit>

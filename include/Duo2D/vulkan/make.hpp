@@ -1,6 +1,6 @@
 #pragma once
 #include <utility>
-#include "Duo2D/error.hpp"
+#include "Duo2D/core/error.hpp"
 
 namespace d2d::impl {
     template<typename T, typename... Args>

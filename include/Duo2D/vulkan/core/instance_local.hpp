@@ -1,7 +1,7 @@
 #pragma once
 #include <cstddef>
 #include <type_traits>
-#include "Duo2D/error.hpp"
+#include "Duo2D/core/error.hpp"
 #include "Duo2D/traits/dependent_member.hpp"
 
 

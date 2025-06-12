@@ -6,7 +6,7 @@
 #include <vulkan/vulkan.h>
 #include <vulkan/vulkan_core.h>
 
-#include "Duo2D/error.hpp"
+#include "Duo2D/core/error.hpp"
 #include "Duo2D/vulkan/core/instance.hpp"
 #include "Duo2D/vulkan/core/instance_local.hpp"
 #include "Duo2D/vulkan/device/logical_device.hpp"

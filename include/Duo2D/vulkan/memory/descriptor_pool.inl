@@ -1,5 +1,5 @@
 #include "Duo2D/vulkan/memory/descriptor_pool.hpp"
-#include "Duo2D/error.hpp"
+#include "Duo2D/core/error.hpp"
 #include <vulkan/vulkan_core.h>
 
 

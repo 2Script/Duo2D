@@ -2,7 +2,7 @@
 #include <concepts>
 #include <utility>
 
-#include "Duo2D/error.hpp"
+#include "Duo2D/core/error.hpp"
 #include "Duo2D/traits/vk_traits.hpp"
 
 namespace d2d {

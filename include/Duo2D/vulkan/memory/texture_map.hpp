@@ -3,7 +3,7 @@
 #include <llfio.hpp>
 #include "Duo2D/vulkan/memory/texture_map_base.hpp"
 #include "Duo2D/vulkan/memory/device_memory.hpp"
-#include "Duo2D/error.hpp"
+#include "Duo2D/core/error.hpp"
 #include "Duo2D/graphics/core/texture.hpp"
 #include "Duo2D/vulkan/core/command_pool.hpp"
 
