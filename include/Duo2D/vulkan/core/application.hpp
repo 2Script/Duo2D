@@ -8,7 +8,7 @@
 
 #include "Duo2D/core/error.hpp"
 #include "Duo2D/vulkan/core/instance.hpp"
-#include "Duo2D/vulkan/core/instance_local.hpp"
+#include "Duo2D/vulkan/core/instance_tracker.hpp"
 #include "Duo2D/vulkan/device/logical_device.hpp"
 #include "Duo2D/vulkan/device/physical_device.hpp"
 #include "Duo2D/vulkan/core/window.hpp"
@@ -52,6 +52,6 @@ namespace d2d {
 
         std::map<std::string, window> windows;
     private:
-        impl::instance_local<application, void, glfwTerminate> glfw_init;
+        impl::instance_tracker<application, void, glfwTerminate> glfw_init;
     };
 }
