@@ -9,6 +9,7 @@
 #include "Duo2D/graphics/core/glyph.hpp"
 #include "Duo2D/graphics/prim/debug_rect.hpp"
 #include "Duo2D/graphics/prim/styled_rect.hpp"
+#include "Duo2D/traits/generic_functor.hpp"
 #include "Duo2D/vulkan/core/command_buffer.hpp"
 #include "Duo2D/vulkan/memory/renderable_tuple.hpp"
 #include "Duo2D/vulkan/core/command_pool.hpp"
@@ -92,7 +93,7 @@ namespace d2d {
 
     private:
         window(GLFWwindow* w) noexcept : 
-            handle(w, glfwDestroyWindow), logi_device_ptr(nullptr), phys_device_ptr(nullptr),
+            handle(w, {}), logi_device_ptr(nullptr), phys_device_ptr(nullptr),
             _surface(), _swap_chain(), _render_pass(),
             frame_idx(0), _command_pool(), command_buffers{}, render_fences{}, frame_semaphores{}, submit_semaphores(),
             data() {}
@@ -101,7 +102,7 @@ namespace d2d {
     private:
         constexpr static std::size_t frames_in_flight = 2;
 
-        std::unique_ptr<GLFWwindow, decltype(glfwDestroyWindow)&> handle;
+        std::unique_ptr<GLFWwindow, generic_functor<glfwDestroyWindow>> handle;
         logical_device* logi_device_ptr;
         physical_device* phys_device_ptr;
         //Decleration order matters: swap_chain MUST be destroyed before surface

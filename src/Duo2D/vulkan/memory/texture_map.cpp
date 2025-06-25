@@ -20,6 +20,7 @@
 #include <vulkan/vulkan_core.h>
 #include "Duo2D/arith/vector.hpp"
 #include "Duo2D/graphics/core/texture.hpp"
+#include "Duo2D/traits/generic_functor.hpp"
 #include "Duo2D/vulkan/display/pixel_format_mapping.hpp"
 #include "Duo2D/vulkan/memory/renderable_allocator.hpp"
 #include "Duo2D/vulkan/make.hpp"
@@ -93,7 +94,6 @@ namespace d2d {
             __D2D_FT_VERIFY(FT_Init_FreeType(&library));
             return library;
         }));
-        //std::unique_ptr<msdfgen::FontHandle, decltype(msdfgen::destroyFont)&> font_handle(new msdfgen::FontHandle(ret.freetype_init.data), msdfgen::destroyFont);
 
         FT_Open_Args font_open_args {
             .flags = FT_OPEN_MEMORY,
@@ -103,7 +103,7 @@ namespace d2d {
 
         FT_Face face_ptr;
         __D2D_FT_VERIFY(FT_Open_Face(decltype(freetype_init)::data, &font_open_args, 0, &face_ptr));
-        std::unique_ptr<std::remove_pointer_t<FT_Face>, decltype(FT_Done_Face)&> face(face_ptr, FT_Done_Face);
+        std::unique_ptr<std::remove_pointer_t<FT_Face>, generic_functor<FT_Done_Face>> face(face_ptr, {});
 
 
         constexpr auto move_to_fn = [](FT_Vector const* target, void* ctx) noexcept -> FT_Error {

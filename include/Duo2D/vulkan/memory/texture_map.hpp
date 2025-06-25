@@ -30,6 +30,7 @@ namespace d2d {
         impl::instance_tracker<FT_Library, FT_Done_FreeType> freetype_init{};
     
     private:
+        
         struct freetype_context {
             pt2d pos;
             double scale;
