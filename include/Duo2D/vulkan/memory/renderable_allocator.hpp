@@ -28,6 +28,8 @@ namespace d2d {
         inline result<void> staging_to_device_local(buffer& device_local_buff, buffer const& staging_buff, std::size_t offset = 0, std::optional<std::size_t> size = std::nullopt) noexcept;
         inline result<void> staging_to_device_local(image& device_local_image, buffer const& staging_buff) noexcept;
 
+        constexpr command_buffer const& copy_command_buffer() const noexcept { return copy_cmd_buffer; }
+
     private:
         inline result<void> gpu_alloc_begin() noexcept;
         inline result<void> gpu_alloc_end() noexcept;

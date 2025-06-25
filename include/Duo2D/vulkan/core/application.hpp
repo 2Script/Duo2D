@@ -1,5 +1,6 @@
 #pragma once
 #include <GLFW/glfw3.h>
+#include <atomic>
 #include <map>
 #include <string_view>
 #include <set>
@@ -50,8 +51,17 @@ namespace d2d {
         logical_device logi_device;
         std::string name;
 
+        //ORDER MATTERS: glfw must be terminated after all windows have been destroyed
+        impl::instance_tracker<void, glfwTerminate> glfw_init;
         std::map<std::string, window> windows;
     private:
-        impl::instance_tracker<application, void, glfwTerminate> glfw_init;
+        //inline static std::atomic_int64_t instance_count;
     };
+}
+
+namespace d2d::impl {
+    inline std::atomic_int64_t& application_count() {
+        static std::atomic_int64_t count{};
+        return count;
+    }
 }

@@ -24,6 +24,7 @@ namespace d2d {
         }
 
         std::optional<std::uint32_t> mem_type_idx = std::nullopt;
+        //TODO do this once in physical_device
         VkPhysicalDeviceMemoryProperties mem_props;
         vkGetPhysicalDeviceMemoryProperties(phys_device, &mem_props);
 
@@ -42,21 +43,16 @@ namespace d2d {
         return ret;
     }
 
-    result<device_memory<std::dynamic_extent>> device_memory<std::dynamic_extent>::create(logical_device& logi_device, physical_device& phys_device, texture_map_base& textures, buffer& texture_size_buffer, VkMemoryPropertyFlags properties) noexcept {
+    result<device_memory<std::dynamic_extent>> device_memory<std::dynamic_extent>::create(logical_device& logi_device, physical_device& phys_device, texture_map_base& textures, VkMemoryPropertyFlags properties) noexcept {
         device_memory ret{};
         ret.dependent_handle = logi_device;
 
-        ret.mem_reqs.reserve(textures.size() + 1);
+        ret.mem_reqs.reserve(textures.size());
 
         for(auto iter = textures.cbegin(); iter != textures.cend(); ++iter) {
             if(iter->second.empty()) continue;
             VkMemoryRequirements reqs;
             vkGetImageMemoryRequirements(logi_device, iter->second, &reqs);
-            ret.mem_reqs.push_back(reqs);
-        }
-        if(!texture_size_buffer.empty()) {
-            VkMemoryRequirements reqs;
-            vkGetBufferMemoryRequirements(logi_device, texture_size_buffer, &reqs);
             ret.mem_reqs.push_back(reqs);
         }
 
@@ -70,8 +66,6 @@ namespace d2d {
             for(auto iter = textures.cbegin(); iter != textures.cend(); ++iter, ++j)
                 if(!iter->second.empty() && !(ret.mem_reqs[j].memoryTypeBits & (1 << i)))
                     goto next_mem_prop;
-            if(!texture_size_buffer.empty() && !(ret.mem_reqs[j].memoryTypeBits & (1 << i)))
-                goto next_mem_prop;
             if ((mem_props.memoryTypes[i].propertyFlags & properties) == properties) {
                 mem_type_idx.emplace(i);
                 break;
@@ -92,8 +86,10 @@ namespace d2d {
 
         VkMemoryAllocateInfo malloc_info{
             .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
-            .allocationSize = std::accumulate(std::forward<MemReqsContainer>(mem_reqs).cbegin(), std::forward<MemReqsContainer>(mem_reqs).cend(), static_cast<std::size_t>(0), 
-                [](std::size_t sum, VkMemoryRequirements const& mem_req){ return sum + mem_req.size; }),
+            .allocationSize = std::accumulate(std::forward<MemReqsContainer>(mem_reqs).cbegin(), std::forward<MemReqsContainer>(mem_reqs).cend(), static_cast<std::size_t>(0), [](std::size_t sum, VkMemoryRequirements mem_req){ 
+                if(mem_req.size == 0) return sum;
+                return (mem_req.size + ((sum + mem_req.alignment - 1) & ~(mem_req.alignment - 1))); 
+            }),
             .memoryTypeIndex = *mem_type_idx,
         };
 
@@ -123,17 +119,20 @@ namespace d2d {
     template<std::size_t N>
     result<void> device_memory<N>::bind(logical_device& device, buffer& buff, std::size_t offset) const noexcept {
         __D2D_VULKAN_VERIFY(vkBindBufferMemory(device, buff, handle, offset));
+        buff.offset = offset;
         return {};
     }
 
 
     result<void> device_memory<std::dynamic_extent>::bind(logical_device& device, buffer& buff, std::size_t offset) const noexcept {
         __D2D_VULKAN_VERIFY(vkBindBufferMemory(device, buff, handle, offset));
+        buff.offset = offset;
         return {};
     }
 
     result<void> device_memory<std::dynamic_extent>::bind(logical_device& device, image& img, std::size_t offset) const noexcept {
         __D2D_VULKAN_VERIFY(vkBindImageMemory(device, img, handle, offset));
+        img.offset = offset;
         return {};
     }
 }

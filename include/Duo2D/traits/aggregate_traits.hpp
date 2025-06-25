@@ -1,5 +1,6 @@
 #pragma once
 #include <type_traits>
+#include "Duo2D/graphics/core/color.hpp"
 #include "Duo2D/traits/shader_input_traits.hpp"
 
 namespace d2d::impl {
@@ -21,7 +22,7 @@ namespace d2d::impl {
     consteval std::size_t member_count()  { return T::member_count; }
     
     template<std::size_t N, typename T>
-    constexpr decltype(auto) to_tuple(size_constant<N>, T const&) { static_assert(N != N, "Too many aggregate members (not yet supported)"); }
+    constexpr decltype(auto) to_tuple(size_constant<N>, T const&) { static_assert(!std::is_same_v<T, T>, "Too many aggregate members (not yet supported)"); }
 
     template<arithmetic T> constexpr decltype(auto) to_tuple(size_constant<1>, T const& t) { return std::make_tuple(t); }
 
@@ -38,6 +39,8 @@ namespace d2d::impl {
     struct as_tuple<std::tuple<Ts...>> { using type = std::tuple<Ts...>; };
     template<typename T, std::size_t N>
     struct as_tuple<std::array<T, N>> { using type = std::array<T, N>; };
+    template<std::size_t Channels, std::size_t BPC>
+    struct as_tuple<basic_color<Channels, BPC>> { using type = std::tuple<basic_color<Channels, BPC>>; };
 
     template<typename T> using as_tuple_t = typename as_tuple<T>::type;
 };

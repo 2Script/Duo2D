@@ -59,7 +59,7 @@ namespace d2d {
 
     template<>
     struct device_memory<std::dynamic_extent> : public device_memory_base {
-        inline static result<device_memory> create(logical_device& logi_device, physical_device& phys_device, texture_map_base& textures, buffer& texture_size_buffer, VkMemoryPropertyFlags properties) noexcept;
+        inline static result<device_memory> create(logical_device& logi_device, physical_device& phys_device, texture_map_base& textures, VkMemoryPropertyFlags properties) noexcept;
 
         inline result<void> bind(logical_device& device, buffer& buff, std::size_t offset) const noexcept;
         inline result<void> bind(logical_device& device, image& img, std::size_t offset) const noexcept;

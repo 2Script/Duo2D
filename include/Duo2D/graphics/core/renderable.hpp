@@ -1,4 +1,5 @@
 #pragma once
+#include "Duo2D/graphics/core/font.hpp"
 #include "Duo2D/graphics/core/texture.hpp"
 #include "Duo2D/traits/aggregate_traits.hpp"
 #include "Duo2D/traits/attribute_traits.hpp"
@@ -16,25 +17,35 @@ namespace d2d {
     //struct renderable_constraints;
 }
 
-namespace d2d {
+namespace d2d::impl {
+    template<typename T, typename TextureT>
+    concept has_texture_type = requires {
+        {renderable_traits<T>::max_texture_count} -> std::same_as<const std::size_t&>;
+        requires renderable_traits<T>::max_texture_count > 0;
+        requires std::is_same_v<typename renderable_traits<T>::texture_type, TextureT>;
+    };
+
     template<typename T>
     struct renderable_textures {};
 
-    template<typename T> requires (requires {
-        {renderable_traits<T>::max_texture_count} -> std::same_as<const std::size_t&>;
-        requires renderable_traits<T>::max_texture_count > 0;
-    })
+    template<has_texture_type<texture> T>
     struct renderable_textures<T> {
         std::array<std::string_view, renderable_traits<T>::max_texture_count> _texture_paths{};
 
-        constexpr std::array<std::string_view, renderable_traits<T>::max_texture_count> const& texture_paths() const noexcept { return _texture_paths; }
+        constexpr std::array<std::string_view, renderable_traits<T>::max_texture_count> const& texture_keys() const noexcept { return _texture_paths; }
+    };
+    template<has_texture_type<font> T>
+    struct renderable_textures<T> {
+        std::array<font, renderable_traits<T>::max_texture_count> _fonts{};
+
+        constexpr std::array<font, renderable_traits<T>::max_texture_count> const& texture_keys() const noexcept { return _fonts; }
     };
 }
 
 
 namespace d2d {
     template<typename T>
-    struct renderable : public renderable_traits<T>, public renderable_textures<T> {
+    struct renderable : public renderable_traits<T>, public impl::renderable_textures<T> {
         using traits_type = renderable_traits<T>; 
         using shader_traits_type = shader_traits<T>; 
     private:
@@ -71,7 +82,7 @@ namespace d2d {
         template<typename InputT, std::uint32_t Binding, std::size_t... Is>
         consteval static std::pair<std::array<VkVertexInputAttributeDescription, sizeof...(Is)>, std::size_t> inputs(std::uint32_t location_offset, std::index_sequence<Is...>) {
             constexpr std::size_t input_count = sizeof...(Is);
-            constexpr std::array<std::size_t, input_count> sizes = {sizeof(type_at_t<Is, InputT>)...};
+            constexpr std::array<std::size_t, input_count> sizes = {std::max(sizeof(type_at_t<Is, InputT>), alignof(InputT))...};
             constexpr std::array<std::size_t, input_count> location_sizes = {impl::shader_input_traits<type_at_t<Is, InputT>>::location_size...};
             constexpr std::size_t total_location_size = std::accumulate(location_sizes.cbegin(), location_sizes.cend(), 0);
             std::array<std::uint32_t, input_count> offsets, location_idxs;

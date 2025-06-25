@@ -5,10 +5,15 @@
 
 namespace d2d {
     result<buffer> buffer::create(logical_device& device, std::size_t size, VkBufferUsageFlags usage) noexcept {
+        return buffer::create(device, size, usage, 0);
+    }
+
+    result<buffer> buffer::create(logical_device& device, std::size_t size, VkBufferUsageFlags usage, std::size_t mem_offset) noexcept {
         buffer ret{};
         ret.dependent_handle = device;
         ret.flags = usage;
         ret.bytes = size;
+        ret.offset = mem_offset;
 
         VkBufferCreateInfo generic_buffer_info{
             .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
@@ -24,7 +29,7 @@ namespace d2d {
 
 namespace d2d {
     result<buffer> buffer::clone(logical_device& device) const noexcept {
-        return buffer::create(device, bytes, flags);
+        return buffer::create(device, bytes, flags, offset);
     }
 
     result<buffer> buffer::clone(logical_device& device, physical_device&) const noexcept {

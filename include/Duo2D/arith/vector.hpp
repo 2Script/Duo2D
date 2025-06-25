@@ -3,6 +3,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <functional>
 #include <span>
 #include <tuple>
 #include <type_traits>
@@ -20,6 +21,9 @@ namespace d2d {
         static_assert(Dims > 0, "0-dimensional vector is not valid!");
     private:
         using clean_vector = vector<Dims, UnitTy, HoldsData, 0>;
+        template<typename T, typename Op> using l_result_vector = vector<Dims, decltype(std::declval<Op>()(std::declval<UnitTy>(), std::declval<T>())), HoldsData, TransformFlags>;
+        template<typename T, typename Op> using r_result_vector = vector<Dims, decltype(std::declval<Op>()(std::declval<T>(), std::declval<UnitTy>())), HoldsData, TransformFlags>;
+    private:
 
     public:
         constexpr static VkFormat format = impl::vertex_traits<Dims, UnitTy>::format;
@@ -50,7 +54,7 @@ namespace d2d {
 
     
     public:
-        //TODO: Add more arithmetic operations (and use SIMD - probably just needs a target_clones)
+        //TODO: SIMD (probably just needs a target_clones)
         template<impl::vec_data_type OtherHoldsData> constexpr vector& operator+=(const vector<Dims, UnitTy, OtherHoldsData>& rhs) noexcept { for(std::size_t i = 0; i < Dims; ++i) (*this)[i] += rhs[i]; return *this; }
         template<impl::vec_data_type OtherHoldsData> constexpr vector& operator-=(const vector<Dims, UnitTy, OtherHoldsData>& rhs) noexcept { for(std::size_t i = 0; i < Dims; ++i) (*this)[i] -= rhs[i]; return *this; }
         template<impl::vec_data_type OtherHoldsData> constexpr vector& operator*=(const vector<Dims, UnitTy, OtherHoldsData>& rhs) noexcept { for(std::size_t i = 0; i < Dims; ++i) (*this)[i] *= rhs[i]; return *this; }
@@ -60,6 +64,20 @@ namespace d2d {
         template<impl::vec_data_type OtherHoldsData> friend constexpr vector operator-(vector lhs, const vector<Dims, UnitTy, OtherHoldsData>& rhs) noexcept { return lhs -= rhs; }
         template<impl::vec_data_type OtherHoldsData> friend constexpr vector operator*(vector lhs, const vector<Dims, UnitTy, OtherHoldsData>& rhs) noexcept { return lhs *= rhs; }
         template<impl::vec_data_type OtherHoldsData> friend constexpr vector operator/(vector lhs, const vector<Dims, UnitTy, OtherHoldsData>& rhs) noexcept { return lhs /= rhs; }
+    public:
+        template<impl::non_vector T> constexpr vector& operator+=(const T& rhs) noexcept { for(std::size_t i = 0; i < Dims; ++i) (*this)[i] += rhs; return *this; }
+        template<impl::non_vector T> constexpr vector& operator-=(const T& rhs) noexcept { for(std::size_t i = 0; i < Dims; ++i) (*this)[i] -= rhs; return *this; }
+        template<impl::non_vector T> constexpr vector& operator*=(const T& rhs) noexcept { for(std::size_t i = 0; i < Dims; ++i) (*this)[i] *= rhs; return *this; }
+        template<impl::non_vector T> constexpr vector& operator/=(const T& rhs) noexcept { for(std::size_t i = 0; i < Dims; ++i) (*this)[i] /= rhs; return *this; }
+
+        template<impl::non_vector T> friend constexpr l_result_vector<T, std::plus<>      > operator+(vector lhs, const T& rhs) noexcept { l_result_vector<T, std::plus<>      > ret; for(std::size_t i = 0; i < Dims; ++i) ret[i] = (lhs[i] + rhs   ); return ret;  }
+        template<impl::non_vector T> friend constexpr l_result_vector<T, std::minus<>     > operator-(vector lhs, const T& rhs) noexcept { l_result_vector<T, std::minus<>     > ret; for(std::size_t i = 0; i < Dims; ++i) ret[i] = (lhs[i] - rhs   ); return ret;  }
+        template<impl::non_vector T> friend constexpr l_result_vector<T, std::multiplies<>> operator*(vector lhs, const T& rhs) noexcept { l_result_vector<T, std::multiplies<>> ret; for(std::size_t i = 0; i < Dims; ++i) ret[i] = (lhs[i] * rhs   ); return ret;  }
+        template<impl::non_vector T> friend constexpr l_result_vector<T, std::divides<>   > operator/(vector lhs, const T& rhs) noexcept { l_result_vector<T, std::divides<>   > ret; for(std::size_t i = 0; i < Dims; ++i) ret[i] = (lhs[i] / rhs   ); return ret;  }
+        template<impl::non_vector T> friend constexpr r_result_vector<T, std::plus<>      > operator+(T lhs, const vector& rhs) noexcept { r_result_vector<T, std::plus<>      > ret; for(std::size_t i = 0; i < Dims; ++i) ret[i] = (lhs    + rhs[i]); return ret;  }
+        template<impl::non_vector T> friend constexpr r_result_vector<T, std::minus<>     > operator-(T lhs, const vector& rhs) noexcept { r_result_vector<T, std::minus<>     > ret; for(std::size_t i = 0; i < Dims; ++i) ret[i] = (lhs    - rhs[i]); return ret;  }
+        template<impl::non_vector T> friend constexpr r_result_vector<T, std::multiplies<>> operator*(T lhs, const vector& rhs) noexcept { r_result_vector<T, std::multiplies<>> ret; for(std::size_t i = 0; i < Dims; ++i) ret[i] = (lhs    * rhs[i]); return ret;  }
+        template<impl::non_vector T> friend constexpr r_result_vector<T, std::divides<>   > operator/(T lhs, const vector& rhs) noexcept { r_result_vector<T, std::divides<>   > ret; for(std::size_t i = 0; i < Dims; ++i) ret[i] = (lhs    / rhs[i]); return ret;  }
 
         constexpr vector operator-() const noexcept { vector ret; for(std::size_t i = 0; i < Dims; ++i) ret[i] = -(*this)[i]; return ret; } 
 
@@ -95,6 +113,7 @@ namespace d2d {
         auto do_dot = [&lhs, &rhs]<std::size_t... I>(std::index_sequence<I...>){ return ((lhs[I] * rhs[I]) + ...); }; 
         return do_dot(std::make_index_sequence<N>{});
     }
+
     template<std::size_t N, typename T, impl::vec_data_type HD, typename F> 
     constexpr vector<N, T, HD> normalized(vector<N, T, HD> v, F&& sqrt_fn) noexcept { 
         T len = static_cast<T>(std::forward<F>(sqrt_fn)(dot(v,v)));
@@ -103,6 +122,11 @@ namespace d2d {
     }
     template<std::size_t N, typename T, impl::vec_data_type HD> 
     vector<N, T, HD> normalized(vector<N, T, HD> v) noexcept { return normalized(v, static_cast<T(&)(T)>(std::sqrt)); }
+        
+    template<typename T, impl::vec_data_type HD> 
+    constexpr T cross(vector<2, T, HD> lhs, const vector<2, T, HD>& rhs) noexcept { 
+        return lhs[0] * rhs[1] - lhs[1] * rhs[0];
+    }
     template<typename T, impl::vec_data_type HD> 
     constexpr vector<3, T, HD> cross(vector<3, T, HD> lhs, const vector<3, T, HD>& rhs) noexcept { 
         return {(lhs[1] * rhs[2] - lhs[2] * rhs[1]), (lhs[2] * rhs[0] - lhs[0] * rhs[2]), (lhs[0] * rhs[1] - lhs[1] * rhs[0])};

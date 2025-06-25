@@ -37,6 +37,8 @@ list(TRANSFORM CPP_FILES PREPEND src/Duo2D/)
 set(SHADER_INPUT_FILES
     rect.vert
     rect.frag
+    glyph.vert
+    glyph.frag
     debug_rect.vert
     debug_rect.frag
 )
@@ -48,6 +50,11 @@ list(REMOVE_DUPLICATES SHADER_OUTPUT_FILES)
 add_library(${PROJECT_NAME} ${CPP_FILES})
 add_custom_target(${PROJECT_NAME}_shaders ALL DEPENDS ${SHADER_OUTPUT_FILES} SOURCES ${SHADER_INPUT_FILES})
 add_dependencies(${PROJECT_NAME} ${PROJECT_NAME}_shaders)
+
+## custom includes
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(FT freetype2)
+target_include_directories(${PROJECT_NAME} PUBLIC ${FT_INCLUDE_DIRS})
 
 
 ## compiler args

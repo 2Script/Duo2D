@@ -1,4 +1,5 @@
 #pragma once
+#include <cerrno>
 #include <cstdint>
 #include <limits>
 #include <result.hpp>
@@ -8,10 +9,13 @@
 #include <string_view>
 #include <system_error>
 #include <vulkan/vulkan.h>
+#include <ft2build.h>
+#include FT_FREETYPE_H
 
 #include "Duo2D/vulkan/device/queue_family.hpp"
 
 #define __D2D_VKRESULT_TO_ERRC(vkresult) (vkresult >= 0 && vkresult <= 0b111 ? vkresult + 1000000000 : vkresult)
+#define __D2D_FTERR_TO_ERRC(fterr) (fterr | 0x00020000)
 //(vkresult | 1000000000)
 //(vkresult + (vkresult >= 0 && vkresult < 0xFF ? 1000000000 : 0))
 
@@ -24,8 +28,42 @@ namespace d2d::error {
         //POSIX errors
         posix_begin = 1,
 
-        no_such_file_or_directory = static_cast<code_int_t>(std::errc::no_such_file_or_directory),
-        invalid_argument          = static_cast<code_int_t>(std::errc::invalid_argument),
+        operation_not_permitted        = static_cast<code_int_t>(std::errc::operation_not_permitted),
+        no_such_file_or_directory      = static_cast<code_int_t>(std::errc::no_such_file_or_directory),
+        no_such_process                = static_cast<code_int_t>(std::errc::no_such_process),
+        interrupted                    = static_cast<code_int_t>(std::errc::interrupted),
+        io_error                       = static_cast<code_int_t>(std::errc::io_error),
+        no_such_device_or_address      = static_cast<code_int_t>(std::errc::no_such_device_or_address),
+        argument_list_too_long         = static_cast<code_int_t>(std::errc::argument_list_too_long),
+
+        bad_file_descriptor            = static_cast<code_int_t>(std::errc::bad_file_descriptor),
+
+        resource_unavailable_try_again = static_cast<code_int_t>(std::errc::resource_unavailable_try_again),
+        not_enough_memory              = static_cast<code_int_t>(std::errc::not_enough_memory),
+        permission_denied              = static_cast<code_int_t>(std::errc::permission_denied),
+        bad_address                    = static_cast<code_int_t>(std::errc::bad_address),
+
+        device_or_resource_busy        = static_cast<code_int_t>(std::errc::device_or_resource_busy),
+
+        no_such_device                 = static_cast<code_int_t>(std::errc::no_such_device),
+        not_a_directory                = static_cast<code_int_t>(std::errc::not_a_directory),
+        is_a_directory                 = static_cast<code_int_t>(std::errc::is_a_directory),
+        invalid_argument               = static_cast<code_int_t>(std::errc::invalid_argument),
+        too_many_files_open_in_system  = static_cast<code_int_t>(std::errc::too_many_files_open_in_system),
+        too_many_files_open            = static_cast<code_int_t>(std::errc::too_many_files_open),
+
+        function_not_supported         = static_cast<code_int_t>(std::errc::function_not_supported),
+
+        bad_font_file_format           = EBFONT,
+
+        value_too_large                = static_cast<code_int_t>(std::errc::value_too_large),
+
+        operation_not_supported        = static_cast<code_int_t>(std::errc::operation_not_supported),
+
+        operation_in_progress          = static_cast<code_int_t>(std::errc::operation_in_progress),
+        stale_file_handle              = ESTALE,
+
+        operation_canceled             = static_cast<code_int_t>(std::errc::operation_canceled),
 
         posix_end = std::numeric_limits<std::uint8_t>::max(),
 
@@ -47,20 +85,131 @@ namespace d2d::error {
         invalid_image_initialization,
         descriptors_not_initialized,
 
+        d2d_custom_end = 0xFFF,
+
 
         //GLFW errors
-        window_system_not_initialized      = GLFW_NOT_INITIALIZED,
-        invalid_window_enum_argument       = GLFW_INVALID_ENUM,
-        invalid_window_argument            = GLFW_INVALID_VALUE,
-        out_of_memory_for_window           = GLFW_OUT_OF_MEMORY,
-        vulkan_not_supported               = GLFW_API_UNAVAILABLE,
-        os_window_error                    = GLFW_PLATFORM_ERROR,
-        missing_pixel_format               = GLFW_FORMAT_UNAVAILABLE,
-        cannot_convert_clipboard           = GLFW_FORMAT_UNAVAILABLE,
-        missing_cursor_shape               = GLFW_CURSOR_UNAVAILABLE,
-        missing_window_feature             = GLFW_FEATURE_UNAVAILABLE,
-        window_feature_not_yet_implemented = GLFW_FEATURE_UNIMPLEMENTED,
-        missing_window_platform            = GLFW_PLATFORM_UNAVAILABLE,
+        window_system_not_initialized      = GLFW_NOT_INITIALIZED,       //__D2D_GLFW_TO_ERRC(GLFW_NOT_INITIALIZED),
+        invalid_window_enum_argument       = GLFW_INVALID_ENUM,          //__D2D_GLFW_TO_ERRC(GLFW_INVALID_ENUM),
+        invalid_window_argument            = GLFW_INVALID_VALUE,         //__D2D_GLFW_TO_ERRC(GLFW_INVALID_VALUE),
+        out_of_memory_for_window           = GLFW_OUT_OF_MEMORY,         //__D2D_GLFW_TO_ERRC(GLFW_OUT_OF_MEMORY),
+        vulkan_not_supported               = GLFW_API_UNAVAILABLE,       //__D2D_GLFW_TO_ERRC(GLFW_API_UNAVAILABLE),
+        os_window_error                    = GLFW_PLATFORM_ERROR,        //__D2D_GLFW_TO_ERRC(GLFW_PLATFORM_ERROR),
+        missing_pixel_format               = GLFW_FORMAT_UNAVAILABLE,    //__D2D_GLFW_TO_ERRC(GLFW_FORMAT_UNAVAILABLE),
+        cannot_convert_clipboard           = GLFW_FORMAT_UNAVAILABLE,    //__D2D_GLFW_TO_ERRC(GLFW_FORMAT_UNAVAILABLE),
+        missing_cursor_shape               = GLFW_CURSOR_UNAVAILABLE,    //__D2D_GLFW_TO_ERRC(GLFW_CURSOR_UNAVAILABLE),
+        missing_window_feature             = GLFW_FEATURE_UNAVAILABLE,   //__D2D_GLFW_TO_ERRC(GLFW_FEATURE_UNAVAILABLE),
+        window_feature_not_yet_implemented = GLFW_FEATURE_UNIMPLEMENTED, //__D2D_GLFW_TO_ERRC(GLFW_FEATURE_UNIMPLEMENTED)
+        missing_window_platform            = GLFW_PLATFORM_UNAVAILABLE,  //__D2D_GLFW_TO_ERRC(GLFW_PLATFORM_UNAVAILABLE),
+
+
+        //Freetype errors
+        cannot_open_font                 = __D2D_FTERR_TO_ERRC(FT_Err_Cannot_Open_Resource),
+        unknown_font_file_format         = __D2D_FTERR_TO_ERRC(FT_Err_Unknown_File_Format),
+        invalid_font_file_format         = __D2D_FTERR_TO_ERRC(FT_Err_Invalid_File_Format),
+        invalid_freetype_version         = __D2D_FTERR_TO_ERRC(FT_Err_Invalid_Version),
+        font_module_outdated             = __D2D_FTERR_TO_ERRC(FT_Err_Lower_Module_Version),
+        invalid_font_argument            = __D2D_FTERR_TO_ERRC(FT_Err_Invalid_Argument),
+        font_feature_not_yet_implemented = __D2D_FTERR_TO_ERRC(FT_Err_Unimplemented_Feature),
+        invalid_font_table               = __D2D_FTERR_TO_ERRC(FT_Err_Invalid_Table),
+        invalid_font_table_offset        = __D2D_FTERR_TO_ERRC(FT_Err_Invalid_Offset),
+        font_array_allocation_too_large  = __D2D_FTERR_TO_ERRC(FT_Err_Array_Too_Large),
+        missing_font_module              = __D2D_FTERR_TO_ERRC(FT_Err_Missing_Module),
+        missing_font_property            = __D2D_FTERR_TO_ERRC(FT_Err_Missing_Property),
+
+        invalid_glyph_index        = __D2D_FTERR_TO_ERRC(FT_Err_Invalid_Glyph_Index),
+        invalid_character_code     = __D2D_FTERR_TO_ERRC(FT_Err_Invalid_Character_Code),
+        invalid_glyph_format       = __D2D_FTERR_TO_ERRC(FT_Err_Invalid_Glyph_Format),
+        cannot_render_glyph_format = __D2D_FTERR_TO_ERRC(FT_Err_Cannot_Render_Glyph),
+        invalid_glyph_outline      = __D2D_FTERR_TO_ERRC(FT_Err_Invalid_Outline),
+        invalid_composite_glyph    = __D2D_FTERR_TO_ERRC(FT_Err_Invalid_Composite),
+        too_many_font_hints        = __D2D_FTERR_TO_ERRC(FT_Err_Too_Many_Hints),
+        invalid_glyph_pixel_size   = __D2D_FTERR_TO_ERRC(FT_Err_Invalid_Pixel_Size),
+        invalid_svg_font           = __D2D_FTERR_TO_ERRC(FT_Err_Invalid_SVG_Document),
+
+        invalid_font_object_handle   = __D2D_FTERR_TO_ERRC(FT_Err_Invalid_Handle),
+        invalid_font_library_handle  = __D2D_FTERR_TO_ERRC(FT_Err_Invalid_Library_Handle),
+        invalid_font_driver_handle   = __D2D_FTERR_TO_ERRC(FT_Err_Invalid_Driver_Handle),
+        invalid_font_face_handle     = __D2D_FTERR_TO_ERRC(FT_Err_Invalid_Face_Handle),
+        invalid_font_size_handle     = __D2D_FTERR_TO_ERRC(FT_Err_Invalid_Size_Handle),
+        invalid_glpyh_slot_handle    = __D2D_FTERR_TO_ERRC(FT_Err_Invalid_Slot_Handle),
+        invalid_font_char_map_handle = __D2D_FTERR_TO_ERRC(FT_Err_Invalid_CharMap_Handle),
+        invalid_font_cache_handle    = __D2D_FTERR_TO_ERRC(FT_Err_Invalid_Cache_Handle),
+        invalid_font_stream_handle   = __D2D_FTERR_TO_ERRC(FT_Err_Invalid_Stream_Handle),
+
+        too_many_font_modules    = __D2D_FTERR_TO_ERRC(FT_Err_Too_Many_Drivers),
+        too_many_font_extensions = __D2D_FTERR_TO_ERRC(FT_Err_Too_Many_Extensions),
+
+        out_of_memory_for_font = __D2D_FTERR_TO_ERRC(FT_Err_Out_Of_Memory),
+        unlisted_font_object   = __D2D_FTERR_TO_ERRC(FT_Err_Unlisted_Object),
+
+        cannot_open_font_stream       = __D2D_FTERR_TO_ERRC(FT_Err_Cannot_Open_Stream),
+        invalid_font_stream_seek      = __D2D_FTERR_TO_ERRC(FT_Err_Invalid_Stream_Seek),
+        invalid_font_stream_skip      = __D2D_FTERR_TO_ERRC(FT_Err_Invalid_Stream_Skip),
+        invalid_font_stream_read      = __D2D_FTERR_TO_ERRC(FT_Err_Invalid_Stream_Read),
+        invalid_font_stream_operation = __D2D_FTERR_TO_ERRC(FT_Err_Invalid_Stream_Operation),
+        invalid_font_frame_operation  = __D2D_FTERR_TO_ERRC(FT_Err_Invalid_Frame_Operation),
+        invalid_font_frame_access     = __D2D_FTERR_TO_ERRC(FT_Err_Nested_Frame_Access),
+        invalid_font_frame_read       = __D2D_FTERR_TO_ERRC(FT_Err_Invalid_Frame_Read),
+
+        font_raster_uninitialized   = __D2D_FTERR_TO_ERRC(FT_Err_Raster_Uninitialized),
+        font_raster_corrupted       = __D2D_FTERR_TO_ERRC(FT_Err_Raster_Corrupted),
+        font_raster_overflow        = __D2D_FTERR_TO_ERRC(FT_Err_Raster_Overflow),
+        font_raster_negative_height = __D2D_FTERR_TO_ERRC(FT_Err_Raster_Negative_Height),
+
+        too_many_font_caches = __D2D_FTERR_TO_ERRC(FT_Err_Too_Many_Caches),
+
+        invalid_truetype_opcode                   = __D2D_FTERR_TO_ERRC(FT_Err_Invalid_Opcode),
+        too_few_truetype_arguments                = __D2D_FTERR_TO_ERRC(FT_Err_Too_Few_Arguments),
+        truetype_stack_overflow                   = __D2D_FTERR_TO_ERRC(FT_Err_Stack_Overflow),
+        truetype_code_overflow                    = __D2D_FTERR_TO_ERRC(FT_Err_Code_Overflow),
+        invalid_truetype_argument                 = __D2D_FTERR_TO_ERRC(FT_Err_Bad_Argument),
+        truetype_division_by_zero                 = __D2D_FTERR_TO_ERRC(FT_Err_Divide_By_Zero),
+        invalid_truetype_reference                = __D2D_FTERR_TO_ERRC(FT_Err_Invalid_Reference),
+        truetype_debug_opcode                     = __D2D_FTERR_TO_ERRC(FT_Err_Debug_OpCode),
+        found_endf_opcode_in_truetype_stream      = __D2D_FTERR_TO_ERRC(FT_Err_ENDF_In_Exec_Stream),
+        nested_truetype_defs                      = __D2D_FTERR_TO_ERRC(FT_Err_Nested_DEFS),
+        invalid_truetype_code_range               = __D2D_FTERR_TO_ERRC(FT_Err_Invalid_CodeRange),
+        truetype_excecution_too_long              = __D2D_FTERR_TO_ERRC(FT_Err_Execution_Too_Long),
+        too_many_truetype_function_defs           = __D2D_FTERR_TO_ERRC(FT_Err_Too_Many_Function_Defs),
+        too_many_truetype_instruction_defs        = __D2D_FTERR_TO_ERRC(FT_Err_Too_Many_Instruction_Defs),
+        missing_sfnt_font_table                   = __D2D_FTERR_TO_ERRC(FT_Err_Table_Missing),
+        missing_truetype_horizontal_header_table  = __D2D_FTERR_TO_ERRC(FT_Err_Horiz_Header_Missing),
+        missing_truetype_locations_table          = __D2D_FTERR_TO_ERRC(FT_Err_Locations_Missing),
+        missing_truetype_name_table               = __D2D_FTERR_TO_ERRC(FT_Err_Name_Table_Missing),
+        missing_truetype_char_map_table           = __D2D_FTERR_TO_ERRC(FT_Err_CMap_Table_Missing),
+        missing_truetype_horizontal_metrics_table = __D2D_FTERR_TO_ERRC(FT_Err_Hmtx_Table_Missing),
+        missing_truetype_post_script_table        = __D2D_FTERR_TO_ERRC(FT_Err_Post_Table_Missing),
+        invalid_truetype_horizontal_metrics       = __D2D_FTERR_TO_ERRC(FT_Err_Invalid_Horiz_Metrics),
+        invalid_truetype_char_map_format          = __D2D_FTERR_TO_ERRC(FT_Err_Invalid_CharMap_Format),
+        invalid_truetype_ppem_value               = __D2D_FTERR_TO_ERRC(FT_Err_Invalid_PPem),
+        invalid_truetype_vertical_metrics         = __D2D_FTERR_TO_ERRC(FT_Err_Invalid_Vert_Metrics),
+        missing_truetype_context                  = __D2D_FTERR_TO_ERRC(FT_Err_Could_Not_Find_Context),
+        invalid_truetype_postscript_table_format  = __D2D_FTERR_TO_ERRC(FT_Err_Invalid_Post_Table_Format),
+        invalid_truetype_postscript_table         = __D2D_FTERR_TO_ERRC(FT_Err_Invalid_Post_Table),
+        def_in_glyf_bytecode                      = __D2D_FTERR_TO_ERRC(FT_Err_DEF_In_Glyf_Bytecode),
+        missing_truetype_bitmap                   = __D2D_FTERR_TO_ERRC(FT_Err_Missing_Bitmap),
+        missing_truetype_svg_hooks                = __D2D_FTERR_TO_ERRC(FT_Err_Missing_SVG_Hooks),
+
+        cff_syntax_error              = __D2D_FTERR_TO_ERRC(FT_Err_Syntax_Error),
+        cff_argument_stack_underflow  = __D2D_FTERR_TO_ERRC(FT_Err_Stack_Underflow),
+        cff_ignore                    = __D2D_FTERR_TO_ERRC(FT_Err_Ignore),
+        cff_no_unicode_glyph_fount    = __D2D_FTERR_TO_ERRC(FT_Err_No_Unicode_Glyph_Name),
+        cff_glyph_too_big_for_hinting = __D2D_FTERR_TO_ERRC(FT_Err_Glyph_Too_Big),
+
+        missing_bdf_start_font_field   = __D2D_FTERR_TO_ERRC(FT_Err_Missing_Startfont_Field),
+        missing_bdf_font_field         = __D2D_FTERR_TO_ERRC(FT_Err_Missing_Font_Field),
+        missing_bdf_size_field         = __D2D_FTERR_TO_ERRC(FT_Err_Missing_Size_Field),
+        missing_bdf_bounding_box_field = __D2D_FTERR_TO_ERRC(FT_Err_Missing_Fontboundingbox_Field),
+        missing_bdf_chars_field        = __D2D_FTERR_TO_ERRC(FT_Err_Missing_Chars_Field),
+        missing_bdf_start_char_field   = __D2D_FTERR_TO_ERRC(FT_Err_Missing_Startchar_Field),
+        missing_bdf_encoding_field     = __D2D_FTERR_TO_ERRC(FT_Err_Missing_Encoding_Field),
+        missing_bdf_bbx_field          = __D2D_FTERR_TO_ERRC(FT_Err_Missing_Bbx_Field),
+        bdf_bbx_too_big                = __D2D_FTERR_TO_ERRC(FT_Err_Bbx_Too_Big),
+        bdf_invalid_font_header        = __D2D_FTERR_TO_ERRC(FT_Err_Corrupted_Font_Header),
+        bdf_invalid_font_glyphs        = __D2D_FTERR_TO_ERRC(FT_Err_Corrupted_Font_Glyphs),
+
+
 
         //VKResult errors
         fence_or_query_not_complete = __D2D_VKRESULT_TO_ERRC(VK_NOT_READY),
@@ -120,15 +269,17 @@ namespace d2d::error {
 
         //Number of codes (cannot be used externally as a size)
         num_duplicate_codes = 1,
-        num_unique_codes = 69,
+        num_unique_codes = 163,
         num_codes = num_unique_codes + num_duplicate_codes
     };
 }
 
 namespace d2d::error {
     constexpr frozen::unordered_map<code_int_t, std::string_view, code::num_unique_codes> code_descs = {
+        //TODO
         {invalid_argument,          "Invalid argument passed to a non-graphical function"},
         {no_such_file_or_directory, "Requested file or directory does not exist"},
+
 
         {no_vulkan_devices,                                                                   "Could not find a graphics device with vulkan support"},
         {device_lacks_display_format,                                                         "The given device lacks the requested display format"},
@@ -139,6 +290,7 @@ namespace d2d::error {
         {device_lacks_necessary_queue_base + static_cast<code_int_t>(queue_family::graphics), "The given device lacks a (required) graphics queue"},
         {device_lacks_necessary_queue_base + static_cast<code_int_t>(queue_family::present),  "The given device lacks a (required) present queue"},
         
+
         {window_system_not_initialized,      "Window system (GLFW) needs to be initialized first"},
         {invalid_window_enum_argument,       "Invalid enum argument passed to window system function"},
         {invalid_window_argument,            "Invalid argument passed to window system function"},
@@ -150,6 +302,113 @@ namespace d2d::error {
         {missing_window_feature,             "The requested window feature is not supported by the platform"},
         {window_feature_not_yet_implemented, "The requested window feature has not been implemented in the window system yet"},
         {missing_window_platform,            "The requested window platform was not found, or, if none was specifically requested, no supported platforms were found"},
+
+
+        {cannot_open_font,                 "Cannot open specified font file"},
+        {unknown_font_file_format,         "Unknown font file format"},
+        {invalid_font_file_format,         "Invalid font file format"},
+        {invalid_freetype_version,         "Invalid freetype version specified"},
+        {font_module_outdated,             "Outdated font module version specified"},
+        {invalid_font_argument,            "Invalid argument passed to font function"},
+        {font_feature_not_yet_implemented, "The requested font feature has not been implemented in Freetype yet"},
+        {invalid_font_table,               "Invalid font table"},
+        {invalid_font_table_offset,        "Invalid offset within font table"},
+        {font_array_allocation_too_large,  "A memory allocation for a font array failed because it is too large"},
+        {missing_font_module,              "Missing font module"},
+        {missing_font_property,            "Missing font property"},
+
+        {invalid_glyph_index,        "Invalid glyph index"},
+        {invalid_character_code,     "Invalid character code"},
+        {invalid_glyph_format,       "The glyph image format specified is not supported"},
+        {cannot_render_glyph_format, "Cannot render specified glyph format"},
+        {invalid_glyph_outline,      "Invalid glyph outline"},
+        {invalid_composite_glyph,    "Invalid composite glyph"},
+        {too_many_font_hints,        "Too many font hints specified"},
+        {invalid_glyph_pixel_size,   "Invalid glyph pixel size"},
+        {invalid_svg_font,           "Invalid font-related SVG document"},
+
+        {invalid_font_object_handle,   "Invalid font object handle"},
+        {invalid_font_library_handle,  "Invalid font library handle"},
+        {invalid_font_driver_handle,   "Invalid font driver handle"},
+        {invalid_font_face_handle,     "Invalid font face handle"},
+        {invalid_font_size_handle,     "Invalid font size handle"},
+        {invalid_glpyh_slot_handle,    "Invalid glpyh slot handle"},
+        {invalid_font_char_map_handle, "invalid font char map handle"},
+        {invalid_font_cache_handle,    "Invalid font cache handle"},
+        {invalid_font_stream_handle,   "Invalid font stream handle"},
+
+        {too_many_font_modules,    "Too many font modules"},
+        {too_many_font_extensions, "Too many font extensions"},
+
+        {out_of_memory_for_font, "A memory allocation for a font failed"},
+        {unlisted_font_object,   "Unlisted font object"},
+
+        {cannot_open_font_stream,       "Cannot open font stream"},
+        {invalid_font_stream_seek,      "Invalid font stream seek"},
+        {invalid_font_stream_skip,      "Invalid font stream skip"},
+        {invalid_font_stream_read,      "Invalid font stream read"},
+        {invalid_font_stream_operation, "Invalid font stream operation"},
+        {invalid_font_frame_operation,  "Invalid font frame operation"},
+        {invalid_font_frame_access,     "Invalid font frame access"},
+        {invalid_font_frame_read,       "Invalid font frame read"},
+
+        {font_raster_uninitialized,   "Font raster uninitialized"},
+        {font_raster_corrupted,       "Font raster corrupted"},
+        {font_raster_overflow,        "Font raster overflow"},
+        {font_raster_negative_height, "Font raster has negative height (while rastering)"},
+
+        {too_many_font_caches, "Too many registered font caches"},
+
+        {invalid_truetype_opcode,                   "Invalid truetype/SFNT opcode"},
+        {too_few_truetype_arguments,                "Too few arguements in given truetype/SFNT font"},
+        {truetype_stack_overflow,                   "stack overflow in truetype/SFNT font"},
+        {truetype_code_overflow,                    "code overflow in truetype/SFNT font"},
+        {invalid_truetype_argument,                 "Invalid argument in truetype/SFNT font"},
+        {truetype_division_by_zero,                 "Divison by 0 in truetype/SFNT font"},
+        {invalid_truetype_reference,                "Invalid reference in truetype/SFNT font"},
+        {truetype_debug_opcode,                     "Debug opcode found in truetype/SFNT font"},
+        {found_endf_opcode_in_truetype_stream,      "ENDF opcode found in truetype/SFNT execution stream"},
+        {nested_truetype_defs,                      "Nested DEFS in truetype/SFNT font"},
+        {invalid_truetype_code_range,               "Invalid code range in truetype/SFNT font"},
+        {truetype_excecution_too_long,              "Execution context in truetype/SFNT font too long"},
+        {too_many_truetype_function_defs,           "Too many function definitions in truetype/SFNT font"},
+        {too_many_truetype_instruction_defs,        "Too many instruction definitions in truetype/SFNT font"},
+        {missing_sfnt_font_table,                   "SFNT font table missing"},
+        {missing_truetype_horizontal_header_table,  "Missing horizontal header (hhea) in truetype/SFNT font"},
+        {missing_truetype_locations_table,          "Missing locations (loca) in truetype/SFNT font"},
+        {missing_truetype_name_table,               "Missing name table in truetype/SFNT font"},
+        {missing_truetype_char_map_table,           "Missing character map table (cmap) in truetype/SFNT font"},
+        {missing_truetype_horizontal_metrics_table, "Missing horizontal metrics (hmtx) in truetype/SFNT font"},
+        {missing_truetype_post_script_table,        "Missing PostScript (post) in truetype/SFNT font"},
+        {invalid_truetype_horizontal_metrics,       "Invalid horizontal metrics in truetype/SFNT font"},
+        {invalid_truetype_char_map_format,          "Invalid character map format (cmap) in truetype/SFNT font"},
+        {invalid_truetype_ppem_value,               "Invalid ppem value in truetype/SFNT font"},
+        {invalid_truetype_vertical_metrics,         "Invalid vertical metrics in truetype/SFNT font"},
+        {missing_truetype_context,                  "Missing truetype/SFNT font context"},
+        {invalid_truetype_postscript_table_format,  "Invalid PostScript table format (post) in truetype/SFNT font"},
+        {invalid_truetype_postscript_table,         "Invalid PostScript table (post) in truetype/SFNT font"},
+        {def_in_glyf_bytecode,                      "Found FDEF or IDEF opcode in truetype/SFNT font glyf bytecode"},
+        {missing_truetype_bitmap,                   "Missing bitmap in truetype/SFNT font strike"},
+        {missing_truetype_svg_hooks,                "Missing truetype/SFNT font SVG hooks"},
+
+        {cff_syntax_error,              "CFF font opcode syntax error"},
+        {cff_argument_stack_underflow,  "CFF font argument stack underflow"},
+        {cff_ignore,                    "CFF font ignore"},
+        {cff_no_unicode_glyph_fount,    "No unicode glyph name found in CFF font"},
+        {cff_glyph_too_big_for_hinting, "CFF font glyph is too big for hinting"},
+
+        {missing_bdf_start_font_field,   "Missing `STARTFONT` field in BDF font"},
+        {missing_bdf_font_field,         "Missing `FONT` field in BDF font"},
+        {missing_bdf_size_field,         "Missing `SIZE` field in BDF font"},
+        {missing_bdf_bounding_box_field, "Missing `FONTBOUNDINGBOX` field in BDF font"},
+        {missing_bdf_chars_field,        "Missing `CHARS` field in BDF font"},
+        {missing_bdf_start_char_field,   "Missing `STARTCHAR` field in BDF font"},
+        {missing_bdf_encoding_field,     "Missing `ENCODING` field in BDF font"},
+        {missing_bdf_bbx_field,          "Missing `BBX` field in BDF font"},
+        {bdf_bbx_too_big,                "`BBX` field in BDF font is too big"},
+        {bdf_invalid_font_header,        "Invalid BDF font header - it is either corrupted or missing fields"},
+        {bdf_invalid_font_glyphs,        "Invalid BDF font glyphs - it is either corrupted or missing fields"},
+
 
         {fence_or_query_not_complete, "The vulkan fence or query has not yet completed"},
         {vulkan_operation_timed_out,  "The vulkan-specific wait operation did not complete in the specified time"},
@@ -202,9 +461,196 @@ namespace d2d::error {
         {invalid_format_modifier,                "Invalid DRM format modifier(s) specified for plane layout"},
         {unknown_vulkan_error,                   "An unknown vulkan-related error occured"},
     };
+
+
+    constexpr frozen::unordered_map<code_int_t, int, code::num_unique_codes> code_errc_mappings = {
+        {invalid_argument,          invalid_argument},
+        {no_such_file_or_directory, no_such_file_or_directory},
+
+
+        {no_vulkan_devices,                                                                   no_such_device},
+        {device_lacks_display_format,                                                         no_such_device_or_address},
+        {device_lacks_present_mode,                                                           no_such_device_or_address},
+        {device_lacks_suitable_mem_type,                                                      no_such_device_or_address},
+        {device_not_selected,                                                                 bad_file_descriptor},
+        {device_not_initialized,                                                              bad_file_descriptor},
+        {device_lacks_necessary_queue_base + static_cast<code_int_t>(queue_family::graphics), no_such_device_or_address},
+        {device_lacks_necessary_queue_base + static_cast<code_int_t>(queue_family::present),  no_such_device_or_address},
+        
+
+        {window_system_not_initialized,      bad_file_descriptor},
+        {invalid_window_enum_argument,       invalid_argument},
+        {invalid_window_argument,            invalid_argument},
+        {out_of_memory_for_window,           invalid_argument},
+        {vulkan_not_supported,               operation_not_supported},
+        {os_window_error,                    interrupted},
+        {missing_pixel_format,               invalid_argument},
+        {missing_cursor_shape,               invalid_argument},
+        {missing_window_feature,             invalid_argument},
+        {window_feature_not_yet_implemented, function_not_supported},
+        {missing_window_platform,            operation_not_supported},
+
+
+        {cannot_open_font,                 no_such_file_or_directory},
+        {unknown_font_file_format,         bad_font_file_format},
+        {invalid_font_file_format,         bad_font_file_format},
+        {invalid_freetype_version,         invalid_argument},
+        {font_module_outdated,             invalid_argument},
+        {invalid_font_argument,            invalid_argument},
+        {font_feature_not_yet_implemented, function_not_supported},
+        {invalid_font_table,               bad_font_file_format},
+        {invalid_font_table_offset,        bad_font_file_format},
+        {font_array_allocation_too_large,  value_too_large},
+        {missing_font_module,              invalid_argument},
+        {missing_font_property,            invalid_argument},
+
+        {invalid_glyph_index,        invalid_argument},
+        {invalid_character_code,     invalid_argument},
+        {invalid_glyph_format,       invalid_argument},
+        {cannot_render_glyph_format, invalid_argument},
+        {invalid_glyph_outline,      invalid_argument},
+        {invalid_composite_glyph,    invalid_argument},
+        {too_many_font_hints,        invalid_argument},
+        {invalid_glyph_pixel_size,   invalid_argument},
+        {invalid_svg_font,           invalid_argument},
+
+        {invalid_font_object_handle,   invalid_argument},
+        {invalid_font_library_handle,  invalid_argument},
+        {invalid_font_driver_handle,   invalid_argument},
+        {invalid_font_face_handle,     invalid_argument},
+        {invalid_font_size_handle,     invalid_argument},
+        {invalid_glpyh_slot_handle,    invalid_argument},
+        {invalid_font_char_map_handle, invalid_argument},
+        {invalid_font_cache_handle,    invalid_argument},
+        {invalid_font_stream_handle,   invalid_argument},
+
+        {too_many_font_modules,    argument_list_too_long},
+        {too_many_font_extensions, argument_list_too_long},
+
+        {out_of_memory_for_font, not_enough_memory},
+        {unlisted_font_object,   bad_font_file_format},
+
+        {cannot_open_font_stream,       no_such_device_or_address},
+        {invalid_font_stream_seek,      io_error},
+        {invalid_font_stream_skip,      io_error},
+        {invalid_font_stream_read,      io_error},
+        {invalid_font_stream_operation, io_error},
+        {invalid_font_frame_operation,  io_error},
+        {invalid_font_frame_access,     io_error},
+        {invalid_font_frame_read,       io_error},
+
+        {font_raster_uninitialized,   bad_font_file_format},
+        {font_raster_corrupted,       bad_font_file_format},
+        {font_raster_overflow,        bad_font_file_format},
+        {font_raster_negative_height, bad_font_file_format},
+
+        {too_many_font_caches, argument_list_too_long},
+
+        {invalid_truetype_opcode,                   bad_font_file_format},
+        {too_few_truetype_arguments,                bad_font_file_format},
+        {truetype_stack_overflow,                   bad_font_file_format},
+        {truetype_code_overflow,                    bad_font_file_format},
+        {invalid_truetype_argument,                 bad_font_file_format},
+        {truetype_division_by_zero,                 bad_font_file_format},
+        {invalid_truetype_reference,                bad_font_file_format},
+        {truetype_debug_opcode,                     bad_font_file_format},
+        {found_endf_opcode_in_truetype_stream,      bad_font_file_format},
+        {nested_truetype_defs,                      bad_font_file_format},
+        {invalid_truetype_code_range,               bad_font_file_format},
+        {truetype_excecution_too_long,              bad_font_file_format},
+        {too_many_truetype_function_defs,           bad_font_file_format},
+        {too_many_truetype_instruction_defs,        bad_font_file_format},
+        {missing_sfnt_font_table,                   bad_font_file_format},
+        {missing_truetype_horizontal_header_table,  bad_font_file_format},
+        {missing_truetype_locations_table,          bad_font_file_format},
+        {missing_truetype_name_table,               bad_font_file_format},
+        {missing_truetype_char_map_table,           bad_font_file_format},
+        {missing_truetype_horizontal_metrics_table, bad_font_file_format},
+        {missing_truetype_post_script_table,        bad_font_file_format},
+        {invalid_truetype_horizontal_metrics,       bad_font_file_format},
+        {invalid_truetype_char_map_format,          bad_font_file_format},
+        {invalid_truetype_ppem_value,               bad_font_file_format},
+        {invalid_truetype_vertical_metrics,         bad_font_file_format},
+        {missing_truetype_context,                  bad_font_file_format},
+        {invalid_truetype_postscript_table_format,  bad_font_file_format},
+        {invalid_truetype_postscript_table,         bad_font_file_format},
+        {def_in_glyf_bytecode,                      bad_font_file_format},
+        {missing_truetype_bitmap,                   bad_font_file_format},
+        {missing_truetype_svg_hooks,                bad_font_file_format},
+
+        {cff_syntax_error,              bad_font_file_format},
+        {cff_argument_stack_underflow,  bad_font_file_format},
+        {cff_ignore,                    bad_font_file_format},
+        {cff_no_unicode_glyph_fount,    bad_font_file_format},
+        {cff_glyph_too_big_for_hinting, bad_font_file_format},
+
+        {missing_bdf_start_font_field,   bad_font_file_format},
+        {missing_bdf_font_field,         bad_font_file_format},
+        {missing_bdf_size_field,         bad_font_file_format},
+        {missing_bdf_bounding_box_field, bad_font_file_format},
+        {missing_bdf_chars_field,        bad_font_file_format},
+        {missing_bdf_start_char_field,   bad_font_file_format},
+        {missing_bdf_encoding_field,     bad_font_file_format},
+        {missing_bdf_bbx_field,          bad_font_file_format},
+        {bdf_bbx_too_big,                bad_font_file_format},
+        {bdf_invalid_font_header,        bad_font_file_format},
+        {bdf_invalid_font_glyphs,        bad_font_file_format},
+
+
+        {fence_or_query_not_complete, operation_in_progress},
+        {vulkan_operation_timed_out,  operation_canceled},
+        {vulkan_event_signaled,       operation_in_progress},
+        {vulkan_event_unsignaled,     operation_canceled},
+        {vulkan_array_too_small,      value_too_large},
+        {swap_chain_out_of_date,      stale_file_handle},
+
+        {vulkan_thread_idle,              operation_in_progress},
+        {vulkan_thread_done,              operation_in_progress},
+        {vulkan_operation_deferred,       operation_in_progress},
+        {vulkan_operation_not_deferred,   operation_in_progress},
+        {pipeline_should_be_compiled,     operation_in_progress},
+        {missing_pipeline_cache_entry,    no_such_process},
+        {shader_incompatible_with_device, no_such_device_or_address},
+        
+        {out_of_host_memory,                     not_enough_memory},
+        {out_of_gpu_memory,                      not_enough_memory},
+        {vulkan_object_initialization_failed,    operation_canceled},
+        {vulkan_device_lost,                     device_or_resource_busy},
+        {vulkan_memory_map_failed,               not_enough_memory},
+        {missing_validation_layer,               operation_not_supported},
+        {missing_vulkan_extension,               no_such_device_or_address},
+        {missing_gpu_feature,                    no_such_device_or_address},
+        {vulkan_version_not_suppoted,            operation_not_supported},
+        {max_gpu_objects_reached,                too_many_files_open},
+        {vulkan_format_not_supported,            operation_not_supported},
+        {vulkan_pool_too_fragmented,             resource_unavailable_try_again},
+        {vulkan_surface_lost,                    device_or_resource_busy},
+        {window_in_use,                          device_or_resource_busy},
+        {surface_out_of_date,                    stale_file_handle},
+        {incompatible_display_and_image_layout,  operation_not_supported},
+        {shader_failed_to_compile,               io_error},
+        {vulkan_pool_allocation_failed,          not_enough_memory},
+        {invalid_vulkan_handle,                  bad_file_descriptor},
+        {descriptor_pool_too_fragmented,         not_enough_memory},
+        {gpu_address_not_available,              bad_address},
+        {no_exclusive_fullscreen_access,         operation_not_permitted},
+        {invalid_vulkan_usage,                   invalid_argument},
+        {no_resources_for_compression_available, device_or_resource_busy},
+        {image_usage_not_supported,              operation_not_supported},
+        {image_layout_not_supported,             operation_not_supported},
+        {video_profile_operation_not_supported,  operation_not_supported},
+        {video_profile_format_not_supported,     operation_not_supported},
+        {video_codec_not_supported,              operation_not_supported},
+        {video_std_header_not_supported,         operation_not_supported},
+        {invalid_video_std_parameters,           invalid_argument},
+        {gpu_operation_not_permitted,            operation_not_permitted},
+        {not_enough_space_for_return_value,      value_too_large},
+        {invalid_format_modifier,                invalid_argument},
+        {unknown_vulkan_error,                   operation_canceled},
+    };
 }
 
-OL_RESULT_DECLARE_AS_ERROR_CODE(d2d::error, code, &(ol::error_category_msg_map<decltype(code_descs), code_descs>), nullptr, duo2d)
+OL_RESULT_DECLARE_AS_ERROR_CODE(d2d::error, code, &(ol::error_category_msg_map<decltype(code_descs), code_descs>), &(ol::error_category_errc_map<decltype(code_errc_mappings), code_errc_mappings>), duo2d)
 
 
 namespace d2d {
@@ -217,6 +663,7 @@ namespace d2d {
 
 
 #define __D2D_VULKAN_VERIFY(fn) if(VkResult r = fn) [[unlikely]] return static_cast<d2d::errc>(__D2D_VKRESULT_TO_ERRC(r));
+#define __D2D_FT_VERIFY(fn) if(FT_Error r = fn) [[unlikely]] return static_cast<d2d::errc>(__D2D_FTERR_TO_ERRC(r));
 
 
 namespace d2d::error {

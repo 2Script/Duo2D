@@ -109,12 +109,12 @@ namespace d2d {
         device_memory<1> host_mem; //used for uniform
         device_memory<renderable_count_with_attrib> shared_mem; //used for attributes
 
-        std::array<buffer, renderable_count> data_buffs;
-        buffer static_data_buff;
-        buffer uniform_buff;
-        std::array<buffer, renderable_count_with_attrib> attribute_buffs;
         texture_map textures;
         buffer texture_size_buffer;
+        std::array<buffer, renderable_count> data_buffs;
+        buffer static_data_buff;
+        std::array<buffer, renderable_count_with_attrib> attribute_buffs;
+        buffer uniform_buff;
         void* uniform_buffer_map;
 
         //TODO use std::reference_wrapper to better show intent?

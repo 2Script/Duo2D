@@ -221,7 +221,7 @@ namespace d2d::impl {
 
     public:
         result<void> create_uniform_descriptors(logical_device&, buffer&, std::size_t) noexcept { return {}; }
-        result<void> create_texture_descriptors(texture_map&, buffer&, std::size_t = 0) noexcept { return {}; }
+        result<void> create_texture_descriptors(texture_map&) noexcept { return {}; }
         result<void> create_pipeline_layout(logical_device& logi_device) noexcept;
     };
 
@@ -229,10 +229,9 @@ namespace d2d::impl {
     template<renderable_like T, std::size_t FiF> requires (renderable_constraints<T>::has_uniform || renderable_constraints<T>::has_textures)
     class renderable_descriptor_data<T, FiF> : public renderable_texture_data<T> {
     private:
-        constexpr static std::size_t set_binding_count = renderable_constraints<T>::has_uniform + (renderable_constraints<T>::has_textures * 2);
+        constexpr static std::size_t set_binding_count = renderable_constraints<T>::has_uniform + renderable_constraints<T>::has_textures;
         constexpr static std::size_t uniform_binding      = 0;
         constexpr static std::size_t texture_binding      = renderable_constraints<T>::has_uniform;
-        constexpr static std::size_t texture_size_binding = texture_binding + 1;
         std::array<VkDescriptorPoolSize,         set_binding_count> pool_sizes{};
         std::array<VkDescriptorSetLayoutBinding, set_binding_count> set_layout_bindings{};
         std::array<VkDescriptorBindingFlags,     set_binding_count> set_layout_flags{};
@@ -240,7 +239,6 @@ namespace d2d::impl {
         //TODO: move to renderable_uniform_data and renderable_image_data derived classes
         std::array<VkDescriptorBufferInfo, FiF * renderable_constraints<T>::has_uniform> uniform_buffer_infos;
         std::vector<VkDescriptorImageInfo> image_infos;
-        std::vector<VkDescriptorBufferInfo> texture_size_infos;
     protected:
         //descriptor_set<FiF> set;
         std::array<VkDescriptorSet, FiF> sets;
@@ -252,7 +250,7 @@ namespace d2d::impl {
 
     public:
         result<void> create_uniform_descriptors(buffer& uniform_buff, std::size_t uniform_buff_offset) noexcept;
-        result<void> create_texture_descriptors(texture_map& textures, buffer& texture_size_buff, std::size_t texture_size_buff_offset = 0) noexcept;
+        result<void> create_texture_descriptors(texture_map& textures) noexcept;
         result<void> create_pipeline_layout(logical_device& logi_device) noexcept;
     };
 }

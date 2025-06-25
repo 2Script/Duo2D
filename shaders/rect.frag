@@ -3,7 +3,6 @@
 
 
 layout(binding = 1) uniform sampler2D sampled_textures[];
-layout(binding = 2) uniform Extents { uvec2 value; } texture_extents[];
 
 layout(location = 0) in vec4 color_in;
 layout(location = 1) flat in uint background_texture_idx_in;
@@ -19,7 +18,9 @@ void main() {
         return;
     }
     
-    const vec2 uv = uv_in/texture_extents[nonuniformEXT(background_texture_idx_in)].value;
+    const uvec2 texture_extent = textureSize(nonuniformEXT(sampled_textures[background_texture_idx_in]), 0);
+    //const vec2 uv = uv_in/texture_extents[nonuniformEXT(background_texture_idx_in)].value;
+    const vec2 uv = uv_in/texture_extent;
     const vec4 tex = texture(nonuniformEXT(sampled_textures[background_texture_idx_in]), uv);
     color_out.w = color_in.w * (1 - tex.w) + tex.w;
     color_out.xyz = color_in.xyz * color_in.w * (1 - tex.w) + tex.xyz * tex.w;

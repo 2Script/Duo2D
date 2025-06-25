@@ -3,49 +3,57 @@
 
 
 namespace d2d::impl {
-    template<typename InstanceT, typename T, auto DestroyFn> 
-    template<typename CreateFnT, typename... Args> requires instance_tracker<InstanceT, T, DestroyFn>::has_data
-    constexpr instance_tracker<InstanceT, T, DestroyFn>::instance_tracker(CreateFnT&& create_fn, Args&&... args) noexcept {
-        if(instance_count == 0)
-            this->data = std::forward<CreateFnT>(create_fn)(std::forward<Args>(args)...);
-        ++instance_count;
+    template<typename T, auto DestroyFn>
+    template<typename CreateFnT, typename... Args>
+    constexpr result<void> instance_tracker<T, DestroyFn>::initialize(std::atomic<std::int64_t>& count_ref, CreateFnT&& create_fn, Args&&... args) noexcept {
+        count_ptr = &count_ref;
+        if((*count_ptr)++ != 0) return {};
+
+        if constexpr(has_data)
+            RESULT_TRY_MOVE(this->data, std::forward<CreateFnT>(create_fn)(std::forward<Args>(args)...))
+        else
+            RESULT_VERIFY(std::forward<CreateFnT>(create_fn)(std::forward<Args>(args)...))
+        return {};
     }
 
 
-    template<typename InstanceT, typename T, auto DestroyFn> 
-    constexpr instance_tracker<InstanceT, T, DestroyFn>::instance_tracker(instance_tracker&& other) noexcept : 
-        impl::dependent_member<T>(std::move(other)) {
-        ++instance_count;
+    template<typename T, auto DestroyFn> 
+    constexpr instance_tracker<T, DestroyFn>::instance_tracker(instance_tracker&& other) noexcept : 
+        impl::dependent_static_member<T, DestroyFn>(std::move(other)), valid(true), count_ptr(other.count_ptr) {
+        other.valid = false;
     }
 
-    template<typename InstanceT, typename T, auto DestroyFn> 
-    constexpr instance_tracker<InstanceT, T, DestroyFn>& instance_tracker<InstanceT, T, DestroyFn>::operator=(instance_tracker&& other) noexcept {
-        impl::dependent_member<T>::operator=(std::move(other));
-        ++instance_count;
+    template<typename T, auto DestroyFn> 
+    constexpr instance_tracker<T, DestroyFn>& instance_tracker<T, DestroyFn>::operator=(instance_tracker&& other) noexcept {
+        impl::dependent_static_member<T, DestroyFn>::operator=(std::move(other));
+        valid = true;
+        other.valid = false;
+        count_ptr = other.count_ptr;
         return *this;
     }
 
 
-    template<typename InstanceT, typename T, auto DestroyFn> 
-    constexpr instance_tracker<InstanceT, T, DestroyFn>::instance_tracker(const instance_tracker& other) noexcept : 
-        impl::dependent_member<T>(other) {
-        ++instance_count;
+    template<typename T, auto DestroyFn> 
+    constexpr instance_tracker<T, DestroyFn>::instance_tracker(const instance_tracker& other) noexcept : 
+        impl::dependent_static_member<T, DestroyFn>(other), valid(true), count_ptr(other.count_ptr) {
+        ++(*count_ptr);
     }
 
-    template<typename InstanceT, typename T, auto DestroyFn> 
-    constexpr instance_tracker<InstanceT, T, DestroyFn>& instance_tracker<InstanceT, T, DestroyFn>::operator=(const instance_tracker& other) noexcept {
-        impl::dependent_member<T>::operator=(other);
-        ++instance_count;
+    template<typename T, auto DestroyFn> 
+    constexpr instance_tracker<T, DestroyFn>& instance_tracker<T, DestroyFn>::operator=(const instance_tracker& other) noexcept {
+        impl::dependent_static_member<T, DestroyFn>::operator=(other);
+        count_ptr = other.count_ptr;
+        ++(*count_ptr);
         return *this;
     }
 
 
-    template<typename InstanceT, typename T, auto DestroyFn> 
-    instance_tracker<InstanceT, T, DestroyFn>::~instance_tracker() noexcept {
-        //not thread safe
-        if(instance_count > 0) --instance_count;
-        if(instance_count > 0) return;
+    template<typename T, auto DestroyFn> 
+    instance_tracker<T, DestroyFn>::~instance_tracker() noexcept {
+        //const std::lock_guard<std::mutex> cnt_lck(instance_count<InstanceT>_mutex());
+        if(!valid || !count_ptr || --(*count_ptr) != 0) return;
         if constexpr(has_data) DestroyFn(this->data);
         else DestroyFn();
+        //DestroyFn();
     }
 }

@@ -29,8 +29,9 @@ namespace d2d {
         result<void> generic_begin() const noexcept;
         void copy_alike(buffer& dest, const buffer& src, std::size_t size, std::size_t offset = 0) const noexcept;
         void copy_alike(image& dest, image& src, extent2 size) const noexcept;
-        void copy_buffer_to_image(image& dest, const buffer& src, extent2 image_size, std::size_t buffer_offset = 0) const noexcept;
-        void transition_image(image& img, VkImageLayout new_layout, VkImageLayout old_layout) const noexcept;
+        void copy_buffer_to_image(image& dest, const buffer& src, extent2 image_size, std::size_t buffer_offset = 0, std::uint32_t array_idx = 0) const noexcept;
+        void copy_buffer_to_image(image& dest, const buffer& src, std::span<const VkBufferImageCopy> copy_regions) const noexcept;
+        void transition_image(image& img, VkImageLayout new_layout, VkImageLayout old_layout, std::uint32_t image_count = 1) const noexcept;
         result<void> generic_end(logical_device& device, const command_pool& pool) const noexcept;
     };
 }

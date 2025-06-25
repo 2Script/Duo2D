@@ -28,6 +28,7 @@ namespace d2d {
         using uniform_type = extent2;
         using push_constant_types = std::tuple<extent2&>;
         using attribute_types = make_attribute_types_t<transform2, std::uint32_t, rect<std::uint32_t>>;
+        using texture_type = texture;
         constexpr static std::size_t max_texture_count = 2;
         constexpr static VkCullModeFlags cull_mode = VK_CULL_MODE_BACK_BIT;
         constexpr static VkFrontFace front_face = VK_FRONT_FACE_CLOCKWISE;

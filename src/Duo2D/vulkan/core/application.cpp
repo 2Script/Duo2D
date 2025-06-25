@@ -23,10 +23,18 @@ namespace d2d {
         };
         
         // Initialize GLFW
+        //if(int code; application::glfw_init.count++ == 0 && !glfwInit() && (code = glfwGetError(nullptr)))
+        //    return static_cast<errc>(code);
+
         application ret{};
-        if(int code; decltype(glfw_init)::instance_count == 0 && !glfwInit() && (code = glfwGetError(nullptr)))
-            return static_cast<errc>(code);
-        ++decltype(glfw_init)::instance_count;
+        RESULT_VERIFY(ret.glfw_init.initialize(impl::application_count(), []() noexcept -> result<void> {
+            if(int code; !glfwInit()) {
+                if((code = glfwGetError(nullptr)))
+                    return static_cast<errc>(code | 0x00010000);
+                return errc::os_window_error;
+            }
+            return {};
+        }));
 
         // Check for vulkan support
         if(!glfwVulkanSupported()) 
@@ -140,3 +148,7 @@ namespace d2d {
         return  {};
     }
 }
+
+//namespace d2d {
+//    std::atomic_int64_t application::instance_count{};
+//}

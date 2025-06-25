@@ -7,6 +7,7 @@
 #include "Duo2D/vulkan/memory/renderable_allocator.hpp"
 #include "Duo2D/vulkan/memory/renderable_data.hpp"
 #include "Duo2D/vulkan/memory/renderable_tuple.hpp"
+#include "Duo2D/vulkan/memory/texture_map.hpp"
 #include <memory>
 #include <numeric>
 #include <result/verify.h>
@@ -54,6 +55,7 @@ namespace d2d {
             std::span<buffer, 1>{std::addressof(ret.static_data_buff), 1}, static_buffer_size, ret.static_device_local_mem
         )));
         RESULT_VERIFY(allocator.staging_to_device_local(ret.static_data_buff, staging_buffer));
+        goto create_uniform;
         }
 
     create_uniform:
@@ -67,6 +69,7 @@ namespace d2d {
         )));
 
         RESULT_TRY_COPY(ret.uniform_buffer_map, ret.host_mem.map(logi_device, uniform_buffer_size));
+        goto create_descriptors;
 
     create_descriptors:
         //Create pipelines and descriptors
@@ -75,7 +78,7 @@ namespace d2d {
         auto create_descriptors = [&]<typename T>(errc& current_error_code) noexcept -> errc {
             if(current_error_code != error::unknown) return current_error_code;
             RESULT_VERIFY(ret.renderable_data_of<T>().create_uniform_descriptors(ret.uniform_buff, static_offsets<T>()[buffer_data_type::uniform]));
-            RESULT_VERIFY(ret.renderable_data_of<T>().create_texture_descriptors(ret.textures, ret.texture_size_buffer));
+            RESULT_VERIFY(ret.renderable_data_of<T>().create_texture_descriptors(ret.textures));
             RESULT_VERIFY(ret.renderable_data_of<T>().create_pipeline_layout(logi_device));
             RESULT_VERIFY(ret.renderable_data_of<T>().create_pipeline(logi_device, window_render_pass));
             return error::unknown;
@@ -98,8 +101,8 @@ namespace d2d {
         }
         
         renderable_allocator allocator(*logi_device_ptr, *phys_device_ptr, copy_cmd_pool);
-        auto load_texture = [this](std::string_view path) noexcept -> auto {
-            return textures.load(path, *logi_device_ptr, *phys_device_ptr, copy_cmd_pool, texture_mem, texture_size_buffer);
+        auto load_texture = [this]<typename K>(K&& key) noexcept -> auto {
+            return textures.load(std::forward<K>(key), *logi_device_ptr, *phys_device_ptr, copy_cmd_pool, texture_mem);
         };
         
         //Get the input data bytes, stage them, then move them to device local memory
@@ -120,7 +123,7 @@ namespace d2d {
                 else {
                     if(current_error_code != error::unknown) return current_error_code;
                     RESULT_VERIFY(renderable_data_of<U>().template update_texture_indices<T>(load_texture, allocator, data_buffs[renderable_index<U>]));
-                    RESULT_VERIFY(renderable_data_of<U>().create_texture_descriptors(textures, texture_size_buffer));
+                    RESULT_VERIFY(renderable_data_of<U>().create_texture_descriptors(textures));
                     RESULT_VERIFY(renderable_data_of<U>().create_pipeline_layout(*logi_device_ptr));
                     RESULT_VERIFY(renderable_data_of<U>().create_pipeline(*logi_device_ptr, window_render_pass));
                     return error::unknown;

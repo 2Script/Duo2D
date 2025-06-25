@@ -9,6 +9,7 @@
 #include <vulkan/vulkan_core.h>
 
 #include "Duo2D/core/error.hpp"
+#include "Duo2D/graphics/core/glyph.hpp"
 #include "Duo2D/graphics/prim/debug_rect.hpp"
 #include "Duo2D/vulkan/core/command_buffer.hpp"
 #include "Duo2D/vulkan/device/logical_device.hpp"
@@ -32,7 +33,7 @@ namespace d2d {
         //Create surface
         __D2D_TRY_MAKE(ret._surface, make<surface>(ret, i), s);
 
-        return std::move(ret);
+        return ret;
     }
 }
 
@@ -69,12 +70,13 @@ namespace d2d {
             submit_semaphores.push_back(*std::move(submit_semaphore));
         }
 
-        __D2D_TRY_MAKE(data, (make<renderable_tuple<frames_in_flight, styled_rect, debug_rect, clone_rect>>(logi_device, phys_device, _render_pass)), rb);
+        __D2D_TRY_MAKE(data, (make<renderable_tuple<frames_in_flight, styled_rect, debug_rect, clone_rect, glyph>>(logi_device, phys_device, _render_pass)), rb);
 
         //update uniform buffer
         std::memcpy(&data.uniform_map<clone_rect>()[frame_idx], &_swap_chain.extent, sizeof(extent2));
         std::memcpy(&data.uniform_map<styled_rect>()[frame_idx], &_swap_chain.extent, sizeof(extent2));
         std::memcpy(&data.uniform_map<debug_rect>()[frame_idx], &_swap_chain.extent, sizeof(extent2));
+        std::memcpy(&data.uniform_map<glyph>()[frame_idx], &_swap_chain.extent, sizeof(extent2));
 
         return {};
     }
@@ -98,10 +100,11 @@ namespace d2d {
             std::memcpy(&data.uniform_map<clone_rect>()[frame_idx], &_swap_chain.extent, sizeof(extent2));
             std::memcpy(&data.uniform_map<styled_rect>()[frame_idx], &_swap_chain.extent, sizeof(extent2));
             std::memcpy(&data.uniform_map<debug_rect>()[frame_idx], &_swap_chain.extent, sizeof(extent2));
+            std::memcpy(&data.uniform_map<glyph>()[frame_idx], &_swap_chain.extent, sizeof(extent2));
             return {};
         }
         default: 
-            return static_cast<errc>(nir);
+            return static_cast<errc>(__D2D_VKRESULT_TO_ERRC(nir));
         }
 
         if(empty<styled_rect>() && empty<debug_rect>())
@@ -117,6 +120,7 @@ namespace d2d {
         RESULT_VERIFY(command_buffers[frame_idx].draw<clone_rect>(data));
         RESULT_VERIFY(command_buffers[frame_idx].draw<styled_rect>(data));
         RESULT_VERIFY(command_buffers[frame_idx].draw<debug_rect>(data));
+        RESULT_VERIFY(command_buffers[frame_idx].draw<glyph>(data));
         RESULT_VERIFY(command_buffers[frame_idx].render_end());
 
         constexpr static std::array<VkPipelineStageFlags, 1> wait_stages = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};

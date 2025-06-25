@@ -8,7 +8,7 @@ namespace d2d {
 
     class texture : public image {
     public:
-        static result<texture> create(logical_device& logi_device, std::uint32_t width, std::uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage) noexcept;
+        static result<texture> create(logical_device& logi_device, std::uint32_t width, std::uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, std::uint32_t array_count = 1) noexcept;
         result<void> initialize(logical_device& logi_device, physical_device& phys_device, VkFormat format, pt3<VkSamplerAddressMode> address_modes = {image_sampler::clamp_to_border, image_sampler::clamp_to_border, image_sampler::clamp_to_border}) noexcept;
 
         result<texture> clone(logical_device& logi_device, physical_device& phys_device) const noexcept;
@@ -19,7 +19,7 @@ namespace d2d {
 
     private:
         using image::create;
-        using image::clone;
+        using image::clone; 
 
     private:
         image_view img_view;

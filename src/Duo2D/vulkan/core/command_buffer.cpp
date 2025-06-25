@@ -108,13 +108,13 @@ namespace d2d {
         transition_image(dest, original_src_layout, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
     }
 
-    void command_buffer::copy_buffer_to_image(image& dest, const buffer& src, extent2 image_size, std::size_t buffer_offset) const noexcept {
+    void command_buffer::copy_buffer_to_image(image& dest, const buffer& src, extent2 image_size, std::size_t buffer_offset, std::uint32_t array_idx) const noexcept {
         VkBufferImageCopy copy_region{
             .bufferOffset = buffer_offset,
             .bufferRowLength = 0,
             .bufferImageHeight = 0,
 
-            .imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1},
+            .imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, array_idx, 1},
             .imageOffset = {0, 0, 0},
             .imageExtent = {image_size.width(), image_size.height(), 1},
         };
@@ -122,8 +122,12 @@ namespace d2d {
         vkCmdCopyBufferToImage(handle, src, dest, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copy_region);
     }
 
+    void command_buffer::copy_buffer_to_image(image& dest, const buffer& src, std::span<const VkBufferImageCopy> copy_regions) const noexcept {
+        vkCmdCopyBufferToImage(handle, src, dest, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, copy_regions.size(), copy_regions.data());
+    }
 
-    void command_buffer::transition_image(image& img, VkImageLayout new_layout, VkImageLayout old_layout) const noexcept {
+
+    void command_buffer::transition_image(image& img, VkImageLayout new_layout, VkImageLayout old_layout, std::uint32_t image_count) const noexcept {
         constexpr auto access_mask_from_layout = [](VkImageLayout layout) noexcept -> VkAccessFlags {
             switch(layout) {
             case VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL:     return VK_ACCESS_TRANSFER_READ_BIT;
@@ -154,7 +158,7 @@ namespace d2d {
                 .baseMipLevel = 0,
                 .levelCount = 1,
                 .baseArrayLayer = 0,
-                .layerCount = 1,
+                .layerCount = image_count,
             },
         };
 

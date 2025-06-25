@@ -14,7 +14,10 @@ __D2D_DECLARE_VK_TRAITS_DEVICE(VkBuffer);
 namespace d2d {
     struct buffer : public vulkan_ptr<VkBuffer, vkDestroyBuffer> {
         static result<buffer> create(logical_device& device, std::size_t size, VkBufferUsageFlags usage) noexcept;
+    private:
+        static result<buffer> create(logical_device& device, std::size_t size, VkBufferUsageFlags usage, std::size_t mem_offset) noexcept;
 
+    public:
         result<buffer> clone(logical_device& device) const noexcept;
         result<buffer> clone(logical_device& device, physical_device&) const noexcept;
 
@@ -22,9 +25,15 @@ namespace d2d {
         constexpr std::size_t size() const noexcept { return bytes; }
         constexpr std::size_t size_bytes() const noexcept { return bytes; }
         constexpr bool empty() const noexcept { return bytes == 0; } 
+        
+        constexpr std::size_t memory_offset() const noexcept { return offset; }
 
     private:
         std::size_t bytes = 0;
+        std::size_t offset = 0;
         VkBufferUsageFlags flags;
+    public:    
+        template<std::size_t N>
+        friend struct device_memory;
     };
 }

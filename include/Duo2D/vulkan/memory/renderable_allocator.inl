@@ -131,8 +131,10 @@ namespace d2d {
             }
             
             //Bind the newly allocated memory to this new buffer
+            mem_offset += new_mem.requirements()[i].alignment - 1;
+            mem_offset &= ~(new_mem.requirements()[i].alignment - 1);
             RESULT_VERIFY(new_mem.bind(*logi_device_ptr, std::forward<OutputContainerT>(output_container)[i], mem_offset));
-            mem_offset += new_mem.requirements()[i].size;//(std::forward<OutputContainerT>(output_container)[i].size_bytes() + new_mem.requirements()[i].alignment - 1) & ~(new_mem.requirements()[i].alignment - 1);
+            mem_offset += new_mem.requirements()[i].size;
 
             if constexpr(requires (logical_device& l, physical_device& p, VkFormat f, pt3<VkSamplerAddressMode> a){ elem.initialize(l, p, f, a); }) {
                 RESULT_VERIFY(std::forward<OutputContainerT>(output_container)[i].initialize(*logi_device_ptr, *phys_device_ptr, elem.format(), elem.sampler().address_modes()));

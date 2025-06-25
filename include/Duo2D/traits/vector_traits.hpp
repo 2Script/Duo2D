@@ -13,7 +13,14 @@ namespace d2d::impl {
     enum class vec_data_type {
         none, point, size
     };
+}
 
+namespace d2d{
+    template<std::size_t Dims, typename UnitTy, impl::vec_data_type HoldsData, std::uint8_t TransformFlags>
+    struct vector;
+}
+
+namespace d2d::impl {
     template<std::size_t Dims, typename UnitTy, vec_data_type HoldsData, std::uint8_t TransformFlags>
     struct vector_traits {
         using vk_type = std::conditional_t<HoldsData != vec_data_type::size,
@@ -39,4 +46,12 @@ namespace d2d::impl {
 
     template<std::size_t Dims, typename T, vec_data_type HoldsData, std::uint8_t TransformFlags>
     concept vk_vector_compatible = within_cartesian_coordinates<Dims> && std::is_convertible_v<T, typename vector_traits<Dims, T, HoldsData, TransformFlags>::vk_component_type>; 
+
+
+    template<typename T>
+    struct is_vector_specialization : std::false_type {};
+    template<std::size_t Dims, typename UnitTy, vec_data_type HoldsData, std::uint8_t TransformFlags>
+    struct is_vector_specialization<vector<Dims, UnitTy, HoldsData, TransformFlags>> : std::true_type{};
+    template<typename T>
+    concept non_vector = !is_vector_specialization<T>::value;
 }

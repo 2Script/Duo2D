@@ -186,18 +186,18 @@ namespace d2d::impl {
         input_bytes.reserve(this->input_renderables.size());
         for(const auto& input_pair : this->input_renderables) {
             for(std::size_t i = 0; i < T::max_texture_count; ++i) {
-                const std::string_view& path = input_pair.second.texture_paths()[i];
-                if(path.empty()) continue;
-                RESULT_VERIFY(std::forward<LoadTextureFn>(load_texture_fn)(path));
+                const auto& key = input_pair.second.texture_keys()[i];
+                if(key.empty()) continue;
+                RESULT_VERIFY(std::forward<LoadTextureFn>(load_texture_fn)(key));
             }
             std::array<texture_idx_t, T::max_texture_count> texture_idxs;
             for(std::size_t i = 0; i < T::max_texture_count; ++i) {
-                const std::string_view& path = input_pair.second.texture_paths()[i];
-                if(path.empty()) {
+                const auto& key = input_pair.second.texture_keys()[i];
+                if(key.empty()) {
                     texture_idxs[i] = std::numeric_limits<texture_idx_t>::max();
                     continue;
                 }
-                RESULT_TRY_COPY(texture_idxs[i], std::forward<LoadTextureFn>(load_texture_fn)(path));
+                RESULT_TRY_COPY(texture_idxs[i], std::forward<LoadTextureFn>(load_texture_fn)(key));
             }
             texture_idx_inputs.push_back(texture_idxs);
             
@@ -265,7 +265,7 @@ namespace d2d::impl {
 
 
     template<renderable_like T, std::size_t FiF> requires (renderable_constraints<T>::has_uniform || renderable_constraints<T>::has_textures)
-    result<void> renderable_descriptor_data<T, FiF>::create_texture_descriptors(texture_map& textures, buffer& texture_size_buff, std::size_t texture_size_buff_offset) noexcept {
+    result<void> renderable_descriptor_data<T, FiF>::create_texture_descriptors(texture_map& textures) noexcept {
         if constexpr(!renderable_constraints<T>::has_textures) return {};
         const std::uint32_t descriptor_count = std::max<std::uint32_t>(1, textures.size());
 
@@ -292,34 +292,6 @@ namespace d2d::impl {
                 .sampler = iter->second.sampler(),
                 .imageView = iter->second.view(),
                 .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-            });
-        }
-
-        
-        valid_descriptors[texture_size_binding] = true;
-
-        pool_sizes[texture_size_binding] = {
-            .type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-            .descriptorCount = static_cast<std::uint32_t>(FiF * descriptor_count),
-        };
-
-        set_layout_bindings[texture_size_binding] = {
-            .binding = texture_size_binding,
-            .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-            .descriptorCount = descriptor_count,
-            .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT
-        };
-
-        set_layout_flags[texture_size_binding] = 0;
-
-        texture_size_infos.clear();
-        texture_size_infos.reserve(textures.size());
-        const std::size_t data_size = sizeof(extent2);
-        for(std::size_t i = 0; i < textures.size(); ++i) {
-            texture_size_infos.push_back({
-                .buffer = static_cast<VkBuffer>(texture_size_buff),
-                .offset = texture_size_buff_offset + (i * data_size),
-                .range = data_size,
             });
         }
 
@@ -366,7 +338,7 @@ namespace d2d::impl {
 
         for (size_t i = 0; i < FiF; i++) {
             std::vector<VkWriteDescriptorSet> writes;
-            writes.reserve(renderable_constraints<T>::has_uniform + (renderable_constraints<T>::has_textures * image_infos.size() * 2));
+            writes.reserve(renderable_constraints<T>::has_uniform + (renderable_constraints<T>::has_textures * image_infos.size()));
 
             if constexpr(renderable_constraints<T>::has_uniform) {
                 writes.push_back({
@@ -390,15 +362,6 @@ namespace d2d::impl {
                         .descriptorCount = 1,
                         .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
                         .pImageInfo = &image_infos[j],
-                    });
-                    writes.push_back({
-                        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-                        .dstSet = sets[i],
-                        .dstBinding = texture_size_binding,
-                        .dstArrayElement = static_cast<std::uint32_t>(j),
-                        .descriptorCount = 1,
-                        .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-                        .pBufferInfo = &texture_size_infos[j],
                     });
                 }
             }

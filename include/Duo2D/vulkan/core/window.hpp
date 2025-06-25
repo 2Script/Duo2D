@@ -6,6 +6,7 @@
 #include <type_traits>
 #include <unordered_map>
 #include <vulkan/vulkan_core.h>
+#include "Duo2D/graphics/core/glyph.hpp"
 #include "Duo2D/graphics/prim/debug_rect.hpp"
 #include "Duo2D/graphics/prim/styled_rect.hpp"
 #include "Duo2D/vulkan/core/command_buffer.hpp"
@@ -18,6 +19,12 @@
 #include "Duo2D/vulkan/device/physical_device.hpp"
 #include "Duo2D/vulkan/sync/fence.hpp"
 #include "Duo2D/vulkan/sync/semaphore.hpp"
+
+#if __cpp_lib_constexpr_memory >= 202202L
+#define __D2D_CONSTEXPR_UNIQUE_PTR constexpr
+#else 
+#define __D2D_CONSTEXPR_UNIQUE_PTR
+#endif
 
 namespace d2d {
     struct window {
@@ -80,8 +87,8 @@ namespace d2d {
         result<void> apply() noexcept;
 
     public:
-        constexpr operator GLFWwindow*() const noexcept { return handle.get(); }
-        constexpr explicit operator bool() const noexcept { return static_cast<bool>(handle); }
+        __D2D_CONSTEXPR_UNIQUE_PTR operator GLFWwindow*() const noexcept { return handle.get(); }
+        __D2D_CONSTEXPR_UNIQUE_PTR explicit operator bool() const noexcept { return static_cast<bool>(handle); }
 
     private:
         window(GLFWwindow* w) noexcept : 
@@ -110,7 +117,7 @@ namespace d2d {
         std::array<std::array<semaphore, frames_in_flight>, semaphore_type::num_semaphore_types> frame_semaphores;
         std::vector<semaphore> submit_semaphores;
 
-        renderable_tuple<frames_in_flight, styled_rect, debug_rect, clone_rect> data;
+        renderable_tuple<frames_in_flight, styled_rect, debug_rect, clone_rect, glyph> data;
 
         //constexpr static std::size_t x = decltype(data)::template static_offsets<clone_rect>()[buffer_data_type::index];
         //constexpr static std::size_t y = renderable_data<clone_rect, 2>::static_index_data_bytes.size();
