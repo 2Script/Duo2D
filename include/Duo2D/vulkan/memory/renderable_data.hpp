@@ -5,8 +5,8 @@
 #include <utility>
 #include <vector>
 #include <vulkan/vulkan_core.h>
-#include "Duo2D/graphics/core/texture.hpp"
-#include "Duo2D/traits/attribute_traits.hpp"
+#include "Duo2D/vulkan/display/texture.hpp"
+#include "Duo2D/vulkan/traits/attribute_traits.hpp"
 #include "Duo2D/traits/renderable_traits.hpp"
 #include "Duo2D/vulkan/display/image_sampler.hpp"
 #include "Duo2D/vulkan/display/image_view.hpp"
@@ -20,8 +20,8 @@
 
 
 //Attributes vs No Attributes
-namespace d2d::impl {
-    template<renderable_like T>
+namespace d2d::vk::impl {
+    template<::d2d::impl::renderable_like T>
     class renderable_attribute_data {
     public:
         constexpr static std::size_t attribute_data_size = 0;
@@ -36,7 +36,7 @@ namespace d2d::impl {
         constexpr std::size_t attribute_buffer_size() const noexcept { return 0; }
     };
 
-    template<renderable_like T> requires renderable_constraints<T>::has_attributes
+    template<::d2d::impl::renderable_like T> requires renderable_constraints<T>::has_attributes
     class renderable_attribute_data<T> {
     private:
         std::span<std::byte> attributes_span;
@@ -61,9 +61,9 @@ namespace d2d::impl {
 
 
 //Instanced vs Not Instanced
-namespace d2d::impl {
+namespace d2d::vk::impl {
     //Instanced
-    template<impl::renderable_like T>
+    template<::d2d::impl::renderable_like T>
     class renderable_instance_data : public renderable_attribute_data<T> {
         using instance_input_type = decltype(std::declval<T>().instance());
     private:
@@ -110,7 +110,7 @@ namespace d2d::impl {
     };
 
     //Non-instanced (no indices)
-    template<impl::renderable_like T> requires (!renderable_constraints<T>::instanced)
+    template<::d2d::impl::renderable_like T> requires (!renderable_constraints<T>::instanced)
     class renderable_instance_data<T> : public renderable_attribute_data<T> {
         using vertex_input_type = decltype(std::declval<T>().vertices());
     private:
@@ -145,12 +145,12 @@ namespace d2d::impl {
 
 
 //Indices vs No Indices
-namespace d2d::impl {
-    template<impl::renderable_like T>
+namespace d2d::vk::impl {
+    template<::d2d::impl::renderable_like T>
     class renderable_index_data : public renderable_instance_data<T> {};
 
     //Non-instanced with indices
-    template<impl::renderable_like T> requires (!renderable_constraints<T>::instanced && renderable_constraints<T>::has_indices)
+    template<::d2d::impl::renderable_like T> requires (!renderable_constraints<T>::instanced && renderable_constraints<T>::has_indices)
     class renderable_index_data<T> : public renderable_instance_data<T> {
         using index_input_type = decltype(std::declval<T>().indices());
     private:
@@ -177,13 +177,13 @@ namespace d2d::impl {
 
 
 //Textures vs No Textures
-namespace d2d::impl {
+namespace d2d::vk::impl {
     //No Textures
-    template<impl::renderable_like T>
+    template<::d2d::impl::renderable_like T>
     class renderable_texture_data : public renderable_index_data<T> {};
 
     //Textures
-    template<impl::renderable_like T> requires (renderable_constraints<T>::has_textures)
+    template<::d2d::impl::renderable_like T> requires (renderable_constraints<T>::has_textures)
     class renderable_texture_data<T> : public renderable_index_data<T> {
         using texture_idx_input_type = std::array<texture_idx_t, T::max_texture_count>;
     private:
@@ -211,8 +211,8 @@ namespace d2d::impl {
 #include "Duo2D/graphics/prim/styled_rect.hpp"
 
 //Descriptors vs No Descriptors
-namespace d2d::impl {
-    template<renderable_like T, std::size_t FiF>
+namespace d2d::vk::impl {
+    template<::d2d::impl::renderable_like T, std::size_t FiF>
     class renderable_descriptor_data : public renderable_texture_data<T> {
     protected:
         pipeline_layout<T> pl_layout;
@@ -226,7 +226,7 @@ namespace d2d::impl {
     };
 
 
-    template<renderable_like T, std::size_t FiF> requires (renderable_constraints<T>::has_uniform || renderable_constraints<T>::has_textures)
+    template<::d2d::impl::renderable_like T, std::size_t FiF> requires (renderable_constraints<T>::has_uniform || renderable_constraints<T>::has_textures)
     class renderable_descriptor_data<T, FiF> : public renderable_texture_data<T> {
     private:
         constexpr static std::size_t set_binding_count = renderable_constraints<T>::has_uniform + renderable_constraints<T>::has_textures;
@@ -255,8 +255,8 @@ namespace d2d::impl {
     };
 }
 
-namespace d2d {
-    template<impl::renderable_like T, std::size_t FiF>
+namespace d2d::vk {
+    template<::d2d::impl::renderable_like T, std::size_t FiF>
     class renderable_data : public impl::renderable_descriptor_data<T, FiF> {
     private:
         bool outdated = false;
@@ -265,9 +265,9 @@ namespace d2d {
     public:
         result<void> create_pipeline(logical_device& logi_device, render_pass& window_render_pass) noexcept;
 
-        template<std::size_t FramesInFlight, impl::renderable_like... Ts>
+        template<std::size_t FramesInFlight, ::d2d::impl::renderable_like... Ts>
         friend struct renderable_tuple;
-        friend struct window;
+        friend struct ::d2d::window;
     };
 }
 

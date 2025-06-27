@@ -6,7 +6,7 @@
 #include "Duo2D/vulkan/display/pixel_format_ids.hpp"
 
 
-namespace d2d {
+namespace d2d::vk {
     struct pixel_format_info {
 
         struct channel { enum name {
@@ -43,7 +43,7 @@ namespace d2d {
 }
 
 
-namespace d2d {
+namespace d2d::vk {
     constexpr std::array<pixel_format_info, impl::num_pixel_formats> pixel_formats = {
         pixel_format_info{}, //VK_FORMAT_UNDEFINED
 

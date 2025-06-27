@@ -11,7 +11,7 @@
 
 __D2D_DECLARE_VK_TRAITS_DEVICE(VkBuffer);
 
-namespace d2d {
+namespace d2d::vk {
     struct buffer : public vulkan_ptr<VkBuffer, vkDestroyBuffer> {
         static result<buffer> create(logical_device& device, std::size_t size, VkBufferUsageFlags usage) noexcept;
     private:

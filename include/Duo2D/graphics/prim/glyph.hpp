@@ -21,7 +21,7 @@ namespace d2d {
             extent2 swap_chain_extent;
         };
         using push_constant_types = std::tuple<extent2&>;
-        using attribute_types = make_attribute_types_t<true_color>;
+        using attribute_types = vk::make_attribute_types_t<true_color>;
         constexpr static std::size_t max_texture_count = 1;
         using texture_type = font;
         constexpr static VkCullModeFlags cull_mode = VK_CULL_MODE_BACK_BIT;
@@ -44,7 +44,7 @@ namespace d2d {
         std::uint16_t glyph_idx;
         pt2<float> pos;
         size2<float> size;
-        attribute<true_color> color = {};
+        vk::attribute<true_color> color = {};
 
     public:
         consteval static std::array<index_type, index_count> indices() noexcept { return {0, 1, 2, 2, 1, 3}; }

@@ -1,11 +1,11 @@
 #pragma once
 #include "Duo2D/core/error.hpp"
 #include "Duo2D/traits/renderable_traits.hpp"
-#include "Duo2D/vulkan/core/window.hpp"
+#include "Duo2D/core/window.hpp"
 
 
 namespace d2d {
-    template<typename R> requires impl::renderable_like<std::remove_cvref_t<R>>
+    template<typename R> requires ::d2d::impl::renderable_like<std::remove_cvref_t<R>>
     std::pair<window::iterator<R>, bool> window::insert(const window::value_type<R>& value) noexcept {
         using T = std::remove_cvref_t<R>;
         auto ins = data.renderable_data_of<T>().input_renderables.insert(value);
@@ -13,7 +13,7 @@ namespace d2d {
         return ins;
     }
 
-    template<typename R> requires impl::renderable_like<std::remove_cvref_t<R>>
+    template<typename R> requires ::d2d::impl::renderable_like<std::remove_cvref_t<R>>
     std::pair<window::iterator<R>, bool> window::insert(window::value_type<R>&& value) noexcept {
         using T = std::remove_cvref_t<R>;
         auto ins = data.renderable_data_of<T>().input_renderables.insert(std::move(value));

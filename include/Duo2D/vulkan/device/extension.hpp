@@ -3,7 +3,7 @@
 #include <vulkan/vulkan.h>
 
 
-namespace d2d {
+namespace d2d::vk {
     namespace extension {
     enum id { 
         swap_chain,
@@ -15,7 +15,7 @@ namespace d2d {
     }
 }
 
-namespace d2d {
+namespace d2d::vk {
     namespace extension {
         constexpr std::array<std::string_view, extension::num_extensions> name = {
             VK_KHR_SWAPCHAIN_EXTENSION_NAME,
@@ -26,6 +26,6 @@ namespace d2d {
 }
 
 
-namespace d2d {
+namespace d2d::vk {
     using extensions_t = std::array<bool, extension::num_extensions>;
 }

@@ -12,7 +12,7 @@
 
 __D2D_DECLARE_VK_TRAITS_DEVICE(VkImage);
 
-namespace d2d {
+namespace d2d::vk {
     struct image : public vulkan_ptr<VkImage, vkDestroyImage> {
         static result<image> create(logical_device& device, std::uint32_t width, std::uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, std::uint32_t array_count = 1) noexcept;
     protected:

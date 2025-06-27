@@ -9,10 +9,10 @@
 
 #include "Duo2D/core/error.hpp"
 #include "Duo2D/vulkan/core/instance.hpp"
-#include "Duo2D/vulkan/core/instance_tracker.hpp"
+#include "Duo2D/traits/instance_tracker.hpp"
 #include "Duo2D/vulkan/device/logical_device.hpp"
 #include "Duo2D/vulkan/device/physical_device.hpp"
-#include "Duo2D/vulkan/core/window.hpp"
+#include "Duo2D/core/window.hpp"
 
 
 namespace d2d {
@@ -23,10 +23,10 @@ namespace d2d {
 
 
     public:
-        result<std::set<physical_device>> devices() const noexcept;
+        result<std::set<vk::physical_device>> devices() const noexcept;
 
-        const physical_device& selected_device() const& noexcept { return phys_device; }
-        physical_device& selected_device() & noexcept { return phys_device; }
+        const vk::physical_device& selected_device() const& noexcept { return phys_device; }
+        vk::physical_device& selected_device() & noexcept { return phys_device; }
 
         result<void> initialize_device() noexcept;
 
@@ -46,9 +46,9 @@ namespace d2d {
 
         
     private:
-        instance vk_instance;
-        physical_device phys_device;
-        logical_device logi_device;
+        vk::instance vk_instance;
+        vk::physical_device phys_device;
+        vk::logical_device logi_device;
         std::string name;
 
         //ORDER MATTERS: glfw must be terminated after all windows have been destroyed

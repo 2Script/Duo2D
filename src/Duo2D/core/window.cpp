@@ -1,4 +1,4 @@
-#include "Duo2D/vulkan/core/window.hpp"
+#include "Duo2D/core/window.hpp"
 
 #include <GLFW/glfw3.h>
 #include <cmath>
@@ -9,20 +9,20 @@
 #include <vulkan/vulkan_core.h>
 
 #include "Duo2D/core/error.hpp"
-#include "Duo2D/graphics/core/glyph.hpp"
+#include "Duo2D/graphics/prim/glyph.hpp"
 #include "Duo2D/graphics/prim/debug_rect.hpp"
 #include "Duo2D/vulkan/core/command_buffer.hpp"
 #include "Duo2D/vulkan/device/logical_device.hpp"
 #include "Duo2D/vulkan/memory/renderable_tuple.hpp"
 #include "Duo2D/vulkan/display/surface.hpp"
 #include "Duo2D/vulkan/display/swap_chain.hpp"
-#include "Duo2D/vulkan/make.hpp"
+#include "Duo2D/core/make.hpp"
 #include "Duo2D/graphics/prim/styled_rect.hpp"
 #include "Duo2D/vulkan/sync/semaphore.hpp"
 #include "Duo2D/vulkan/device/queue_family.hpp"
 
 namespace d2d {
-    result<window> window::create(std::string_view title, std::size_t width, std::size_t height, instance const& i) noexcept {
+    result<window> window::create(std::string_view title, std::size_t width, std::size_t height, vk::instance const& i) noexcept {
 
         //Create window
         glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
@@ -31,14 +31,14 @@ namespace d2d {
         __D2D_GLFW_VERIFY(ret.handle);
 
         //Create surface
-        __D2D_TRY_MAKE(ret._surface, make<surface>(ret, i), s);
+        __D2D_TRY_MAKE(ret._surface, make<vk::surface>(ret, i), s);
 
         return ret;
     }
 }
 
 namespace d2d {
-    result<void> window::initialize(logical_device& logi_device, physical_device& phys_device) noexcept {
+    result<void> window::initialize(vk::logical_device& logi_device, vk::physical_device& phys_device) noexcept {
         if(_swap_chain) 
             return {}; //return error::window_already_initialized;
 
@@ -46,31 +46,31 @@ namespace d2d {
         phys_device_ptr = std::addressof(phys_device);
         
         //Create render pass
-        __D2D_TRY_MAKE(_render_pass, make<render_pass>(logi_device), rp);
+        __D2D_TRY_MAKE(_render_pass, make<vk::render_pass>(logi_device), rp);
 
         //Create swap chain
-        __D2D_TRY_MAKE(_swap_chain, make<swap_chain>(logi_device, phys_device, _render_pass, _surface, *this), s);
+        __D2D_TRY_MAKE(_swap_chain, make<vk::swap_chain>(logi_device, phys_device, _render_pass, _surface, *this), s);
 
         //Create command pool
-        __D2D_TRY_MAKE(_command_pool, make<command_pool>(logi_device, phys_device), cp);
+        __D2D_TRY_MAKE(_command_pool, make<vk::command_pool>(logi_device, phys_device), cp);
 
         for(std::size_t i = 0; i < frames_in_flight; ++i) {
             //Create command buffers
-            __D2D_TRY_MAKE(command_buffers[i], make<command_buffer>(logi_device, _command_pool), cb);
+            __D2D_TRY_MAKE(command_buffers[i], make<vk::command_buffer>(logi_device, _command_pool), cb);
 
             //Create fences & sempahores
-            __D2D_TRY_MAKE(render_fences[i], make<fence>(logi_device), f);
-            __D2D_TRY_MAKE(frame_semaphores[semaphore_type::image_available][i], make<semaphore>(logi_device), ia);
+            __D2D_TRY_MAKE(render_fences[i], make<vk::fence>(logi_device), f);
+            __D2D_TRY_MAKE(frame_semaphores[semaphore_type::image_available][i], make<vk::semaphore>(logi_device), ia);
         }
         
         //Create submit sempahores
         submit_semaphores.reserve(_swap_chain.image_count);
         for(std::size_t i = 0; i < _swap_chain.image_count; ++i) {
-            RESULT_VERIFY_UNSCOPED(make<semaphore>(logi_device), submit_semaphore);
+            RESULT_VERIFY_UNSCOPED(make<vk::semaphore>(logi_device), submit_semaphore);
             submit_semaphores.push_back(*std::move(submit_semaphore));
         }
 
-        __D2D_TRY_MAKE(data, (make<renderable_tuple<frames_in_flight, styled_rect, debug_rect, clone_rect, glyph>>(logi_device, phys_device, _render_pass)), rb);
+        __D2D_TRY_MAKE(data, (make<vk::renderable_tuple<frames_in_flight, styled_rect, debug_rect, clone_rect, glyph>>(logi_device, phys_device, _render_pass)), rb);
 
         //update uniform buffer
         std::memcpy(&data.uniform_map<clone_rect>()[frame_idx], &_swap_chain.extent, sizeof(extent2));
@@ -96,7 +96,7 @@ namespace d2d {
             break;
         case VK_ERROR_OUT_OF_DATE_KHR:
         case VK_SUBOPTIMAL_KHR: {
-            __D2D_TRY_MAKE(_swap_chain, make<swap_chain>(*logi_device_ptr, *phys_device_ptr, _render_pass, _surface, *this), s);
+            __D2D_TRY_MAKE(_swap_chain, make<vk::swap_chain>(*logi_device_ptr, *phys_device_ptr, _render_pass, _surface, *this), s);
             std::memcpy(&data.uniform_map<clone_rect>()[frame_idx], &_swap_chain.extent, sizeof(extent2));
             std::memcpy(&data.uniform_map<styled_rect>()[frame_idx], &_swap_chain.extent, sizeof(extent2));
             std::memcpy(&data.uniform_map<debug_rect>()[frame_idx], &_swap_chain.extent, sizeof(extent2));
@@ -134,7 +134,7 @@ namespace d2d {
             .signalSemaphoreCount = 1,
             .pSignalSemaphores = &submit_semaphores[image_index],
         };
-        __D2D_VULKAN_VERIFY(vkQueueSubmit(logi_device_ptr->queues[queue_family::graphics], 1, &submit_info, render_fences[frame_idx]));
+        __D2D_VULKAN_VERIFY(vkQueueSubmit(logi_device_ptr->queues[vk::queue_family::graphics], 1, &submit_info, render_fences[frame_idx]));
 
         VkPresentInfoKHR present_info{
             .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
@@ -144,7 +144,7 @@ namespace d2d {
             .pSwapchains = &_swap_chain,
             .pImageIndices = &image_index,
         };
-        __D2D_VULKAN_VERIFY(vkQueuePresentKHR(logi_device_ptr->queues[queue_family::present], &present_info));
+        __D2D_VULKAN_VERIFY(vkQueuePresentKHR(logi_device_ptr->queues[vk::queue_family::present], &present_info));
 
         frame_idx = (frame_idx + 1) % frames_in_flight;
         return {};

@@ -12,9 +12,9 @@
 __D2D_DECLARE_VK_TRAITS_DEVICE(VkSwapchainKHR);
 
 
-namespace d2d {
+namespace d2d::vk {
     struct swap_chain : vulkan_ptr<VkSwapchainKHR, vkDestroySwapchainKHR> {
-        static result<swap_chain> create(logical_device& logi_deivce, physical_device& phys_device, render_pass& window_render_pass, surface& window_surface, window& w) noexcept;
+        static result<swap_chain> create(logical_device& logi_deivce, physical_device& phys_device, render_pass& window_render_pass, surface& window_surface, ::d2d::window& w) noexcept;
 
     private:
         extent2 extent{};
@@ -26,6 +26,6 @@ namespace d2d {
     
     private:
         friend struct command_buffer;
-        friend window; //TODO just make an extent() function?
+        friend ::d2d::window; //TODO just make an extent() function?
     };
 }

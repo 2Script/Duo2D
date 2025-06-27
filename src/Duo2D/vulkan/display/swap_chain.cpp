@@ -1,13 +1,13 @@
 #include "Duo2D/vulkan/display/swap_chain.hpp"
 #include "Duo2D/vulkan/display/image_view.hpp"
-#include "Duo2D/vulkan/make.hpp"
+#include "Duo2D/core/make.hpp"
 #include "Duo2D/vulkan/device/physical_device.hpp"
 #include "Duo2D/vulkan/display/render_pass.hpp"
-#include "Duo2D/vulkan/core/window.hpp"
+#include "Duo2D/core/window.hpp"
 #include <vulkan/vulkan_core.h>
 
-namespace d2d {
-    result<swap_chain> swap_chain::create(logical_device& logi_device, physical_device& phys_device, render_pass& window_render_pass, surface& window_surface, window& w) noexcept {
+namespace d2d::vk {
+    result<swap_chain> swap_chain::create(logical_device& logi_device, physical_device& phys_device, render_pass& window_render_pass, surface& window_surface, ::d2d::window& w) noexcept {
         swap_chain ret{};
         ret.dependent_handle = logi_device;
         

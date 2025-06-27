@@ -1,7 +1,7 @@
 #pragma once
 #include <span>
 #include <vulkan/vulkan_core.h>
-#include "Duo2D/graphics/prim/texture.hpp"
+#include "Duo2D/vulkan/display/texture.hpp"
 #include "Duo2D/vulkan/memory/buffer.hpp"
 #include "Duo2D/vulkan/device/logical_device.hpp"
 #include "Duo2D/vulkan/core/vulkan_ptr.hpp"
@@ -10,7 +10,7 @@
 
 __D2D_DECLARE_VK_TRAITS_DEVICE(VkDeviceMemory);
 
-namespace d2d {
+namespace d2d::vk {
     struct device_memory_base : public vulkan_ptr<VkDeviceMemory, vkFreeMemory> {
     public:
         inline void unmap(logical_device& device) const noexcept;
@@ -33,7 +33,7 @@ namespace d2d {
     };
 }
 
-namespace d2d {
+namespace d2d::vk {
     template<std::size_t N>
     struct device_memory : public device_memory_base {
         static result<device_memory> create(logical_device& logi_device, physical_device& phys_device, std::span<buffer, N> associated_buffers, VkMemoryPropertyFlags properties) noexcept;

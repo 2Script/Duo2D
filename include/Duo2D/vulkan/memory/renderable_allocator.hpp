@@ -12,7 +12,7 @@
 #include "Duo2D/vulkan/device/physical_device.hpp"
 #include "Duo2D/vulkan/memory/buffer.hpp"
 
-namespace d2d {
+namespace d2d::vk {
     class renderable_allocator {
     public:
         constexpr renderable_allocator() noexcept = default;

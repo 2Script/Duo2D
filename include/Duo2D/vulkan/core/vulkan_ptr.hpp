@@ -5,7 +5,7 @@
 #include "Duo2D/core/error.hpp"
 #include "Duo2D/traits/vk_traits.hpp"
 
-namespace d2d {
+namespace d2d::vk {
     template<impl::vulkan_like VkTy>
     class vulkan_ptr_base {
     public:
@@ -33,7 +33,7 @@ namespace d2d {
     };
 }
 
-namespace d2d {
+namespace d2d::vk {
     template<impl::vulkan_like VkTy, typename impl::vk_traits<VkTy>::deleter_type& DeleterFn>
     class vulkan_ptr : public vulkan_ptr_base<VkTy> {
     public:

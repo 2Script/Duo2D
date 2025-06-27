@@ -7,7 +7,7 @@
 
 __D2D_DECLARE_VK_TRAITS(VkDevice);
 
-namespace d2d {
+namespace d2d::vk {
     struct logical_device : vulkan_ptr<VkDevice, vkDestroyDevice> {
         static result<logical_device> create(physical_device& associated_phys_device) noexcept;
 

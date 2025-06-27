@@ -7,8 +7,8 @@
 #include <vector>
 #include <vulkan/vulkan.h>
 #include <zstring.hpp>
-#include "Duo2D/graphics/core/texture.hpp"
-#include "Duo2D/traits/buffer_traits.hpp"
+#include "Duo2D/vulkan/display/texture.hpp"
+#include "Duo2D/vulkan/traits/buffer_traits.hpp"
 #include "Duo2D/vulkan/core/command_pool.hpp"
 #include "Duo2D/vulkan/display/render_pass.hpp"
 #include "Duo2D/vulkan/memory/device_memory.hpp"
@@ -24,8 +24,8 @@
 
 #include "Duo2D/graphics/prim/styled_rect.hpp"
 
-namespace d2d {
-    template<std::size_t FramesInFlight, impl::renderable_like... Ts> //requires (sizeof...(Ts) > 0)
+namespace d2d::vk {
+    template<std::size_t FramesInFlight, ::d2d::impl::renderable_like... Ts> //requires (sizeof...(Ts) > 0)
     struct renderable_tuple {
         static_assert(sizeof...(Ts) > 0, "renderable_tuple needs at least 1 renderable type");
     public:
@@ -84,21 +84,21 @@ namespace d2d {
             return std::get<renderable_data<T, FramesInFlight>>(renderable_datas);
         }
 
-        friend struct window;
+        friend struct ::d2d::window;
 
     private:
         std::tuple<renderable_data<Ts, FramesInFlight>...> renderable_datas;
 
         constexpr static std::size_t renderable_count = sizeof...(Ts);
         constexpr static std::size_t renderable_count_with_attrib = (static_cast<bool>(renderable_data<Ts, FramesInFlight>::attribute_data_size) + ...);
-        constexpr static std::size_t renderable_count_with_textures = (renderable_constraints<Ts>::has_textures + ...);
+        //constexpr static std::size_t renderable_count_with_textures = (renderable_constraints<Ts>::has_textures + ...);
         //TODO: Find a better strategy than these manual index calculation shenanigans
         template<typename T>
-        constexpr static std::size_t renderable_index = impl::type_index<T, Ts...>::value;
+        constexpr static std::size_t renderable_index = impl::buffer_type_index<T, Ts...>::value;
         template<typename T>
-        constexpr static std::size_t renderable_index_with_attrib = impl::type_index<T, Ts...>::with_attrib_value;
-        template<typename T>
-        constexpr static std::size_t renderable_index_with_textures = impl::type_index<T, Ts...>::with_textures_value;
+        constexpr static std::size_t renderable_index_with_attrib = impl::buffer_type_index<T, Ts...>::with_attrib_value;
+        //template<typename T>
+        //constexpr static std::size_t renderable_index_with_textures = impl::type_index<T, Ts...>::with_textures_value;
 
 
         //up to 5 total memory allocations

@@ -3,7 +3,7 @@
 #include <vulkan/vulkan.h>
 
 
-namespace d2d {
+namespace d2d::vk {
     enum class device_type : std::uint32_t {
         other,
         integrated_gpu,

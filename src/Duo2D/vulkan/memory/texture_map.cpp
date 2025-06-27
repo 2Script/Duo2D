@@ -1,6 +1,5 @@
 #include "Duo2D/vulkan/memory/texture_map.hpp"
 
-#include <algorithm>
 #include <bit>
 #include <iterator>
 #include <memory>
@@ -10,6 +9,7 @@
 #include <msdfgen/core/ShapeDistanceFinder.h>
 #include <msdfgen/core/edge-selectors.h>
 #include <numeric>
+#include <cstdint>
 #include <result/verify.h>
 #include <span>
 #include <string_view>
@@ -19,19 +19,13 @@
 #include <type_traits>
 #include <vulkan/vulkan_core.h>
 #include "Duo2D/arith/vector.hpp"
-#include "Duo2D/graphics/core/texture.hpp"
-#include "Duo2D/traits/generic_functor.hpp"
+#include "Duo2D/vulkan/display/texture.hpp"
 #include "Duo2D/vulkan/display/pixel_format_mapping.hpp"
 #include "Duo2D/vulkan/memory/renderable_allocator.hpp"
-#include "Duo2D/vulkan/make.hpp"
-#include "freetype/ftimage.h"
-#include "freetype/fttypes.h"
-#include <msdf-atlas-gen/msdf-atlas-gen.h>
-#include <ft2build.h>
-#include FT_FREETYPE_H
+#include "Duo2D/core/make.hpp"
 #include FT_OUTLINE_H
 
-namespace d2d {
+namespace d2d::vk {
     result<texture_idx_t> texture_map::load(std::string_view path, logical_device& logi_device, physical_device& phys_device, command_pool& copy_cmd_pool, device_memory<std::dynamic_extent>& texture_mem) noexcept {
         std::pair<iterator, bool> emplace_result = emplace(std::piecewise_construct, std::forward_as_tuple(path), std::forward_as_tuple());
         texture& tex = emplace_result.first->second;
@@ -201,6 +195,8 @@ namespace d2d {
 
         }
 
+        faces.emplace(emplace_result.first->first, std::move(face));
+
         std::array<std::span<const std::byte>, printable_ascii_count> glyph_spans{};
         for(std::size_t i = 0; i < printable_ascii_count; ++i)
             glyph_spans[i] = std::span{reinterpret_cast<std::byte const*>(glyphs[i].data()), glyphs[i].size()};
@@ -212,7 +208,7 @@ namespace d2d {
     }
 }
 
-namespace d2d {    
+namespace d2d::vk {    
     result<texture_idx_t> texture_map::create_texture(iterator& tex_iter, std::span<std::span<const std::byte>> textures_as_bytes, extent2 texture_size, VkFormat format, logical_device& logi_device, physical_device& phys_device, command_pool& copy_cmd_pool, device_memory<std::dynamic_extent>& texture_mem) noexcept {
         texture& tex = tex_iter->second;
         RESULT_TRY_MOVE(tex, make<texture>(
@@ -276,6 +272,6 @@ namespace d2d {
 }
 
 
-// namespace d2d {
+// namespace d2d::vk {
 //     impl::instance_tracker<msdfgen::FreetypeHandle*, msdfgen::deinitializeFreetype> texture_map::freetype_init{};
 // }

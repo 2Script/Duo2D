@@ -1,7 +1,7 @@
 #pragma once
 #include <type_traits>
 #include "Duo2D/graphics/core/color.hpp"
-#include "Duo2D/traits/shader_input_traits.hpp"
+#include "Duo2D/traits/size_constant.hpp"
 
 namespace d2d::impl {
     template<class T> concept aggregate = std::is_aggregate_v<T>;

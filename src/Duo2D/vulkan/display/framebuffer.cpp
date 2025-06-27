@@ -2,7 +2,7 @@
 #include "Duo2D/core/error.hpp"
 #include <vulkan/vulkan_core.h>
 
-namespace d2d {
+namespace d2d::vk {
     result<framebuffer> framebuffer::create(logical_device& device, image_view& attachment, render_pass& associated_render_pass, extent2 size) noexcept {
         framebuffer ret{};
         ret.dependent_handle = device;

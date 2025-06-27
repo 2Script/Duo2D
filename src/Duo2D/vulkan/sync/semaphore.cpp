@@ -1,7 +1,7 @@
 #include "Duo2D/vulkan/sync/semaphore.hpp"
 #include <vulkan/vulkan_core.h>
 
-namespace d2d {
+namespace d2d::vk {
     result<semaphore> semaphore::create(logical_device& device) noexcept {
         semaphore ret{};
         ret.dependent_handle = device;

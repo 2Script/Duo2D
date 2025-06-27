@@ -7,7 +7,7 @@
 
 __D2D_DECLARE_VK_TRAITS(VkInstance);
 
-namespace d2d {
+namespace d2d::vk {
     struct instance : vulkan_ptr<VkInstance, vkDestroyInstance> {
         static result<instance> create(VkApplicationInfo& app_info) noexcept;
 

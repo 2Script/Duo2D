@@ -5,24 +5,23 @@
 #include "Duo2D/traits/renderable_traits.hpp"
 #include "Duo2D/vulkan/memory/attribute.hpp"
 #include "Duo2D/traits/aggregate_traits.hpp"
-#include "Duo2D/traits/shader_input_traits.hpp"
 
 
-namespace d2d::impl {
+namespace d2d::vk::impl {
     template<typename T> struct attribute_traits;
     template<typename... Ts> 
     struct attribute_traits<std::tuple<attribute<Ts>&...>>  {
         constexpr static std::size_t total_size = (sizeof(Ts) + ...);
         constexpr static std::array<std::size_t, sizeof...(Ts)> sizes{ sizeof(Ts)... };
 
-        using tuple_type = decltype(std::tuple_cat(std::declval<as_tuple_t<Ts>>()...));
+        using tuple_type = decltype(std::tuple_cat(std::declval<::d2d::impl::as_tuple_t<Ts>>()...));
         constexpr static std::size_t total_member_count = std::tuple_size_v<tuple_type>;
         //using tuple_type = decltype(std::tuple_cat(to_tuple(size_constant<member_count<Ts>()>{}, std::declval<Ts>())...));
         //constexpr static std::size_t total_member_count = (member_count<Ts>() + ...);
     };
 }
 
-namespace d2d::impl {
+namespace d2d::vk::impl {
     template<typename T>
     struct attributes_span_type { using type = std::tuple<>; };
 
@@ -35,7 +34,7 @@ namespace d2d::impl {
     )); 
 }
 
-namespace d2d {
+namespace d2d::vk {
     template<typename... Ts>
     struct make_attribute_types { using type = std::tuple<attribute<Ts>&...>; };
 

@@ -2,7 +2,7 @@
 #include "Duo2D/core/error.hpp"
 #include "Duo2D/graphics/prim/debug_rect.hpp"
 #include "Duo2D/graphics/prim/styled_rect.hpp"
-#include "Duo2D/traits/buffer_traits.hpp"
+#include "Duo2D/vulkan/traits/buffer_traits.hpp"
 #include "Duo2D/traits/renderable_traits.hpp"
 #include "Duo2D/vulkan/core/command_buffer.hpp"
 #include <cstdint>
@@ -11,8 +11,8 @@
 #include <utility>
 #include <vulkan/vulkan_core.h>
 
-namespace d2d {
-    template<impl::renderable_like T, std::size_t FiF, impl::renderable_like... Rs>
+namespace d2d::vk {
+    template<::d2d::impl::renderable_like T, std::size_t FiF, ::d2d::impl::renderable_like... Rs>
     result<void> command_buffer::draw(const renderable_tuple<FiF, Rs...>& renderables) const noexcept {
         if(renderables.template empty<T>())
             return {};

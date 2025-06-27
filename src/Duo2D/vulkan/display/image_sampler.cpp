@@ -1,7 +1,7 @@
 #include "Duo2D/vulkan/display/image_sampler.hpp"
 #include "Duo2D/vulkan/device/physical_device.hpp"
 
-namespace d2d {
+namespace d2d::vk {
     result<image_sampler> image_sampler::create(logical_device& logi_device, physical_device& phys_device, pt3<VkSamplerAddressMode> address_modes) noexcept {
         image_sampler ret{};
         ret.dependent_handle = logi_device;

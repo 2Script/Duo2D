@@ -5,7 +5,7 @@
 
 #include "Duo2D/vulkan/display/color_space_ids.hpp"
 
-namespace d2d {
+namespace d2d::vk {
     struct color_space_info {
         enum : std::uint_fast8_t {
             srgb, scrgb, adobe_rgb, display_p3, dci_p3, bt709, bt2020, passthrough, native
@@ -19,7 +19,7 @@ namespace d2d {
     };
 }
 
-namespace d2d {
+namespace d2d::vk {
     constexpr std::array<color_space_info, impl::num_color_spaces> color_spaces = {{
        {color_space_info::srgb, color_space_info::nonlinear},          //VK_COLOR_SPACE_SRGB_NONLINEAR_KHR
        {color_space_info::display_p3, color_space_info::nonlinear},    //VK_COLOR_SPACE_DISPLAY_P3_NONLINEAR_EXT

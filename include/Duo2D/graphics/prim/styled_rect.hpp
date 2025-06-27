@@ -28,8 +28,8 @@ namespace d2d {
         using shader_data_type = shaders::rect;
         using uniform_type = extent2;
         using push_constant_types = std::tuple<extent2&>;
-        using attribute_types = make_attribute_types_t<true_color, transform2, std::uint32_t, rect<std::uint32_t>>;
-        using texture_type = texture;
+        using attribute_types = vk::make_attribute_types_t<true_color, transform2, std::uint32_t, rect<std::uint32_t>>;
+        using texture_type = vk::texture;
         constexpr static std::size_t max_texture_count = 2;
         constexpr static VkCullModeFlags cull_mode = VK_CULL_MODE_BACK_BIT;
         constexpr static VkFrontFace front_face = VK_FRONT_FACE_CLOCKWISE;
@@ -50,10 +50,10 @@ namespace d2d {
         rect<float> bounds;
 
         //TODO (TEMP): replace with style
-        attribute<true_color> color = {};
-        attribute<transform2> transform = {};
-        attribute<std::uint32_t> border_width = {};
-        attribute<rect<std::uint32_t>> texture_bounds = {};
+        vk::attribute<true_color> color = {};
+        vk::attribute<transform2> transform = {};
+        vk::attribute<std::uint32_t> border_width = {};
+        vk::attribute<rect<std::uint32_t>> texture_bounds = {};
 
     public:
         consteval static std::array<index_type, index_count> indices() noexcept { return {0, 1, 2, 2, 1, 3}; }

@@ -7,7 +7,7 @@
 #include <cstdint>
 #include <vulkan/vulkan_core.h>
 
-namespace d2d {
+namespace d2d::vk {
     result<command_buffer> command_buffer::create(logical_device& device, const command_pool& pool) noexcept {
         command_buffer ret{};
         //ret.dependent_handle = device;
@@ -25,7 +25,7 @@ namespace d2d {
     }
 }
 
-namespace d2d {
+namespace d2d::vk {
     result<void> command_buffer::render_begin(const swap_chain& window_swap_chain, const render_pass& window_render_pass, std::uint32_t image_index) const noexcept {
         VkCommandBufferBeginInfo begin_info{};
         begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -70,7 +70,7 @@ namespace d2d {
     }
 }
 
-namespace d2d {
+namespace d2d::vk {
     result<void> command_buffer::generic_begin() const noexcept {
         VkCommandBufferBeginInfo begin_info{
             .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,

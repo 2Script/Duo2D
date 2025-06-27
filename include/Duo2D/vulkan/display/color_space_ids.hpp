@@ -3,11 +3,11 @@
 #include <vulkan/vulkan.h>
 
 
-namespace d2d::impl{
+namespace d2d::vk::impl{
     constexpr std::size_t num_color_spaces = ((VK_COLOR_SPACE_EXTENDED_SRGB_NONLINEAR_EXT & 0xF) + 1) + 1;
 }
 
-namespace d2d::impl {
+namespace d2d::vk::impl {
     constexpr std::array<VkColorSpaceKHR, num_color_spaces> color_space_ids = {
         VK_COLOR_SPACE_SRGB_NONLINEAR_KHR, VK_COLOR_SPACE_DISPLAY_P3_NONLINEAR_EXT,
         VK_COLOR_SPACE_EXTENDED_SRGB_LINEAR_EXT, VK_COLOR_SPACE_DISPLAY_P3_LINEAR_EXT,

@@ -1,4 +1,4 @@
-#include "Duo2D/vulkan/core/application.hpp"
+#include "Duo2D/core/application.hpp"
 #include "Duo2D/vulkan/device/logical_device.hpp"
 #include "Duo2D/vulkan/device/physical_device.hpp"
 #include <vulkan/vulkan_core.h>
@@ -7,7 +7,7 @@
 #include <utility>
 
 #include "Duo2D/core/error.hpp"
-#include "Duo2D/vulkan/make.hpp"
+#include "Duo2D/core/make.hpp"
 
 namespace d2d {
     result<application> application::create(std::string_view name) noexcept {
@@ -41,7 +41,7 @@ namespace d2d {
             return error::vulkan_not_supported;
 
         // Create instance
-        __D2D_TRY_MAKE(ret.vk_instance, make<instance>(app_info), v)
+        __D2D_TRY_MAKE(ret.vk_instance, make<vk::instance>(app_info), v)
         ret.name = name;
 
         return ret;
@@ -50,7 +50,7 @@ namespace d2d {
 
 
 namespace d2d {
-    result<std::set<physical_device>> application::devices() const noexcept {
+    result<std::set<vk::physical_device>> application::devices() const noexcept {
         std::uint32_t device_count = 0;
         vkEnumeratePhysicalDevices(vk_instance, &device_count, nullptr);
 
@@ -68,9 +68,9 @@ namespace d2d {
         window dummy = *std ::move(var_name);
 
 
-        std::set<physical_device> ret{};
+        std::set<vk::physical_device> ret{};
         for(VkPhysicalDevice device_handle : devices) {
-            result<physical_device> d = make<physical_device>(device_handle, dummy);
+            result<vk::physical_device> d = make<vk::physical_device>(device_handle, dummy);
             if(!d.has_value()) return d.error();
             ret.insert(*std::move(d));
         }
@@ -81,7 +81,7 @@ namespace d2d {
 
     result<void> application::initialize_device() noexcept {
         //Create logical device
-        __D2D_TRY_MAKE(logi_device, make<logical_device>(phys_device), ld);
+        __D2D_TRY_MAKE(logi_device, make<vk::logical_device>(phys_device), ld);
 
         return {};
     }

@@ -6,7 +6,7 @@
 #include <type_traits>
 #include <unordered_map>
 #include <vulkan/vulkan_core.h>
-#include "Duo2D/graphics/core/glyph.hpp"
+#include "Duo2D/graphics/prim/glyph.hpp"
 #include "Duo2D/graphics/prim/debug_rect.hpp"
 #include "Duo2D/graphics/prim/styled_rect.hpp"
 #include "Duo2D/traits/generic_functor.hpp"
@@ -29,10 +29,10 @@
 
 namespace d2d {
     struct window {
-        static result<window> create(std::string_view title, std::size_t width, std::size_t height, const instance& i) noexcept;
+        static result<window> create(std::string_view title, std::size_t width, std::size_t height, const vk::instance& i) noexcept;
 
         window() noexcept : window(nullptr) {}
-        result<void> initialize(logical_device& logi_device, physical_device& phys_device) noexcept;
+        result<void> initialize(vk::logical_device& logi_device, vk::physical_device& phys_device) noexcept;
 
         result<void> render() noexcept;
 
@@ -41,9 +41,9 @@ namespace d2d {
         template<typename R> using iterator = typename std::unordered_map<std::string_view, R>::iterator;
         template<typename R> using const_iterator = typename std::unordered_map<std::string_view, R>::const_iterator;
 
-        template<typename R> requires impl::renderable_like<std::remove_cvref_t<R>>
+        template<typename R> requires ::d2d::impl::renderable_like<std::remove_cvref_t<R>>
         std::pair<iterator<R>, bool> insert(const value_type<R>& value) noexcept;
-        template<typename R> requires impl::renderable_like<std::remove_cvref_t<R>>
+        template<typename R> requires ::d2d::impl::renderable_like<std::remove_cvref_t<R>>
         std::pair<iterator<R>, bool> insert(value_type<R>&& value) noexcept;
         template<typename P> requires std::is_constructible_v<value_type<typename std::remove_cvref_t<P>::second_type>, P&&>
         std::pair<iterator<typename std::remove_cvref_t<P>::second_type>, bool> insert(P&& value) noexcept;
@@ -97,32 +97,32 @@ namespace d2d {
             _surface(), _swap_chain(), _render_pass(),
             frame_idx(0), _command_pool(), command_buffers{}, render_fences{}, frame_semaphores{}, submit_semaphores(),
             data() {}
-        friend physical_device;
+        friend vk::physical_device;
         
     private:
         constexpr static std::size_t frames_in_flight = 2;
 
         std::unique_ptr<GLFWwindow, generic_functor<glfwDestroyWindow>> handle;
-        logical_device* logi_device_ptr;
-        physical_device* phys_device_ptr;
+        vk::logical_device* logi_device_ptr;
+        vk::physical_device* phys_device_ptr;
         //Decleration order matters: swap_chain MUST be destroyed before surface
-        surface _surface;
-        swap_chain _swap_chain;
-        render_pass _render_pass;
+        vk::surface _surface;
+        vk::swap_chain _swap_chain;
+        vk::render_pass _render_pass;
 
         std::size_t frame_idx;
-        command_pool _command_pool;
-        std::array<command_buffer, frames_in_flight> command_buffers;
-        std::array<fence, frames_in_flight> render_fences;
+        vk::command_pool _command_pool;
+        std::array<vk::command_buffer, frames_in_flight> command_buffers;
+        std::array<vk::fence, frames_in_flight> render_fences;
         struct semaphore_type { enum { image_available, /*cmd_buffer_finished,*/ num_semaphore_types }; };
-        std::array<std::array<semaphore, frames_in_flight>, semaphore_type::num_semaphore_types> frame_semaphores;
-        std::vector<semaphore> submit_semaphores;
+        std::array<std::array<vk::semaphore, frames_in_flight>, semaphore_type::num_semaphore_types> frame_semaphores;
+        std::vector<vk::semaphore> submit_semaphores;
 
-        renderable_tuple<frames_in_flight, styled_rect, debug_rect, clone_rect, glyph> data;
+        vk::renderable_tuple<frames_in_flight, styled_rect, debug_rect, clone_rect, glyph> data;
 
         //constexpr static std::size_t x = decltype(data)::template static_offsets<clone_rect>()[buffer_data_type::index];
         //constexpr static std::size_t y = renderable_data<clone_rect, 2>::static_index_data_bytes.size();
     };
 }
 
-#include "Duo2D/vulkan/core/window.inl"
+#include "Duo2D/core/window.inl"

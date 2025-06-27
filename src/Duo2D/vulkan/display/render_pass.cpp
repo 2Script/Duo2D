@@ -1,7 +1,7 @@
 #include "Duo2D/vulkan/display/render_pass.hpp"
 #include <vulkan/vulkan_core.h>
 
-namespace d2d {
+namespace d2d::vk {
     result<render_pass> render_pass::create(logical_device& logi_device) noexcept {
         render_pass ret{};
         ret.dependent_handle = logi_device;

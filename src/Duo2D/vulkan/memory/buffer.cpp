@@ -3,7 +3,7 @@
 #include <vulkan/vulkan_core.h>
 
 
-namespace d2d {
+namespace d2d::vk {
     result<buffer> buffer::create(logical_device& device, std::size_t size, VkBufferUsageFlags usage) noexcept {
         return buffer::create(device, size, usage, 0);
     }
@@ -27,7 +27,7 @@ namespace d2d {
     }
 }
 
-namespace d2d {
+namespace d2d::vk {
     result<buffer> buffer::clone(logical_device& device) const noexcept {
         return buffer::create(device, bytes, flags, offset);
     }

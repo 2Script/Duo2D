@@ -12,7 +12,6 @@
 #include <vulkan/vulkan_core.h>
 
 #include "Duo2D/traits/vector_traits.hpp"
-#include "Duo2D/traits/vertex_traits.hpp"
 
 
 namespace d2d {
@@ -23,10 +22,8 @@ namespace d2d {
         using clean_vector = vector<Dims, UnitTy, HoldsData, 0>;
         template<typename T, typename Op> using l_result_vector = vector<Dims, decltype(std::declval<Op>()(std::declval<UnitTy>(), std::declval<T>())), HoldsData, TransformFlags>;
         template<typename T, typename Op> using r_result_vector = vector<Dims, decltype(std::declval<Op>()(std::declval<T>(), std::declval<UnitTy>())), HoldsData, TransformFlags>;
-    private:
 
     public:
-        constexpr static VkFormat format = impl::vertex_traits<Dims, UnitTy>::format;
         using vk_type           = typename impl::vector_traits<Dims, UnitTy, HoldsData, TransformFlags>::vk_type;
         using vk_component_type = typename impl::vector_traits<Dims, UnitTy, HoldsData, TransformFlags>::vk_component_type;
         constexpr static bool scalable     = impl::vector_traits<Dims, UnitTy, HoldsData, TransformFlags>::scalable;

@@ -6,7 +6,7 @@
 #include <vulkan/vulkan.h>
 #include <vulkan/vulkan_core.h>
 
-namespace d2d::impl { 
+namespace d2d::vk::impl { 
     template<typename VkTy> struct vk_traits{
         static_assert(!std::is_same_v<VkTy, VkTy>, "vk_traits<VkType> specialization has not been defined for the given VkType!");
     }; 
@@ -23,7 +23,7 @@ namespace d2d::impl {
 
 
 #define __D2D_DECLARE_VK_TRAITS_DEVICE(type) \
-namespace d2d::impl { \
+namespace d2d::vk::impl { \
     template<> struct vk_traits<type>{ \
         using dependent_type = VkDevice; \
         using deleter_type = void(dependent_type, type, const VkAllocationCallbacks*); \
@@ -31,7 +31,7 @@ namespace d2d::impl { \
 }
 
 #define __D2D_DECLARE_VK_TRAITS_DEVICE_AUX(type, aux_dependent_type) \
-namespace d2d::impl { \
+namespace d2d::vk::impl { \
     template<> struct vk_traits<type>{ \
         using dependent_type = VkDevice; \
         using auxilary_type = aux_dependent_type; \
@@ -40,7 +40,7 @@ namespace d2d::impl { \
 }
 
 #define __D2D_DECLARE_VK_TRAITS_INST(type) \
-namespace d2d::impl { \
+namespace d2d::vk::impl { \
     template<> struct vk_traits<type>{ \
         using dependent_type = VkInstance; \
         using deleter_type = void(dependent_type, type, const VkAllocationCallbacks*); \
@@ -48,7 +48,7 @@ namespace d2d::impl { \
 }
 
 #define __D2D_DECLARE_VK_TRAITS(type) \
-namespace d2d::impl { \
+namespace d2d::vk::impl { \
     template<> struct vk_traits<type>{ \
         using deleter_type = void(type, const VkAllocationCallbacks*); \
     }; \

@@ -8,7 +8,7 @@
 #include "Duo2D/vulkan/display/color_space.hpp"
 
 
-namespace d2d {
+namespace d2d::vk {
     struct display_format {
         VkFormat format_id;
         VkColorSpaceKHR color_space_id;

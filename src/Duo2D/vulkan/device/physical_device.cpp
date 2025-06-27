@@ -2,9 +2,9 @@
 
 #include <cstring>
 #include <type_traits>
-#include "Duo2D/vulkan/core/window.hpp"
+#include "Duo2D/core/window.hpp"
 
-namespace d2d {
+namespace d2d::vk {
     result<physical_device> physical_device::create(VkPhysicalDevice& device_handle, window& dummy_window) noexcept {
         
         //Get device features and properties
@@ -121,7 +121,7 @@ namespace d2d {
             .limits = device_properties.limits,
             .queue_family_idxs = device_idxs,
             .extensions = device_extensions,
-            .features = std::bit_cast<d2d::features_t>(device_features),
+            .features = std::bit_cast<features_t>(device_features),
             .surface_capabilities = device_surface_capabilities,
             .display_formats = device_formats,
             .present_modes = device_present_modes,
@@ -131,7 +131,7 @@ namespace d2d {
     }
 }
 
-namespace d2d {
+namespace d2d::vk {
     std::strong_ordering operator<=>(const physical_device& a, const physical_device& b) noexcept {
         std::int32_t a_type_rating = a.type == device_type::discrete_gpu ? -1 : static_cast<std::int32_t>(a.type);
         std::int32_t b_type_rating = b.type == device_type::discrete_gpu ? -1 : static_cast<std::int32_t>(b.type);

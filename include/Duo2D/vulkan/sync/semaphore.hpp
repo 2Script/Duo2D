@@ -6,7 +6,7 @@
 
 __D2D_DECLARE_VK_TRAITS_DEVICE(VkSemaphore);
 
-namespace d2d {
+namespace d2d::vk {
     struct semaphore : vulkan_ptr<VkSemaphore, vkDestroySemaphore> {
         static result<semaphore> create(logical_device& device) noexcept;\
     };

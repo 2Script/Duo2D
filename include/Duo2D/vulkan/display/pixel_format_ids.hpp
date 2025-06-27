@@ -3,11 +3,11 @@
 #include <vulkan/vulkan.h>
 
 
-namespace d2d::impl {
+namespace d2d::vk::impl {
     constexpr std::size_t num_pixel_formats = (VK_FORMAT_ASTC_12x12_SRGB_BLOCK + 1) + 34 + 4 + 2 + 14 + 8 + 1 + 2;
 }
 
-namespace d2d::impl {
+namespace d2d::vk::impl {
     constexpr std::array<VkFormat, num_pixel_formats> pixel_format_ids = {
         VK_FORMAT_UNDEFINED,
         VK_FORMAT_R4G4_UNORM_PACK8,

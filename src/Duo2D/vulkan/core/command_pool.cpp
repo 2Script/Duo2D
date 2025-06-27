@@ -2,7 +2,7 @@
 #include "Duo2D/vulkan/device/queue_family.hpp"
 #include <vulkan/vulkan_core.h>
 
-namespace d2d {
+namespace d2d::vk {
     result<command_pool> command_pool::create(logical_device& logi_device, physical_device& phys_device) noexcept {
         command_pool ret{};
         ret.dependent_handle = logi_device;

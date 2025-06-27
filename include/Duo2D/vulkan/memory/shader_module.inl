@@ -4,7 +4,7 @@
 #include <cstdint>
 #include <vulkan/vulkan_core.h>
 
-namespace d2d {
+namespace d2d::vk {
     template<std::size_t N>
     result<shader_module> shader_module::create(logical_device& device, const unsigned char (&data)[N], VkShaderStageFlagBits type) noexcept {
         shader_module ret{};

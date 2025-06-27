@@ -3,7 +3,7 @@
 #include "Duo2D/vulkan/display/image_view.hpp"
 #include "Duo2D/vulkan/memory/image.hpp"
 
-namespace d2d {
+namespace d2d::vk {
     using texture_idx_t = std::uint16_t;
 
     class texture : public image {
@@ -15,7 +15,7 @@ namespace d2d {
     public:
         constexpr image_view    const& view()    const noexcept { return img_view; }
         constexpr image_sampler const& sampler() const noexcept { return img_sampler; }
-        constexpr texture_idx_t index() const noexcept { return idx; }
+        constexpr texture_idx_t        index()   const noexcept { return idx; }
 
     private:
         using image::create;

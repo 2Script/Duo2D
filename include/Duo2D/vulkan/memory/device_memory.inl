@@ -1,7 +1,7 @@
 #pragma once
 #include "Duo2D/vulkan/memory/device_memory.hpp"
 
-#include "Duo2D/graphics/core/texture.hpp"
+#include "Duo2D/vulkan/display/texture.hpp"
 #include "Duo2D/vulkan/memory/buffer.hpp"
 #include "Duo2D/core/error.hpp"
 #include "Duo2D/vulkan/device/physical_device.hpp"
@@ -12,7 +12,7 @@
 #include <vulkan/vulkan_core.h>
 
 
-namespace d2d {
+namespace d2d::vk {
     template<std::size_t N>
     result<device_memory<N>> device_memory<N>::create(logical_device& logi_device, physical_device& phys_device, std::span<buffer, N> associated_buffers, VkMemoryPropertyFlags properties) noexcept {
         device_memory ret{};
@@ -78,7 +78,7 @@ namespace d2d {
     }
 }
 
-namespace d2d {
+namespace d2d::vk {
     template<typename MemReqsContainer>
     result<void> device_memory_base::allocate(logical_device& logi_device, std::optional<std::uint32_t> mem_type_idx, MemReqsContainer&& mem_reqs) noexcept {
         if(!mem_type_idx.has_value())
@@ -100,7 +100,7 @@ namespace d2d {
 }
 
 
-namespace d2d {
+namespace d2d::vk {
     void device_memory_base::unmap(logical_device& device) const noexcept {
         mapped = false;
         return vkUnmapMemory(device, handle);
@@ -115,7 +115,7 @@ namespace d2d {
     }
 }
 
-namespace d2d {
+namespace d2d::vk {
     template<std::size_t N>
     result<void> device_memory<N>::bind(logical_device& device, buffer& buff, std::size_t offset) const noexcept {
         __D2D_VULKAN_VERIFY(vkBindBufferMemory(device, buff, handle, offset));
@@ -138,7 +138,7 @@ namespace d2d {
 }
 
 /*
-namespace d2d {
+namespace d2d::vk {
     constexpr device_memory_base::device_memory_base(device_memory_base&& other) noexcept : 
         vulkan_ptr<VkDeviceMemory, vkFreeMemory>(std::move(other)),
         mapped(other.mapped) {}

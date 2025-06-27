@@ -7,13 +7,12 @@ option(BUILD_SHARED_LIBS "Build using shared libraries" ON)
 set(CMAKE_VERBOSE_MAKEFILE ON CACHE BOOL "ON")
 
 set(CPP_FILES
-    graphics/core/texture.cpp
+    core/application.cpp
+    core/window.cpp
 
-    vulkan/core/application.cpp
     vulkan/core/command_buffer.cpp
     vulkan/core/command_pool.cpp
     vulkan/core/instance.cpp
-    vulkan/core/window.cpp
 
     vulkan/device/logical_device.cpp
     vulkan/device/physical_device.cpp
@@ -24,6 +23,7 @@ set(CPP_FILES
     vulkan/display/render_pass.cpp
     vulkan/display/surface.cpp
     vulkan/display/swap_chain.cpp
+    vulkan/display/texture.cpp
     
     vulkan/memory/buffer.cpp
     vulkan/memory/image.cpp

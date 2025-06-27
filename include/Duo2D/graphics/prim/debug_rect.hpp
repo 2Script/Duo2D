@@ -21,7 +21,7 @@ namespace d2d {
         using shader_type = debug_rect;
         using shader_data_type = shaders::debug_rect;
         using uniform_type = extent2;
-        using attribute_types = make_attribute_types_t<transform2, std::uint32_t>;
+        using attribute_types = vk::make_attribute_types_t<transform2, std::uint32_t>;
         constexpr static bool instanced = false;
         constexpr static VkCullModeFlags cull_mode = VK_CULL_MODE_BACK_BIT;
         constexpr static VkFrontFace front_face = VK_FRONT_FACE_CLOCKWISE;
@@ -42,8 +42,8 @@ namespace d2d {
     struct debug_rect : renderable<debug_rect> {
         rect<float> bounds;
         true_color color; //TEMP: only color, replace with style
-        attribute<transform2> transform = {};
-        attribute<std::uint32_t> border_width = {};
+        vk::attribute<transform2> transform = {};
+        vk::attribute<std::uint32_t> border_width = {};
 
     public:
         constexpr std::vector<index_type> indices() const noexcept { return {0, 1, 2, 2, 3, 0}; }

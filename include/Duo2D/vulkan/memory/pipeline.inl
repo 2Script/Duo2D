@@ -1,13 +1,13 @@
 #pragma once
 #include "Duo2D/vulkan/memory/pipeline.hpp"
 
-#include "Duo2D/vulkan/make.hpp"
+#include "Duo2D/core/make.hpp"
 #include "Duo2D/vulkan/memory/pipeline_layout.hpp"
 #include "Duo2D/vulkan/memory/shader_module.hpp"
 #include <vulkan/vulkan_core.h>
 
-namespace d2d {
-    template<impl::renderable_like T>
+namespace d2d::vk {
+    template<::d2d::impl::renderable_like T>
     result<pipeline<T>> pipeline<T>::create(logical_device& device, render_pass& associated_render_pass, pipeline_layout<T>& layout) noexcept {
         pipeline ret{};
         ret.dependent_handle = device;

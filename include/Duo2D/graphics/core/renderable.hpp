@@ -1,8 +1,9 @@
 #pragma once
 #include "Duo2D/graphics/core/font.hpp"
-#include "Duo2D/graphics/core/texture.hpp"
+#include "Duo2D/vulkan/display/texture.hpp"
 #include "Duo2D/traits/aggregate_traits.hpp"
-#include "Duo2D/traits/attribute_traits.hpp"
+#include "Duo2D/vulkan/traits/attribute_traits.hpp"
+#include "Duo2D/vulkan/traits/shader_input_traits.hpp"
 #include <cstdint>
 #include <numeric>
 #include <string_view>
@@ -28,7 +29,7 @@ namespace d2d::impl {
     template<typename T>
     struct renderable_textures {};
 
-    template<has_texture_type<texture> T>
+    template<has_texture_type<vk::texture> T>
     struct renderable_textures<T> {
         std::array<std::string_view, renderable_traits<T>::max_texture_count> _texture_paths{};
 
@@ -69,11 +70,11 @@ namespace d2d {
         };
 
     private:
-        template<std::size_t I, typename A> using type_at_t = std::tuple_element_t<I, impl::as_tuple_t<A>>;
-        constexpr static std::size_t vertex_type_count    = []() noexcept -> std::size_t {if constexpr(has_vertex_type)     return impl::member_count<typename traits_type::vertex_type>();                            return 0;}();
-        constexpr static std::size_t instance_type_count  = []() noexcept -> std::size_t {if constexpr(has_instanced_type)  return impl::member_count<typename traits_type::instance_type>();                          return 0;}();
-        constexpr static std::size_t attribute_type_count = []() noexcept -> std::size_t {if constexpr(has_attribute_types) return impl::attribute_traits<typename traits_type::attribute_types>::total_member_count;  return 0;}();
-        constexpr static std::size_t texture_type_count   = []() noexcept -> std::size_t {if constexpr(has_texture_count)   return traits_type::max_texture_count;                                                     return 0;}();
+        template<std::size_t I, typename A> using type_at_t = std::tuple_element_t<I, ::d2d::impl::as_tuple_t<A>>;
+        constexpr static std::size_t vertex_type_count    = []() noexcept -> std::size_t {if constexpr(has_vertex_type)     return ::d2d::impl::member_count<typename traits_type::vertex_type>();                            return 0;}();
+        constexpr static std::size_t instance_type_count  = []() noexcept -> std::size_t {if constexpr(has_instanced_type)  return ::d2d::impl::member_count<typename traits_type::instance_type>();                          return 0;}();
+        constexpr static std::size_t attribute_type_count = []() noexcept -> std::size_t {if constexpr(has_attribute_types) return vk::impl::attribute_traits<typename traits_type::attribute_types>::total_member_count;     return 0;}();
+        constexpr static std::size_t texture_type_count   = []() noexcept -> std::size_t {if constexpr(has_texture_count)   return traits_type::max_texture_count;                                                            return 0;}();
         constexpr static std::size_t total_type_count = vertex_type_count + instance_type_count + attribute_type_count + texture_type_count;
         constexpr static std::size_t binding_count = has_attribute_types + has_instanced_type + has_vertex_type + has_texture_count;
 
@@ -83,13 +84,13 @@ namespace d2d {
         consteval static std::pair<std::array<VkVertexInputAttributeDescription, sizeof...(Is)>, std::size_t> inputs(std::uint32_t location_offset, std::index_sequence<Is...>) {
             constexpr std::size_t input_count = sizeof...(Is);
             constexpr std::array<std::size_t, input_count> sizes = {std::max(sizeof(type_at_t<Is, InputT>), alignof(InputT))...};
-            constexpr std::array<std::size_t, input_count> location_sizes = {impl::shader_input_traits<type_at_t<Is, InputT>>::location_size...};
+            constexpr std::array<std::size_t, input_count> location_sizes = {vk::impl::shader_input_traits<type_at_t<Is, InputT>>::location_size...};
             constexpr std::size_t total_location_size = std::accumulate(location_sizes.cbegin(), location_sizes.cend(), 0);
             std::array<std::uint32_t, input_count> offsets, location_idxs;
             std::exclusive_scan(sizes.cbegin(), sizes.cend(), offsets.begin(), 0);
             std::exclusive_scan(location_sizes.cbegin(), location_sizes.cend(), location_idxs.begin(), 0);
             return {std::array<VkVertexInputAttributeDescription, input_count>{{
-                {location_offset + location_idxs[Is], Binding, impl::shader_input_traits<type_at_t<Is, InputT>>::format, offsets[Is]}...
+                {location_offset + location_idxs[Is], Binding, vk::impl::shader_input_traits<type_at_t<Is, InputT>>::format, offsets[Is]}...
             }}, total_location_size};
         }
 
@@ -103,10 +104,10 @@ namespace d2d {
         consteval static std::array<VkVertexInputBindingDescription, binding_count> binding_descs() noexcept {
             std::array<VkVertexInputBindingDescription, binding_count> ret = {};
             std::uint32_t i = 0;
-            if constexpr(has_vertex_type)     ret[i++] = {i, sizeof(typename traits_type::vertex_type),                                 VK_VERTEX_INPUT_RATE_VERTEX};
-            if constexpr(has_instanced_type)  ret[i++] = {i, sizeof(typename traits_type::instance_type),                               VK_VERTEX_INPUT_RATE_INSTANCE};
-            if constexpr(has_attribute_types) ret[i++] = {i, impl::attribute_traits<typename traits_type::attribute_types>::total_size, VK_VERTEX_INPUT_RATE_INSTANCE};//static_cast<VkVertexInputRate>(T::instanced)};
-            if constexpr(has_texture_count)   ret[i++] = {i, sizeof(texture_idx_t) * traits_type::max_texture_count,                    VK_VERTEX_INPUT_RATE_INSTANCE};
+            if constexpr(has_vertex_type)     ret[i++] = {i, sizeof(typename traits_type::vertex_type),                                     VK_VERTEX_INPUT_RATE_VERTEX};
+            if constexpr(has_instanced_type)  ret[i++] = {i, sizeof(typename traits_type::instance_type),                                   VK_VERTEX_INPUT_RATE_INSTANCE};
+            if constexpr(has_attribute_types) ret[i++] = {i, vk::impl::attribute_traits<typename traits_type::attribute_types>::total_size, VK_VERTEX_INPUT_RATE_INSTANCE};//static_cast<VkVertexInputRate>(T::instanced)};
+            if constexpr(has_texture_count)   ret[i++] = {i, sizeof(vk::texture_idx_t) * traits_type::max_texture_count,                        VK_VERTEX_INPUT_RATE_INSTANCE};
             return ret;
         }
         
@@ -125,12 +126,12 @@ namespace d2d {
                 for(auto& i : instance_inputs) ret[I++] = std::move(i);
             }
             if constexpr(has_attribute_types) {
-                auto [attribute_inputs, attribute_size] = inputs<typename impl::attribute_traits<typename traits_type::attribute_types>::tuple_type, attribute_binding()>(vertex_loc_size + instance_loc_size, std::make_index_sequence<attribute_type_count>{});
+                auto [attribute_inputs, attribute_size] = inputs<typename vk::impl::attribute_traits<typename traits_type::attribute_types>::tuple_type, attribute_binding()>(vertex_loc_size + instance_loc_size, std::make_index_sequence<attribute_type_count>{});
                 attribute_loc_size = attribute_size;
                 for(auto& a : attribute_inputs) ret[I++] = std::move(a);
             }
             if constexpr(has_texture_count) {
-                auto [tex_idx_inputs, _] = inputs<std::array<texture_idx_t, traits_type::max_texture_count>, texture_idx_binding()>(vertex_loc_size + instance_loc_size + attribute_loc_size, std::make_index_sequence<traits_type::max_texture_count>{});
+                auto [tex_idx_inputs, _] = inputs<std::array<vk::texture_idx_t, traits_type::max_texture_count>, texture_idx_binding()>(vertex_loc_size + instance_loc_size + attribute_loc_size, std::make_index_sequence<traits_type::max_texture_count>{});
                 for(auto& t : tex_idx_inputs) ret[I++] = std::move(t);
             }
             return ret;

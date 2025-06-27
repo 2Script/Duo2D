@@ -15,12 +15,13 @@
 #include "Duo2D/vulkan/display/display_format.hpp"
 #include "Duo2D/vulkan/display/present_mode.hpp"
 
-
 namespace d2d {
     struct window;
+}
 
+namespace d2d::vk {
     struct physical_device : vulkan_ptr_base<VkPhysicalDevice> {
-        static result<physical_device> create(VkPhysicalDevice& device_handle, window& dummy_window) noexcept;
+        static result<physical_device> create(VkPhysicalDevice& device_handle, ::d2d::window& dummy_window) noexcept;
         
     public:
         std::string_view name;

@@ -7,7 +7,7 @@
 __D2D_DECLARE_VK_TRAITS_DEVICE(VkShaderModule);
 
 
-namespace d2d {
+namespace d2d::vk {
     struct shader_module : vulkan_ptr<VkShaderModule, vkDestroyShaderModule> {
         template<std::size_t N>
         static result<shader_module> create(logical_device& device, const unsigned char (&data)[N], VkShaderStageFlagBits type) noexcept;

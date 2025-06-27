@@ -7,7 +7,7 @@
 
 __D2D_DECLARE_VK_TRAITS_DEVICE(VkSampler);
 
-namespace d2d {
+namespace d2d::vk {
     struct image_sampler : public vulkan_ptr<VkSampler, vkDestroySampler> {
         constexpr static VkSamplerAddressMode clamp_to_border = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
     public:

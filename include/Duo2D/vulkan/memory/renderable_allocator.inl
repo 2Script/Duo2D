@@ -2,12 +2,12 @@
 #include "Duo2D/vulkan/device/logical_device.hpp"
 #include "Duo2D/vulkan/device/physical_device.hpp"
 #include "Duo2D/vulkan/memory/renderable_allocator.hpp"
-#include "Duo2D/vulkan/make.hpp"
+#include "Duo2D/core/make.hpp"
 #include <result/verify.h>
 #include <utility>
 #include <vulkan/vulkan_core.h>
 
-namespace d2d {
+namespace d2d::vk {
     template<typename InputContainerT>
     result<std::pair<buffer, device_memory<1>>> renderable_allocator::stage(std::size_t total_buffer_size, InputContainerT&& inputs, std::size_t buffer_write_offset) const noexcept {
         std::array<buffer, 1> staging_buffs;
@@ -29,7 +29,7 @@ namespace d2d {
 }
 
 
-namespace d2d {
+namespace d2d::vk {
     template<std::size_t I, VkFlags BufferUsage, VkMemoryPropertyFlags MemProps, VkMemoryPropertyFlags FallbackMemProps, std::size_t N>
     result<void> renderable_allocator::alloc_buffer(std::span<buffer, N> buffs, std::size_t total_buffer_size, device_memory<N>& mem) noexcept {
         //Create copy command buffer
@@ -64,7 +64,7 @@ namespace d2d {
 }
 
 
-namespace d2d {
+namespace d2d::vk {
     result<void> renderable_allocator::staging_to_device_local(buffer& device_local_buff, buffer const& staging_buff, std::size_t offset, std::optional<std::size_t> size) noexcept {
         //Create copy command buffer
         RESULT_VERIFY(gpu_alloc_begin());
@@ -94,7 +94,7 @@ namespace d2d {
 
 
 
-namespace d2d {
+namespace d2d::vk {
     result<void> renderable_allocator::gpu_alloc_begin() noexcept {
         //Create copy command buffer
         RESULT_TRY_MOVE(copy_cmd_buffer, make<command_buffer>(*logi_device_ptr, *copy_cmd_pool_ptr));
@@ -111,7 +111,7 @@ namespace d2d {
 }
 
 
-namespace d2d {
+namespace d2d::vk {
     template<typename OutputContainerT, typename InputContainerT, std::size_t N>
     result<std::size_t> renderable_allocator::realloc(OutputContainerT&& output_container, InputContainerT&& input_container, device_memory<N>& new_mem, std::size_t skip_idx, std::size_t starting_offset) const noexcept {
         //Re-create all other buffers
@@ -150,7 +150,7 @@ namespace d2d {
 }
 
 
-namespace d2d {
+namespace d2d::vk {
     template<typename OutputContainerT, typename InputContainerT>
     void renderable_allocator::move(OutputContainerT&& output_container, InputContainerT&& input_container) const noexcept {
         std::size_t i = 0;

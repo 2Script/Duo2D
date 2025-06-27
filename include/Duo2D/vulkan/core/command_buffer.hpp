@@ -12,10 +12,10 @@
 
 __D2D_DECLARE_VK_TRAITS_DEVICE_AUX(VkCommandBuffer, VkCommandPool);
 
-namespace d2d { template<std::size_t FiF, impl::renderable_like... Rs> /*requires (sizeof...(Rs) > 0)*/ struct renderable_tuple; }
+namespace d2d::vk { template<std::size_t FiF, ::d2d::impl::renderable_like... Rs> /*requires (sizeof...(Rs) > 0)*/ struct renderable_tuple; }
 
 
-namespace d2d {
+namespace d2d::vk {
     struct command_buffer : vulkan_ptr_base<VkCommandBuffer> {
         static result<command_buffer> create(logical_device& device, const command_pool& pool) noexcept;
     public:
@@ -23,7 +23,7 @@ namespace d2d {
         result<void> render_end() const noexcept;
         result<void> reset() const noexcept;
 
-        template<impl::renderable_like T, std::size_t FiF, impl::renderable_like... Rs>
+        template<::d2d::impl::renderable_like T, std::size_t FiF, ::d2d::impl::renderable_like... Rs>
         result<void> draw(const renderable_tuple<FiF, Rs...>& renderables) const noexcept; 
         
         result<void> generic_begin() const noexcept;

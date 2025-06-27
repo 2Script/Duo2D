@@ -29,4 +29,4 @@ namespace d2d::impl {
     };
 }
 
-#include "Duo2D/vulkan/core/instance_tracker.inl" 
+#include "Duo2D/traits/instance_tracker.inl" 

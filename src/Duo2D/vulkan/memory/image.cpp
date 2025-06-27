@@ -1,7 +1,7 @@
 #include "Duo2D/vulkan/memory/image.hpp"
 #include <climits>
 
-namespace d2d {
+namespace d2d::vk {
     result<image> image::create(logical_device& device, std::uint32_t width, std::uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, std::uint32_t array_count) noexcept {
         return image::create(device, width, height, format, tiling, usage, array_count, 0);
     }
@@ -40,7 +40,7 @@ namespace d2d {
 }
 
 
-namespace d2d {
+namespace d2d::vk {
     result<image> image::clone(logical_device& device) const noexcept {
         return image::create(device, extent.width(), extent.height(), image_format, image_tiling, flags, offset);
     }

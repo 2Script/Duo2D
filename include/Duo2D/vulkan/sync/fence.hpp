@@ -7,7 +7,7 @@
 
 __D2D_DECLARE_VK_TRAITS_DEVICE(VkFence);
 
-namespace d2d {
+namespace d2d::vk {
     struct fence : vulkan_ptr<VkFence, vkDestroyFence> {
         static result<fence> create(logical_device& device) noexcept;
 

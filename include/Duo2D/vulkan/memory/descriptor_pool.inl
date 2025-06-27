@@ -3,7 +3,7 @@
 #include <vulkan/vulkan_core.h>
 
 
-namespace d2d {
+namespace d2d::vk {
     template<std::size_t N>
     result<descriptor_pool> descriptor_pool::create(logical_device& device, std::span<VkDescriptorPoolSize, N> pool_sizes, std::uint32_t max_sets, std::bitset<N> enabled_bindings) noexcept {
         descriptor_pool ret{};

@@ -1,11 +1,11 @@
-#include "Duo2D/graphics/core/texture.hpp"
+#include "Duo2D/vulkan/display/texture.hpp"
 
-#include "Duo2D/vulkan/make.hpp"
+#include "Duo2D/core/make.hpp"
 #include <memory>
 #include <result/verify.h>
 
 
-namespace d2d {
+namespace d2d::vk {
     result<texture> texture::create(logical_device& logi_device, std::uint32_t width, std::uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, std::uint32_t array_count) noexcept {
         texture ret{};
         RESULT_TRY_MOVE(*static_cast<image*>(std::addressof(ret)), make<image>(logi_device, width, height, format, tiling, usage, array_count));
@@ -21,7 +21,7 @@ namespace d2d {
 
 }
 
-namespace d2d {
+namespace d2d::vk {
     result<texture> texture::clone(logical_device& logi_device, physical_device&) const noexcept {
         return create(logi_device, extent.width(), extent.height(), image_format, image_tiling, flags, image_count);
     }

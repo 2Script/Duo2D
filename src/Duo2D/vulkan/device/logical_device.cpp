@@ -3,7 +3,7 @@
 #include <vulkan/vulkan_core.h>
 
 
-namespace d2d {
+namespace d2d::vk {
     result<logical_device> logical_device::create(physical_device& associated_phys_device) noexcept {
         if(!associated_phys_device)
             return error::device_not_selected;

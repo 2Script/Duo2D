@@ -5,7 +5,7 @@
 #include <string_view>
 #include <utility>
 
-namespace d2d {
+namespace d2d::vk {
     result<instance> instance::create(VkApplicationInfo& app_info) noexcept {
         // Get needed extensions
         uint32_t glfw_ext_cnt = 0;

@@ -1,14 +1,14 @@
 #pragma once
 #include "Duo2D/vulkan/memory/descriptor_set_layout.hpp"
 #include "Duo2D/core/error.hpp"
-#include "Duo2D/vulkan/make.hpp"
+#include "Duo2D/core/make.hpp"
 #include "Duo2D/vulkan/device/physical_device.hpp"
 #include <bit>
 #include <limits>
 #include <vulkan/vulkan_core.h>
 
 
-namespace d2d {
+namespace d2d::vk {
     template<std::size_t N>
     result<descriptor_set_layout> descriptor_set_layout::create(logical_device& device, std::span<VkDescriptorSetLayoutBinding, N> bindings, std::span<VkDescriptorBindingFlags, N> binding_flags, std::bitset<N> enabled_bindings) noexcept {
         descriptor_set_layout ret{};

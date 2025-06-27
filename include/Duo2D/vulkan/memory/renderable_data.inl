@@ -1,6 +1,6 @@
 #pragma once
 #include "Duo2D/arith/size.hpp"
-#include "Duo2D/graphics/core/texture.hpp"
+#include "Duo2D/vulkan/display/texture.hpp"
 #include "Duo2D/vulkan/device/logical_device.hpp"
 #include "Duo2D/vulkan/memory/descriptor_pool.hpp"
 #include "Duo2D/vulkan/memory/renderable_allocator.hpp"
@@ -15,8 +15,8 @@
 #include <vulkan/vulkan_core.h>
 
 
-namespace d2d::impl {
-    template<renderable_like T> requires renderable_constraints<T>::has_attributes
+namespace d2d::vk::impl {
+    template<::d2d::impl::renderable_like T> requires renderable_constraints<T>::has_attributes
     template<std::size_t I>
     void renderable_attribute_data<T>::emplace_single_attribute(std::array<std::size_t, renderable_attribute_data<T>::num_attributes> attribute_offsets) noexcept {
         using attribute_ref_type = decltype(std::get<I>(std::declval<T>().attributes())); //attribute<V>&
@@ -38,7 +38,7 @@ namespace d2d::impl {
         }
     }
 
-    template<renderable_like T> requires renderable_constraints<T>::has_attributes
+    template<::d2d::impl::renderable_like T> requires renderable_constraints<T>::has_attributes
     std::size_t renderable_attribute_data<T>::emplace_attributes(std::size_t& buff_offset, void* mem_map, VkDeviceSize mem_size) noexcept {
         attributes_span = std::span<std::byte>(static_cast<std::byte*>(mem_map) + buff_offset, attribute_buffer_size());
         std::size_t old_offset = buff_offset;
@@ -60,8 +60,8 @@ namespace d2d::impl {
     }
 }
 
-namespace d2d::impl {
-    template<renderable_like T> requires renderable_constraints<T>::has_attributes
+namespace d2d::vk::impl {
+    template<::d2d::impl::renderable_like T> requires renderable_constraints<T>::has_attributes
     template<std::size_t I>
     void renderable_attribute_data<T>::unbind_single_attribute() noexcept {
         using attribute_ref_type = decltype(std::get<I>(std::declval<T>().attributes())); //attribute<V>&
@@ -74,7 +74,7 @@ namespace d2d::impl {
         }
     }
 
-    template<renderable_like T> requires renderable_constraints<T>::has_attributes
+    template<::d2d::impl::renderable_like T> requires renderable_constraints<T>::has_attributes
     void renderable_attribute_data<T>::unbind_attributes() noexcept {
         [this]<std::size_t... I>(std::index_sequence<I...>) {
             (unbind_single_attribute<I>(), ...);
@@ -83,8 +83,8 @@ namespace d2d::impl {
 }
 
 
-namespace d2d::impl {
-    template<impl::renderable_like T>
+namespace d2d::vk::impl {
+    template<::d2d::impl::renderable_like T>
     template<typename LoadTextureFn>
     result<std::vector<std::span<const std::byte>>> renderable_instance_data<T>::make_inputs(LoadTextureFn&&) noexcept {
         //if(this->input_renderables.size() == 0) return error::invalid_argument;
@@ -104,7 +104,7 @@ namespace d2d::impl {
         return std::move(input_bytes);
     }
 
-    template<impl::renderable_like T> requires (!renderable_constraints<T>::instanced)
+    template<::d2d::impl::renderable_like T> requires (!renderable_constraints<T>::instanced)
     template<typename LoadTextureFn>
     result<std::vector<std::span<const std::byte>>> renderable_instance_data<T>::make_inputs(LoadTextureFn&&) noexcept {
         //if(this->input_renderables.size() == 0) return error::invalid_argument;
@@ -116,7 +116,7 @@ namespace d2d::impl {
         input_bytes.reserve(this->input_renderables.size());
         for(const auto& input_pair : this->input_renderables) {
             vertex_inputs.push_back(input_pair.second.vertices());
-            if constexpr(file_renderable_like<T>) input_pair.second.unload();
+            if constexpr(::d2d::impl::file_renderable_like<T>) input_pair.second.unload();
             
             const auto& input = vertex_inputs.back();
             std::byte const* input_begin = reinterpret_cast<std::byte const*>(input.data());
@@ -130,7 +130,7 @@ namespace d2d::impl {
     }
 
 
-    template<impl::renderable_like T> requires (!renderable_constraints<T>::instanced && renderable_constraints<T>::has_indices)
+    template<::d2d::impl::renderable_like T> requires (!renderable_constraints<T>::instanced && renderable_constraints<T>::has_indices)
     template<typename LoadTextureFn>
     result<std::vector<std::span<const std::byte>>> renderable_index_data<T>::make_inputs(LoadTextureFn&& _) noexcept {
         //if(this->input_renderables.size() == 0) return error::invalid_argument;
@@ -159,7 +159,7 @@ namespace d2d::impl {
     }
 
 
-    template<impl::renderable_like T> requires (renderable_constraints<T>::has_textures)
+    template<::d2d::impl::renderable_like T> requires (renderable_constraints<T>::has_textures)
     template<typename LoadTextureFn>
     result<std::vector<std::span<const std::byte>>> renderable_texture_data<T>::make_inputs(LoadTextureFn&& load_texture_fn) noexcept {
         //if(this->input_renderables.size() == 0) return error::invalid_argument;
@@ -175,8 +175,8 @@ namespace d2d::impl {
     }
 }
 
-namespace d2d::impl {
-    template<impl::renderable_like T> requires (renderable_constraints<T>::has_textures)
+namespace d2d::vk::impl {
+    template<::d2d::impl::renderable_like T> requires (renderable_constraints<T>::has_textures)
     template<typename LoadTextureFn>
     result<std::pair<std::size_t, std::vector<std::span<const std::byte>>>> renderable_texture_data<T>::make_texture_indices(LoadTextureFn&& load_texture_fn) noexcept {
         texture_idx_inputs.reserve(this->input_renderables.size());
@@ -210,7 +210,7 @@ namespace d2d::impl {
     }
 
 
-    template<impl::renderable_like T> requires (renderable_constraints<T>::has_textures)
+    template<::d2d::impl::renderable_like T> requires (renderable_constraints<T>::has_textures)
     template<typename SkipT, typename LoadTextureFn>
     result<void> renderable_texture_data<T>::update_texture_indices(LoadTextureFn&& load_texture_fn, renderable_allocator& allocator, buffer& data_buffer) noexcept {
         if constexpr(std::is_same_v<T, SkipT>) return {};
@@ -230,8 +230,8 @@ namespace d2d::impl {
 }
 
 
-namespace d2d::impl {
-    template<renderable_like T, std::size_t FiF> requires (renderable_constraints<T>::has_uniform || renderable_constraints<T>::has_textures)
+namespace d2d::vk::impl {
+    template<::d2d::impl::renderable_like T, std::size_t FiF> requires (renderable_constraints<T>::has_uniform || renderable_constraints<T>::has_textures)
     result<void> renderable_descriptor_data<T, FiF>::create_uniform_descriptors(buffer& uniform_buff, std::size_t uniform_buff_offset) noexcept {
         if constexpr(!renderable_constraints<T>::has_uniform) return {};
         
@@ -264,7 +264,7 @@ namespace d2d::impl {
     }
 
 
-    template<renderable_like T, std::size_t FiF> requires (renderable_constraints<T>::has_uniform || renderable_constraints<T>::has_textures)
+    template<::d2d::impl::renderable_like T, std::size_t FiF> requires (renderable_constraints<T>::has_uniform || renderable_constraints<T>::has_textures)
     result<void> renderable_descriptor_data<T, FiF>::create_texture_descriptors(texture_map& textures) noexcept {
         if constexpr(!renderable_constraints<T>::has_textures) return {};
         const std::uint32_t descriptor_count = std::max<std::uint32_t>(1, textures.size());
@@ -301,13 +301,13 @@ namespace d2d::impl {
 }
 
 
-namespace d2d::impl {
-    template<renderable_like T, std::size_t FiF>
+namespace d2d::vk::impl {
+    template<::d2d::impl::renderable_like T, std::size_t FiF>
     result<void> renderable_descriptor_data<T, FiF>::create_pipeline_layout(logical_device& logi_device) noexcept {
         RESULT_TRY_MOVE(pl_layout, make<pipeline_layout<T>>(logi_device));
         return {};
     }
-    template<renderable_like T, std::size_t FiF> requires (renderable_constraints<T>::has_uniform || renderable_constraints<T>::has_textures)
+    template<::d2d::impl::renderable_like T, std::size_t FiF> requires (renderable_constraints<T>::has_uniform || renderable_constraints<T>::has_textures)
     result<void> renderable_descriptor_data<T, FiF>::create_pipeline_layout(logical_device& logi_device) noexcept {
         RESULT_TRY_MOVE(pool, make<descriptor_pool>(logi_device, std::span{pool_sizes}, FiF, valid_descriptors));
         RESULT_TRY_MOVE(set_layout, make<descriptor_set_layout>(logi_device, std::span{set_layout_bindings}, std::span{set_layout_flags}, valid_descriptors));
@@ -377,8 +377,8 @@ namespace d2d::impl {
 }
 
 
-namespace d2d {
-    template<impl::renderable_like T, std::size_t FiF>
+namespace d2d::vk {
+    template<::d2d::impl::renderable_like T, std::size_t FiF>
     result<void> renderable_data<T, FiF>::create_pipeline(logical_device& logi_device, render_pass& window_render_pass) noexcept {
         if(!this->pl_layout) return errc::descriptors_not_initialized;
         RESULT_TRY_MOVE(pl, make<pipeline<T>>(logi_device, window_render_pass, this->pl_layout));

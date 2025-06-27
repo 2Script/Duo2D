@@ -5,9 +5,9 @@
 #include <type_traits>
 #include <variant>
 
-namespace d2d {
+namespace d2d::vk {
     template<typename T> requires std::is_standard_layout_v<T>
-    struct attribute  {
+    struct attribute {
         constexpr attribute() noexcept = default;
         template<typename U> requires (std::is_constructible_v<T, U> && !std::is_same_v<T*, std::remove_cvref_t<U>>)
         constexpr attribute(U&& value) noexcept : local_value(std::forward<U>(value)), holds_ref(false) {}

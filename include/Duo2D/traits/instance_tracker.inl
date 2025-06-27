@@ -1,5 +1,5 @@
 #pragma once
-#include "Duo2D/vulkan/core/instance_tracker.hpp"
+#include "Duo2D/traits/instance_tracker.hpp"
 
 
 namespace d2d::impl {
@@ -19,13 +19,13 @@ namespace d2d::impl {
 
     template<typename T, auto DestroyFn> 
     constexpr instance_tracker<T, DestroyFn>::instance_tracker(instance_tracker&& other) noexcept : 
-        impl::dependent_static_member<T, DestroyFn>(std::move(other)), valid(true), count_ptr(other.count_ptr) {
+        dependent_static_member<T, DestroyFn>(std::move(other)), valid(true), count_ptr(other.count_ptr) {
         other.valid = false;
     }
 
     template<typename T, auto DestroyFn> 
     constexpr instance_tracker<T, DestroyFn>& instance_tracker<T, DestroyFn>::operator=(instance_tracker&& other) noexcept {
-        impl::dependent_static_member<T, DestroyFn>::operator=(std::move(other));
+        dependent_static_member<T, DestroyFn>::operator=(std::move(other));
         valid = true;
         other.valid = false;
         count_ptr = other.count_ptr;
@@ -35,13 +35,13 @@ namespace d2d::impl {
 
     template<typename T, auto DestroyFn> 
     constexpr instance_tracker<T, DestroyFn>::instance_tracker(const instance_tracker& other) noexcept : 
-        impl::dependent_static_member<T, DestroyFn>(other), valid(true), count_ptr(other.count_ptr) {
+        dependent_static_member<T, DestroyFn>(other), valid(true), count_ptr(other.count_ptr) {
         ++(*count_ptr);
     }
 
     template<typename T, auto DestroyFn> 
     constexpr instance_tracker<T, DestroyFn>& instance_tracker<T, DestroyFn>::operator=(const instance_tracker& other) noexcept {
-        impl::dependent_static_member<T, DestroyFn>::operator=(other);
+        dependent_static_member<T, DestroyFn>::operator=(other);
         count_ptr = other.count_ptr;
         ++(*count_ptr);
         return *this;

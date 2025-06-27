@@ -9,7 +9,7 @@
 
 __D2D_DECLARE_VK_TRAITS_DEVICE(VkFramebuffer);
 
-namespace d2d {
+namespace d2d::vk {
     struct framebuffer : vulkan_ptr<VkFramebuffer, vkDestroyFramebuffer> {
         static result<framebuffer> create(logical_device& device, image_view& attachment, render_pass& associated_render_pass, extent2 size) noexcept;
     };

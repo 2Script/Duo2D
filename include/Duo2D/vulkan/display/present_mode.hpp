@@ -2,7 +2,7 @@
 #include <vulkan/vulkan.h>
 #include <vulkan/vulkan_core.h>
 
-namespace d2d {
+namespace d2d::vk {
     enum class present_mode {
         immediate    = VK_PRESENT_MODE_IMMEDIATE_KHR,
         mailbox      = VK_PRESENT_MODE_MAILBOX_KHR,

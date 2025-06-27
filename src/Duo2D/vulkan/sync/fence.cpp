@@ -1,7 +1,7 @@
 #include "Duo2D/vulkan/sync/fence.hpp"
 #include <vulkan/vulkan_core.h>
 
-namespace d2d {
+namespace d2d::vk {
     result<fence> fence::create(logical_device& device) noexcept {
         fence ret{};
         ret.dependent_handle = device;
@@ -16,7 +16,7 @@ namespace d2d {
 }
 
 
-namespace d2d {
+namespace d2d::vk {
     result<void> fence::wait(std::uint64_t timeout) const noexcept {
         __D2D_VULKAN_VERIFY(vkWaitForFences(dependent_handle, 1, &handle, VK_TRUE, timeout));
         return {};

@@ -7,7 +7,7 @@ extern "C" {
 
 
 
-namespace d2d {
+namespace d2d::vk {
     constexpr static std::array<VkFormat, AV_PIX_FMT_NB> pixel_format_mapping = {
         VK_FORMAT_G8_B8_R8_3PLANE_420_UNORM, //AV_PIX_FMT_YUV420P
         VK_FORMAT_G8B8G8R8_422_UNORM,        //AV_PIX_FMT_YUYV422
