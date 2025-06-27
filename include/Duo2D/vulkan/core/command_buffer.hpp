@@ -23,7 +23,7 @@ namespace d2d::vk {
         result<void> render_end() const noexcept;
         result<void> reset() const noexcept;
 
-        template<::d2d::impl::renderable_like T, std::size_t FiF, ::d2d::impl::renderable_like... Rs>
+        template<::d2d::impl::renderable_like T, std::size_t FiF, ::d2d::impl::renderable_like... Rs> 
         result<void> draw(const renderable_tuple<FiF, Rs...>& renderables) const noexcept; 
         
         result<void> generic_begin() const noexcept;

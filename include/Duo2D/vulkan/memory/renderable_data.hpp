@@ -18,16 +18,20 @@
 #include "Duo2D/vulkan/memory/renderable_allocator.hpp"
 #include "Duo2D/vulkan/memory/texture_map.hpp"
 
+namespace d2d::vk::impl {
+    template<::d2d::impl::renderable_like T>
+    using renderable_input_map = std::unordered_map<std::string_view, T>;
+}
 
 //Attributes vs No Attributes
 namespace d2d::vk::impl {
     template<::d2d::impl::renderable_like T>
-    class renderable_attribute_data {
+    class renderable_attribute_data  {
     public:
         constexpr static std::size_t attribute_data_size = 0;
         constexpr static std::size_t num_attributes = 0;
     protected:
-        std::unordered_map<std::string_view, T> input_renderables;
+        renderable_input_map<T> input_renderables;
 
     public:
         std::size_t emplace_attributes(std::size_t& buff_offset, void*, VkDeviceSize) noexcept { return buff_offset; }
@@ -41,7 +45,7 @@ namespace d2d::vk::impl {
     private:
         std::span<std::byte> attributes_span;
     protected:
-        std::unordered_map<std::string_view, T> input_renderables;
+        renderable_input_map<T> input_renderables;
     public:
         constexpr static std::size_t attribute_data_size = impl::attribute_traits<typename T::attribute_types>::total_size;
         constexpr static std::size_t num_attributes = std::tuple_size_v<decltype(std::declval<T>().attributes())>;
@@ -208,7 +212,6 @@ namespace d2d::vk::impl {
 
 }
 
-#include "Duo2D/graphics/prim/styled_rect.hpp"
 
 //Descriptors vs No Descriptors
 namespace d2d::vk::impl {

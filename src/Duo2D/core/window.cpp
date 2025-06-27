@@ -54,7 +54,7 @@ namespace d2d {
         //Create command pool
         __D2D_TRY_MAKE(_command_pool, make<vk::command_pool>(logi_device, phys_device), cp);
 
-        for(std::size_t i = 0; i < frames_in_flight; ++i) {
+        for(std::size_t i = 0; i < impl::frames_in_flight; ++i) {
             //Create command buffers
             __D2D_TRY_MAKE(command_buffers[i], make<vk::command_buffer>(logi_device, _command_pool), cb);
 
@@ -70,13 +70,13 @@ namespace d2d {
             submit_semaphores.push_back(*std::move(submit_semaphore));
         }
 
-        __D2D_TRY_MAKE(data, (make<vk::renderable_tuple<frames_in_flight, styled_rect, debug_rect, clone_rect, glyph>>(logi_device, phys_device, _render_pass)), rb);
+        __D2D_TRY_MAKE((*static_cast<vk::renderable_tuple<impl::frames_in_flight, styled_rect, debug_rect, clone_rect, glyph>*>(this)), (make<vk::renderable_tuple<impl::frames_in_flight, styled_rect, debug_rect, clone_rect, glyph>>(logi_device, phys_device, _render_pass)), rb);
 
         //update uniform buffer
-        std::memcpy(&data.uniform_map<clone_rect>()[frame_idx], &_swap_chain.extent, sizeof(extent2));
-        std::memcpy(&data.uniform_map<styled_rect>()[frame_idx], &_swap_chain.extent, sizeof(extent2));
-        std::memcpy(&data.uniform_map<debug_rect>()[frame_idx], &_swap_chain.extent, sizeof(extent2));
-        std::memcpy(&data.uniform_map<glyph>()[frame_idx], &_swap_chain.extent, sizeof(extent2));
+        std::memcpy(&uniform_map<clone_rect>()[frame_idx], &_swap_chain.extent, sizeof(extent2));
+        std::memcpy(&uniform_map<styled_rect>()[frame_idx], &_swap_chain.extent, sizeof(extent2));
+        std::memcpy(&uniform_map<debug_rect>()[frame_idx], &_swap_chain.extent, sizeof(extent2));
+        std::memcpy(&uniform_map<glyph>()[frame_idx], &_swap_chain.extent, sizeof(extent2));
 
         return {};
     }
@@ -97,10 +97,10 @@ namespace d2d {
         case VK_ERROR_OUT_OF_DATE_KHR:
         case VK_SUBOPTIMAL_KHR: {
             __D2D_TRY_MAKE(_swap_chain, make<vk::swap_chain>(*logi_device_ptr, *phys_device_ptr, _render_pass, _surface, *this), s);
-            std::memcpy(&data.uniform_map<clone_rect>()[frame_idx], &_swap_chain.extent, sizeof(extent2));
-            std::memcpy(&data.uniform_map<styled_rect>()[frame_idx], &_swap_chain.extent, sizeof(extent2));
-            std::memcpy(&data.uniform_map<debug_rect>()[frame_idx], &_swap_chain.extent, sizeof(extent2));
-            std::memcpy(&data.uniform_map<glyph>()[frame_idx], &_swap_chain.extent, sizeof(extent2));
+            std::memcpy(&uniform_map<clone_rect>()[frame_idx], &_swap_chain.extent, sizeof(extent2));
+            std::memcpy(&uniform_map<styled_rect>()[frame_idx], &_swap_chain.extent, sizeof(extent2));
+            std::memcpy(&uniform_map<debug_rect>()[frame_idx], &_swap_chain.extent, sizeof(extent2));
+            std::memcpy(&uniform_map<glyph>()[frame_idx], &_swap_chain.extent, sizeof(extent2));
             return {};
         }
         default: 
@@ -117,10 +117,10 @@ namespace d2d {
 
         RESULT_VERIFY(command_buffers[frame_idx].reset());
         RESULT_VERIFY(command_buffers[frame_idx].render_begin(_swap_chain, _render_pass, image_index));
-        RESULT_VERIFY(command_buffers[frame_idx].draw<clone_rect>(data));
-        RESULT_VERIFY(command_buffers[frame_idx].draw<styled_rect>(data));
-        RESULT_VERIFY(command_buffers[frame_idx].draw<debug_rect>(data));
-        RESULT_VERIFY(command_buffers[frame_idx].draw<glyph>(data));
+        RESULT_VERIFY(command_buffers[frame_idx].draw<clone_rect>(*this));
+        RESULT_VERIFY(command_buffers[frame_idx].draw<styled_rect>(*this));
+        RESULT_VERIFY(command_buffers[frame_idx].draw<debug_rect>(*this));
+        RESULT_VERIFY(command_buffers[frame_idx].draw<glyph>(*this));
         RESULT_VERIFY(command_buffers[frame_idx].render_end());
 
         constexpr static std::array<VkPipelineStageFlags, 1> wait_stages = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
@@ -146,7 +146,7 @@ namespace d2d {
         };
         __D2D_VULKAN_VERIFY(vkQueuePresentKHR(logi_device_ptr->queues[vk::queue_family::present], &present_info));
 
-        frame_idx = (frame_idx + 1) % frames_in_flight;
+        frame_idx = (frame_idx + 1) % impl::frames_in_flight;
         return {};
     }
 }

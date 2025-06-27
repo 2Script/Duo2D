@@ -17,7 +17,7 @@ namespace d2d::vk {
         if(renderables.template empty<T>())
             return {};
 
-        if(renderables.template needs_apply<T>())
+        if(renderables.template has_changes<T>())
             return error::buffer_needs_changes_applied;
         
         //Set pipeline

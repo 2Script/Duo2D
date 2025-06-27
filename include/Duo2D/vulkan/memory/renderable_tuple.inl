@@ -93,7 +93,7 @@ namespace d2d::vk {
 namespace d2d::vk {
     template<std::size_t FiF, ::d2d::impl::renderable_like... Ts> //requires (sizeof...(Ts) > 0)
     template<typename T>
-    result<void> renderable_tuple<FiF, Ts...>::apply(render_pass& window_render_pass) noexcept {
+    result<void> renderable_tuple<FiF, Ts...>::apply_changes(render_pass& window_render_pass) noexcept {
         constexpr static std::size_t I = renderable_index<T>;
         if(renderable_data_of<T>().input_renderables.size() == 0) {
             data_buffs[I] = buffer{};
@@ -165,20 +165,144 @@ namespace d2d::vk {
 
     template<std::size_t FiF, ::d2d::impl::renderable_like... Ts> //requires (sizeof...(Ts) > 0)
     template<typename T>
-    constexpr bool renderable_tuple<FiF, Ts...>::needs_apply() const noexcept {
+    constexpr bool renderable_tuple<FiF, Ts...>::has_changes() const noexcept {
         return renderable_data_of<T>().outdated;
     }
 }
 
 
 
+
+namespace d2d::vk {
+    template<std::size_t FiF, ::d2d::impl::renderable_like... Ts> //requires (sizeof...(Ts) > 0)
+    template<::d2d::impl::renderable_like R>
+    std::pair<typename renderable_tuple<FiF, Ts...>::template iterator<R>, bool> renderable_tuple<FiF, Ts...>::insert(const renderable_tuple<FiF, Ts...>::value_type<R>& value) noexcept {
+        using T = std::remove_cvref_t<R>;
+        auto ins = renderable_data_of<T>().input_renderables.insert(value);
+        if(ins.second) renderable_data_of<T>().outdated = true;
+        return ins;
+    }
+
+    template<std::size_t FiF, ::d2d::impl::renderable_like... Ts> //requires (sizeof...(Ts) > 0)
+    template<::d2d::impl::renderable_like R>
+    std::pair<typename renderable_tuple<FiF, Ts...>::template iterator<R>, bool> renderable_tuple<FiF, Ts...>::insert(renderable_tuple<FiF, Ts...>::value_type<R>&& value) noexcept {
+        using T = std::remove_cvref_t<R>;
+        auto ins = renderable_data_of<T>().input_renderables.insert(std::move(value));
+        if(ins.second) renderable_data_of<T>().outdated = true;
+        return ins;
+    }
+    
+    template<std::size_t FiF, ::d2d::impl::renderable_like... Ts> //requires (sizeof...(Ts) > 0)
+    template<impl::constructible_from_second_type_of P>
+    std::pair<typename renderable_tuple<FiF, Ts...>::template iterator<typename std::remove_cvref_t<P>::second_type>, bool> renderable_tuple<FiF, Ts...>::insert(P&& value) noexcept {
+        using T = typename std::remove_cvref_t<P>::second_type;
+        auto ins = renderable_data_of<T>().input_renderables.insert(std::forward<P>(value));
+        if(ins.second) renderable_data_of<T>().outdated = true;
+        return ins;
+    }
+
+
+    template<std::size_t FiF, ::d2d::impl::renderable_like... Ts> //requires (sizeof...(Ts) > 0)
+    template<typename T, typename... Args>
+    std::pair<typename renderable_tuple<FiF, Ts...>::template iterator<T>, bool> renderable_tuple<FiF, Ts...>::emplace(Args&&... args) noexcept {
+        auto ins = renderable_data_of<T>().input_renderables.emplace(std::forward<Args>(args)...);
+        if(ins.second) renderable_data_of<T>().outdated = true;
+        return ins;
+    }
+
+    template<std::size_t FiF, ::d2d::impl::renderable_like... Ts> //requires (sizeof...(Ts) > 0)
+    template<typename T, typename... Args>
+    std::pair<typename renderable_tuple<FiF, Ts...>::template iterator<T>, bool> renderable_tuple<FiF, Ts...>::try_emplace(std::string_view str, Args&&... args) noexcept {
+        auto ins = renderable_data_of<T>().input_renderables.try_emplace(str, std::forward<Args>(args)...);
+        if(ins.second) renderable_data_of<T>().outdated = true;
+        return ins;
+    }
+
+    template<std::size_t FiF, ::d2d::impl::renderable_like... Ts> //requires (sizeof...(Ts) > 0)
+    template<typename T, typename S, typename... Args> requires std::is_constructible_v<std::string, S&&>
+    std::pair<typename renderable_tuple<FiF, Ts...>::template iterator<T>, bool> renderable_tuple<FiF, Ts...>::try_emplace(S&& str, Args&&... args) noexcept {
+        auto ins = renderable_data_of<T>().input_renderables.try_emplace(std::forward<S>(str), std::forward<Args>(args)...);
+        if(ins.second) renderable_data_of<T>().outdated = true;
+        return ins;
+    }
+    
+
+    template<std::size_t FiF, ::d2d::impl::renderable_like... Ts> //requires (sizeof...(Ts) > 0)
+    template<typename T>
+    renderable_tuple<FiF, Ts...>::iterator<T> renderable_tuple<FiF, Ts...>::erase(renderable_tuple<FiF, Ts...>::iterator<T> pos) noexcept {
+        renderable_data_of<T>().outdated = true;
+        return renderable_data_of<T>().input_renderables.erase(pos);
+    }
+    template<std::size_t FiF, ::d2d::impl::renderable_like... Ts> //requires (sizeof...(Ts) > 0)
+    template<typename T>
+    renderable_tuple<FiF, Ts...>::iterator<T> renderable_tuple<FiF, Ts...>::erase(renderable_tuple<FiF, Ts...>::const_iterator<T> pos) noexcept {
+        renderable_data_of<T>().outdated = true;
+        return renderable_data_of<T>().input_renderables.erase(pos);
+    }
+    template<std::size_t FiF, ::d2d::impl::renderable_like... Ts> //requires (sizeof...(Ts) > 0)
+    template<typename T>
+    renderable_tuple<FiF, Ts...>::iterator<T> renderable_tuple<FiF, Ts...>::erase(renderable_tuple<FiF, Ts...>::const_iterator<T> first, renderable_tuple<FiF, Ts...>::const_iterator<T> last) noexcept {
+        renderable_data_of<T>().outdated = true;
+        return renderable_data_of<T>().input_renderables.erase(first, last);
+    }
+    template<std::size_t FiF, ::d2d::impl::renderable_like... Ts> //requires (sizeof...(Ts) > 0)
+    template<typename T>
+    std::size_t renderable_tuple<FiF, Ts...>::erase(std::string_view key) noexcept {
+        const std::size_t erased_count = renderable_data_of<T>().input_renderables.erase(key);
+        if(erased_count) renderable_data_of<T>().outdated = true;
+        return erased_count;
+    }
+}
+
 namespace d2d::vk {
     template<std::size_t FiF, ::d2d::impl::renderable_like... Ts> //requires (sizeof...(Ts) > 0)
     template<typename T>
-    constexpr bool renderable_tuple<FiF, Ts...>::empty() const noexcept {
-        return renderable_data_of<T>().input_renderables.empty();
+    renderable_tuple<FiF, Ts...>::iterator<T> renderable_tuple<FiF, Ts...>::end() noexcept {
+        return renderable_data_of<T>().input_renderables.end();
+    }
+    template<std::size_t FiF, ::d2d::impl::renderable_like... Ts> //requires (sizeof...(Ts) > 0)
+    template<typename T>
+    renderable_tuple<FiF, Ts...>::const_iterator<T> renderable_tuple<FiF, Ts...>::end() const noexcept {
+        return renderable_data_of<T>().input_renderables.end();
+    }
+    template<std::size_t FiF, ::d2d::impl::renderable_like... Ts> //requires (sizeof...(Ts) > 0)
+    template<typename T>
+    renderable_tuple<FiF, Ts...>::const_iterator<T> renderable_tuple<FiF, Ts...>::cend() const noexcept {
+        return renderable_data_of<T>().input_renderables.cend();
+    }
+    
+
+    template<std::size_t FiF, ::d2d::impl::renderable_like... Ts> //requires (sizeof...(Ts) > 0)
+    template<typename T>
+    renderable_tuple<FiF, Ts...>::iterator<T> renderable_tuple<FiF, Ts...>::begin() noexcept {
+        return renderable_data_of<T>().input_renderables.begin();
+    }
+    template<std::size_t FiF, ::d2d::impl::renderable_like... Ts> //requires (sizeof...(Ts) > 0)
+    template<typename T>
+    renderable_tuple<FiF, Ts...>::const_iterator<T> renderable_tuple<FiF, Ts...>::begin() const noexcept {
+        return renderable_data_of<T>().input_renderables.begin();
+    }
+    template<std::size_t FiF, ::d2d::impl::renderable_like... Ts> //requires (sizeof...(Ts) > 0)
+    template<typename T>
+    renderable_tuple<FiF, Ts...>::const_iterator<T> renderable_tuple<FiF, Ts...>::cbegin() const noexcept {
+        return renderable_data_of<T>().input_renderables.cbegin();
     }
 }
+
+namespace d2d::vk {
+    template<std::size_t FiF, ::d2d::impl::renderable_like... Ts> //requires (sizeof...(Ts) > 0)
+    template<typename T>
+    bool renderable_tuple<FiF, Ts...>::empty() const noexcept {
+        return renderable_data_of<T>().input_renderables.empty();
+    }
+    template<std::size_t FiF, ::d2d::impl::renderable_like... Ts> //requires (sizeof...(Ts) > 0)
+    template<typename T>
+    std::size_t renderable_tuple<FiF, Ts...>::size() const noexcept {
+        return renderable_data_of<T>().input_renderables.size();
+    }
+}
+
+
 
 
 namespace d2d::vk {
