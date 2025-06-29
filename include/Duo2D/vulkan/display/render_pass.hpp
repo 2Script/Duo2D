@@ -8,6 +8,6 @@ __D2D_DECLARE_VK_TRAITS_DEVICE(VkRenderPass);
 
 namespace d2d::vk {
     struct render_pass : vulkan_ptr<VkRenderPass, vkDestroyRenderPass> {
-        static result<render_pass> create(logical_device& device) noexcept;
+        static result<render_pass> create(std::shared_ptr<logical_device> device) noexcept;
     };
 }

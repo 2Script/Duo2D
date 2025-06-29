@@ -9,6 +9,6 @@ __D2D_DECLARE_VK_TRAITS_DEVICE(VkCommandPool);
 
 namespace d2d::vk {
     struct command_pool : vulkan_ptr<VkCommandPool, vkDestroyCommandPool> {
-        static result<command_pool> create(logical_device& logi_deivce, physical_device& phys_device) noexcept;
+        static result<command_pool> create(std::shared_ptr<logical_device> logi_deivce, std::weak_ptr<physical_device> phys_device) noexcept;
     };
 }

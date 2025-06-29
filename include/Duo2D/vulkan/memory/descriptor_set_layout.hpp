@@ -11,7 +11,7 @@ __D2D_DECLARE_VK_TRAITS_DEVICE(VkDescriptorSetLayout);
 namespace d2d::vk {
     struct descriptor_set_layout : vulkan_ptr<VkDescriptorSetLayout, vkDestroyDescriptorSetLayout> {
         template<std::size_t N>
-        static result<descriptor_set_layout> create(logical_device& device, std::span<VkDescriptorSetLayoutBinding, N> bindings, std::span<VkDescriptorBindingFlags, N> binding_flags, std::bitset<N> enabled_bindings) noexcept;
+        static result<descriptor_set_layout> create(std::shared_ptr<logical_device> device, std::span<VkDescriptorSetLayoutBinding, N> bindings, std::span<VkDescriptorBindingFlags, N> binding_flags, std::bitset<N> enabled_bindings) noexcept;
     };
 }
 

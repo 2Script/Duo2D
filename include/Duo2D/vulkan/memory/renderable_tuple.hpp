@@ -37,7 +37,7 @@ namespace d2d::vk {
         static_assert(sizeof...(Ts) > 0, "renderable_tuple needs at least 1 renderable type");
     public:
         //could benefit from SIMD? (just a target_clones)
-        static result<renderable_tuple> create(logical_device& logi_device, physical_device& phys_device, render_pass& window_render_pass) noexcept;
+        static result<renderable_tuple> create(std::shared_ptr<logical_device> logi_device, std::shared_ptr<physical_device> phys_device, render_pass& window_render_pass) noexcept;
     
     protected:
         template<typename T>
@@ -170,12 +170,9 @@ namespace d2d::vk {
         buffer uniform_buff;
         void* uniform_buffer_map;
 
-        //TODO use std::reference_wrapper to better show intent?
-        logical_device* logi_device_ptr;
-        physical_device* phys_device_ptr;
-        command_pool copy_cmd_pool;
-
-        //renderable_allocator allocator;
+        std::shared_ptr<logical_device>  logi_device_ptr;
+        std::shared_ptr<physical_device> phys_device_ptr;
+        std::shared_ptr<command_pool>    copy_cmd_pool_ptr;
     };
 }
 

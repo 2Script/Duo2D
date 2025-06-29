@@ -11,7 +11,7 @@ namespace d2d::vk {
     struct image_sampler : public vulkan_ptr<VkSampler, vkDestroySampler> {
         constexpr static VkSamplerAddressMode clamp_to_border = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
     public:
-        static result<image_sampler> create(logical_device& logi_device, physical_device& phys_device, pt3<VkSamplerAddressMode> address_modes = {clamp_to_border, clamp_to_border, clamp_to_border}) noexcept;
+        static result<image_sampler> create(std::shared_ptr<logical_device> logi_device, std::weak_ptr<physical_device> phys_device, pt3<VkSamplerAddressMode> address_modes = {clamp_to_border, clamp_to_border, clamp_to_border}) noexcept;
     
     public:
         constexpr pt3<VkSamplerAddressMode> address_modes() const noexcept { return addr_modes; }

@@ -303,12 +303,12 @@ namespace d2d::vk::impl {
 
 namespace d2d::vk::impl {
     template<::d2d::impl::renderable_like T, std::size_t FiF>
-    result<void> renderable_descriptor_data<T, FiF>::create_pipeline_layout(logical_device& logi_device) noexcept {
+    result<void> renderable_descriptor_data<T, FiF>::create_pipeline_layout(std::shared_ptr<logical_device> logi_device) noexcept {
         RESULT_TRY_MOVE(pl_layout, make<pipeline_layout<T>>(logi_device));
         return {};
     }
     template<::d2d::impl::renderable_like T, std::size_t FiF> requires (renderable_constraints<T>::has_uniform || renderable_constraints<T>::has_textures)
-    result<void> renderable_descriptor_data<T, FiF>::create_pipeline_layout(logical_device& logi_device) noexcept {
+    result<void> renderable_descriptor_data<T, FiF>::create_pipeline_layout(std::shared_ptr<logical_device> logi_device) noexcept {
         RESULT_TRY_MOVE(pool, make<descriptor_pool>(logi_device, std::span{pool_sizes}, FiF, valid_descriptors));
         RESULT_TRY_MOVE(set_layout, make<descriptor_set_layout>(logi_device, std::span{set_layout_bindings}, std::span{set_layout_flags}, valid_descriptors));
         
@@ -334,7 +334,7 @@ namespace d2d::vk::impl {
 
 
 
-        __D2D_VULKAN_VERIFY(vkAllocateDescriptorSets(logi_device, &alloc_info, sets.data()));
+        __D2D_VULKAN_VERIFY(vkAllocateDescriptorSets(*logi_device, &alloc_info, sets.data()));
 
         for (size_t i = 0; i < FiF; i++) {
             std::vector<VkWriteDescriptorSet> writes;
@@ -366,7 +366,7 @@ namespace d2d::vk::impl {
                 }
             }
 
-            vkUpdateDescriptorSets(logi_device, writes.size(), writes.data(), 0, nullptr);
+            vkUpdateDescriptorSets(*logi_device, writes.size(), writes.data(), 0, nullptr);
         }
 
 
@@ -379,7 +379,7 @@ namespace d2d::vk::impl {
 
 namespace d2d::vk {
     template<::d2d::impl::renderable_like T, std::size_t FiF>
-    result<void> renderable_data<T, FiF>::create_pipeline(logical_device& logi_device, render_pass& window_render_pass) noexcept {
+    result<void> renderable_data<T, FiF>::create_pipeline(std::shared_ptr<logical_device> logi_device, render_pass& window_render_pass) noexcept {
         if(!this->pl_layout) return errc::descriptors_not_initialized;
         RESULT_TRY_MOVE(pl, make<pipeline<T>>(logi_device, window_render_pass, this->pl_layout));
         return  {};

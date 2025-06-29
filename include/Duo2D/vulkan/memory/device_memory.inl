@@ -14,19 +14,20 @@
 
 namespace d2d::vk {
     template<std::size_t N>
-    result<device_memory<N>> device_memory<N>::create(logical_device& logi_device, physical_device& phys_device, std::span<buffer, N> associated_buffers, VkMemoryPropertyFlags properties) noexcept {
-        device_memory ret{};
+    result<device_memory<N>> device_memory<N>::create(std::shared_ptr<logical_device> logi_device, std::weak_ptr<physical_device> phys_device_weak_ref, std::span<buffer, N> associated_buffers, VkMemoryPropertyFlags properties) noexcept {
+        device_memory ret{};    
         ret.dependent_handle = logi_device;
+        __D2D_WEAK_PTR_TRY_LOCK(phys_device, phys_device_weak_ref);
 
         for(std::size_t i = 0; i < N; ++i) {
             if(associated_buffers[i].empty()) continue;
-            vkGetBufferMemoryRequirements(logi_device, static_cast<VkBuffer>(associated_buffers[i]), &ret.mem_reqs[i]);
+            vkGetBufferMemoryRequirements(*logi_device, static_cast<VkBuffer>(associated_buffers[i]), &ret.mem_reqs[i]);
         }
 
         std::optional<std::uint32_t> mem_type_idx = std::nullopt;
         //TODO do this once in physical_device
         VkPhysicalDeviceMemoryProperties mem_props;
-        vkGetPhysicalDeviceMemoryProperties(phys_device, &mem_props);
+        vkGetPhysicalDeviceMemoryProperties(*phys_device, &mem_props);
 
         for (std::uint32_t i = 0; i < mem_props.memoryTypeCount; i++) {
             for(std::size_t j = 0; j < N; ++j)
@@ -43,23 +44,24 @@ namespace d2d::vk {
         return ret;
     }
 
-    result<device_memory<std::dynamic_extent>> device_memory<std::dynamic_extent>::create(logical_device& logi_device, physical_device& phys_device, texture_map_base& textures, VkMemoryPropertyFlags properties) noexcept {
+    result<device_memory<std::dynamic_extent>> device_memory<std::dynamic_extent>::create(std::shared_ptr<logical_device> logi_device, std::weak_ptr<physical_device> phys_device_weak_ref, texture_map_base& textures, VkMemoryPropertyFlags properties) noexcept {
         device_memory ret{};
         ret.dependent_handle = logi_device;
+        __D2D_WEAK_PTR_TRY_LOCK(phys_device, phys_device_weak_ref);
 
         ret.mem_reqs.reserve(textures.size());
 
         for(auto iter = textures.cbegin(); iter != textures.cend(); ++iter) {
             if(iter->second.empty()) continue;
             VkMemoryRequirements reqs;
-            vkGetImageMemoryRequirements(logi_device, iter->second, &reqs);
+            vkGetImageMemoryRequirements(*logi_device, iter->second, &reqs);
             ret.mem_reqs.push_back(reqs);
         }
 
 
         std::optional<std::uint32_t> mem_type_idx = std::nullopt;
         VkPhysicalDeviceMemoryProperties mem_props;
-        vkGetPhysicalDeviceMemoryProperties(phys_device, &mem_props);
+        vkGetPhysicalDeviceMemoryProperties(*phys_device, &mem_props);
 
         for (std::uint32_t i = 0; i < mem_props.memoryTypeCount; i++) {
             std::size_t j = 0;
@@ -80,7 +82,8 @@ namespace d2d::vk {
 
 namespace d2d::vk {
     template<typename MemReqsContainer>
-    result<void> device_memory_base::allocate(logical_device& logi_device, std::optional<std::uint32_t> mem_type_idx, MemReqsContainer&& mem_reqs) noexcept {
+    result<void> device_memory_base::allocate(std::weak_ptr<logical_device> device_weak_ref, std::optional<std::uint32_t> mem_type_idx, MemReqsContainer&& mem_reqs) noexcept {
+        __D2D_WEAK_PTR_TRY_LOCK(device, device_weak_ref);
         if(!mem_type_idx.has_value())
             return error::device_lacks_suitable_mem_type;
 
@@ -94,22 +97,25 @@ namespace d2d::vk {
         };
 
         if(malloc_info.allocationSize == 0) return {};
-        __D2D_VULKAN_VERIFY(vkAllocateMemory(logi_device, &malloc_info, nullptr, &handle));
+        __D2D_VULKAN_VERIFY(vkAllocateMemory(*device, &malloc_info, nullptr, &handle));
         return {};
     }
 }
 
 
 namespace d2d::vk {
-    void device_memory_base::unmap(logical_device& device) const noexcept {
+    result<void> device_memory_base::unmap(std::weak_ptr<logical_device> device_weak_ref) const noexcept {
+        __D2D_WEAK_PTR_TRY_LOCK(device, device_weak_ref);
         mapped = false;
-        return vkUnmapMemory(device, handle);
+        vkUnmapMemory(*device, handle);
+        return {};
     }
 
-    result<void*> device_memory_base::map(logical_device& device, std::size_t size, std::size_t offset) const noexcept {
-        if(mapped) unmap(device);
+    result<void*> device_memory_base::map(std::weak_ptr<logical_device> device_weak_ref, std::size_t size, std::size_t offset) const noexcept {
+        __D2D_WEAK_PTR_TRY_LOCK(device, device_weak_ref);
+        if(mapped) RESULT_VERIFY(unmap(device_weak_ref));
         void* map;
-        __D2D_VULKAN_VERIFY(vkMapMemory(device, handle, offset, size, 0, &map));
+        __D2D_VULKAN_VERIFY(vkMapMemory(*device, handle, offset, size, 0, &map));
         mapped = true;
         return map;
     }
@@ -117,21 +123,24 @@ namespace d2d::vk {
 
 namespace d2d::vk {
     template<std::size_t N>
-    result<void> device_memory<N>::bind(logical_device& device, buffer& buff, std::size_t offset) const noexcept {
-        __D2D_VULKAN_VERIFY(vkBindBufferMemory(device, buff, handle, offset));
+    result<void> device_memory<N>::bind(std::weak_ptr<logical_device> device_weak_ref, buffer& buff, std::size_t offset) const noexcept {
+        __D2D_WEAK_PTR_TRY_LOCK(device, device_weak_ref);
+        __D2D_VULKAN_VERIFY(vkBindBufferMemory(*device, buff, handle, offset));
         buff.offset = offset;
         return {};
     }
 
 
-    result<void> device_memory<std::dynamic_extent>::bind(logical_device& device, buffer& buff, std::size_t offset) const noexcept {
-        __D2D_VULKAN_VERIFY(vkBindBufferMemory(device, buff, handle, offset));
+    result<void> device_memory<std::dynamic_extent>::bind(std::weak_ptr<logical_device> device_weak_ref, buffer& buff, std::size_t offset) const noexcept {
+        __D2D_WEAK_PTR_TRY_LOCK(device, device_weak_ref);
+        __D2D_VULKAN_VERIFY(vkBindBufferMemory(*device, buff, handle, offset));
         buff.offset = offset;
         return {};
     }
 
-    result<void> device_memory<std::dynamic_extent>::bind(logical_device& device, image& img, std::size_t offset) const noexcept {
-        __D2D_VULKAN_VERIFY(vkBindImageMemory(device, img, handle, offset));
+    result<void> device_memory<std::dynamic_extent>::bind(std::weak_ptr<logical_device> device_weak_ref, image& img, std::size_t offset) const noexcept {
+        __D2D_WEAK_PTR_TRY_LOCK(device, device_weak_ref);
+        __D2D_VULKAN_VERIFY(vkBindImageMemory(*device, img, handle, offset));
         img.offset = offset;
         return {};
     }

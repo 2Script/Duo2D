@@ -1,6 +1,7 @@
 #include "Duo2D/core/application.hpp"
 #include "Duo2D/vulkan/device/logical_device.hpp"
 #include "Duo2D/vulkan/device/physical_device.hpp"
+#include <memory>
 #include <vulkan/vulkan_core.h>
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
@@ -41,7 +42,12 @@ namespace d2d {
             return error::vulkan_not_supported;
 
         // Create instance
-        __D2D_TRY_MAKE(ret.vk_instance, make<vk::instance>(app_info), v)
+        vk::instance i;
+        RESULT_TRY_MOVE(i, make<vk::instance>(app_info));
+        ret.instance_ptr = std::make_shared<vk::instance>(std::move(i));
+
+        ret.phys_device_ptr = std::make_shared_for_overwrite<vk::physical_device>();
+        ret.logi_device_ptr = std::make_shared_for_overwrite<vk::logical_device>();
         ret.name = name;
 
         return ret;
@@ -52,17 +58,17 @@ namespace d2d {
 namespace d2d {
     result<std::set<vk::physical_device>> application::devices() const noexcept {
         std::uint32_t device_count = 0;
-        vkEnumeratePhysicalDevices(vk_instance, &device_count, nullptr);
+        vkEnumeratePhysicalDevices(*instance_ptr, &device_count, nullptr);
 
         if(!device_count)
             return error::no_vulkan_devices;
 
         std::vector<VkPhysicalDevice> devices(device_count);
-        __D2D_VULKAN_VERIFY(vkEnumeratePhysicalDevices(vk_instance, &device_count, devices.data()));
+        __D2D_VULKAN_VERIFY(vkEnumeratePhysicalDevices(*instance_ptr, &device_count, devices.data()));
 
         //Create dummy window
         //__D2D_TRY_MAKE(window dummy, make<window>("dummy", 1280, 720, vk_instance), var_name);
-        auto var_name = make<window>("dummy", 1280, 720, vk_instance);
+        auto var_name = make<window>("dummy", 1280, 720, instance_ptr);
         if (!var_name.has_value())
           return var_name.error();
         window dummy = *std ::move(var_name);
@@ -81,7 +87,9 @@ namespace d2d {
 
     result<void> application::initialize_device() noexcept {
         //Create logical device
-        __D2D_TRY_MAKE(logi_device, make<vk::logical_device>(phys_device), ld);
+        vk::logical_device l;
+        RESULT_TRY_MOVE(l, make<vk::logical_device>(phys_device_ptr));
+        logi_device_ptr = std::make_shared<vk::logical_device>(std::move(l));
 
         return {};
     }
@@ -90,13 +98,13 @@ namespace d2d {
 
 namespace d2d {
     result<window*> application::add_window(std::string_view title) noexcept {
-        if(!logi_device)
+        if(!logi_device_ptr)
             return error::device_not_initialized;
 
         
-        result<window> w = make<window>(title, 1280, 720, vk_instance);
+        result<window> w = make<window>(title, 1280, 720, instance_ptr);
         if(!w.has_value()) return w.error();
-        RESULT_VERIFY(w->initialize(logi_device, phys_device));
+        RESULT_VERIFY(w->initialize(logi_device_ptr, phys_device_ptr));
         auto new_window = windows.emplace(title, *std::move(w));
         if(!new_window.second) 
             return error::window_already_exists;
@@ -144,7 +152,7 @@ namespace d2d {
     }
 
     result<void> application::join() noexcept {
-        __D2D_VULKAN_VERIFY(vkDeviceWaitIdle(logi_device));
+        __D2D_VULKAN_VERIFY(vkDeviceWaitIdle(*logi_device_ptr));
         return  {};
     }
 }

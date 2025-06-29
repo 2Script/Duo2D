@@ -1,6 +1,7 @@
 #pragma once
 #include <cerrno>
 #include <cstdint>
+#include <cstring>
 #include <limits>
 #include <result.hpp>
 #include <GLFW/glfw3.h>
@@ -661,23 +662,34 @@ namespace d2d {
 }
 
 
+#define __D2D_WEAK_PTR_TRY_LOCK(lhs, weak_ptr) auto lhs = weak_ptr.lock(); if(!lhs) return ::d2d::errc::device_not_initialized;
+
 
 #define __D2D_VULKAN_VERIFY(fn) if(VkResult r = fn) [[unlikely]] return static_cast<d2d::errc>(__D2D_VKRESULT_TO_ERRC(r));
-#define __D2D_FT_VERIFY(fn) if(FT_Error r = fn) [[unlikely]] return static_cast<d2d::errc>(__D2D_FTERR_TO_ERRC(r));
+#define __D2D_FT_VERIFY(fn)     if(FT_Error r = fn) [[unlikely]] return static_cast<d2d::errc>(__D2D_FTERR_TO_ERRC(r));
+#define __D2D_GLFW_VERIFY(cond) if(!cond)           [[unlikely]] return static_cast<d2d::errc>(::d2d::error::impl::get_glfw_err());
 
 
-namespace d2d::error {
-    inline std::string_view& last_glfw_desc() {
-        static std::string_view last_glfw_str;
-        return last_glfw_str;
+namespace d2d::error::impl {
+    constexpr std::size_t glfw_desc_size = 1024; //_GLFW_MESSAGE_SIZE
+
+    inline std::array<char, impl::glfw_desc_size>& last_glfw_desc_array() noexcept {
+        static std::array<char, impl::glfw_desc_size> last_glfw_char_arr{};
+        return last_glfw_char_arr;
+    }
+
+    inline int get_glfw_err() noexcept {
+        char const* last_glfw_char_ptr = nullptr;
+        int ret = glfwGetError(&last_glfw_char_ptr);
+        if(!last_glfw_char_ptr) return ret;
+        std::memcpy(last_glfw_desc_array().data(), last_glfw_char_ptr, glfw_desc_size);
+        return ret;
     }
 }
 
-#define __D2D_GLFW_POP_ERR(desc) int code = glfwGetError(desc) 
-#define __D2D_GLFW_STORE_ERR(desc) d2d::error::last_glfw_desc() = desc
-#define __D2D_GLFW_VERIFY(cond) \
-if(const char* desc; !cond) { \
-    __D2D_GLFW_POP_ERR(&desc); \
-    __D2D_GLFW_STORE_ERR(std::string_view(desc)); \
-    return static_cast<error::code>(code); \
+namespace d2d::error {
+    inline std::string_view last_glfw_desc() noexcept {
+        char const* const desc_ptr = impl::last_glfw_desc_array().data();
+        return std::string_view{desc_ptr, static_cast<char const*>(std::memchr(desc_ptr, '\0', impl::glfw_desc_size))};
+    }
 }

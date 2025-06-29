@@ -223,9 +223,9 @@ namespace d2d::vk::impl {
         constexpr static std::size_t uniform_data_size = 0;
 
     public:
-        result<void> create_uniform_descriptors(logical_device&, buffer&, std::size_t) noexcept { return {}; }
+        result<void> create_uniform_descriptors(buffer&, std::size_t) noexcept { return {}; }
         result<void> create_texture_descriptors(texture_map&) noexcept { return {}; }
-        result<void> create_pipeline_layout(logical_device& logi_device) noexcept;
+        result<void> create_pipeline_layout(std::shared_ptr<logical_device> logi_device) noexcept;
     };
 
 
@@ -254,7 +254,7 @@ namespace d2d::vk::impl {
     public:
         result<void> create_uniform_descriptors(buffer& uniform_buff, std::size_t uniform_buff_offset) noexcept;
         result<void> create_texture_descriptors(texture_map& textures) noexcept;
-        result<void> create_pipeline_layout(logical_device& logi_device) noexcept;
+        result<void> create_pipeline_layout(std::shared_ptr<logical_device> logi_device) noexcept;
     };
 }
 
@@ -266,7 +266,7 @@ namespace d2d::vk {
         pipeline<T> pl;
     
     public:
-        result<void> create_pipeline(logical_device& logi_device, render_pass& window_render_pass) noexcept;
+        result<void> create_pipeline(std::shared_ptr<logical_device> logi_device, render_pass& window_render_pass) noexcept;
 
         template<std::size_t FramesInFlight, ::d2d::impl::renderable_like... Ts>
         friend struct renderable_tuple;

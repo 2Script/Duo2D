@@ -25,25 +25,25 @@ namespace d2d::vk::impl {
 #define __D2D_DECLARE_VK_TRAITS_DEVICE(type) \
 namespace d2d::vk::impl { \
     template<> struct vk_traits<type>{ \
-        using dependent_type = VkDevice; \
-        using deleter_type = void(dependent_type, type, const VkAllocationCallbacks*); \
+        using dependent_type = vk::logical_device; \
+        using deleter_type = void(typename dependent_type::pointer, type, const VkAllocationCallbacks*); \
     }; \
 }
 
 #define __D2D_DECLARE_VK_TRAITS_DEVICE_AUX(type, aux_dependent_type) \
 namespace d2d::vk::impl { \
     template<> struct vk_traits<type>{ \
-        using dependent_type = VkDevice; \
+        using dependent_type = vk::logical_device; \
         using auxilary_type = aux_dependent_type; \
-        using deleter_type = void(dependent_type, auxilary_type, std::uint32_t, type const*); \
+        using deleter_type = void(typename dependent_type::pointer, typename auxilary_type::pointer, std::uint32_t, type const*); \
     }; \
 }
 
 #define __D2D_DECLARE_VK_TRAITS_INST(type) \
 namespace d2d::vk::impl { \
     template<> struct vk_traits<type>{ \
-        using dependent_type = VkInstance; \
-        using deleter_type = void(dependent_type, type, const VkAllocationCallbacks*); \
+        using dependent_type = vk::instance; \
+        using deleter_type = void(typename dependent_type::pointer, type, const VkAllocationCallbacks*); \
     }; \
 }
 

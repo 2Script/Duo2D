@@ -16,8 +16,8 @@ namespace d2d::vk {
     class renderable_allocator {
     public:
         constexpr renderable_allocator() noexcept = default;
-        constexpr renderable_allocator(logical_device& logi_device, physical_device& phys_device, command_pool& copy_command_pool) noexcept : 
-            logi_device_ptr(std::addressof(logi_device)), phys_device_ptr(std::addressof(phys_device)), copy_cmd_pool_ptr(std::addressof(copy_command_pool)) {}
+        inline renderable_allocator(std::shared_ptr<logical_device> logi_device, std::shared_ptr<physical_device> phys_device, std::shared_ptr<command_pool> copy_command_pool) noexcept : 
+            logi_device_ptr(logi_device), phys_device_ptr(phys_device), copy_cmd_pool_ptr(copy_command_pool) {}
 
         template<typename InputContainerT>
         result<std::pair<buffer, device_memory<1>>> stage(std::size_t total_buffer_size, InputContainerT&& inputs, std::size_t mem_offset = 0) const noexcept;
@@ -41,9 +41,9 @@ namespace d2d::vk {
         void move(OutputContainerT&& output_container, InputContainerT&& input_container) const noexcept;
 
     private:
-        logical_device* logi_device_ptr;
-        physical_device* phys_device_ptr;
-        command_pool* copy_cmd_pool_ptr;
+        std::shared_ptr<logical_device> logi_device_ptr;
+        std::shared_ptr<physical_device> phys_device_ptr;
+        std::shared_ptr<command_pool> copy_cmd_pool_ptr;
         command_buffer copy_cmd_buffer;
     public:
         friend class texture_map;

@@ -2,11 +2,11 @@
 #include <climits>
 
 namespace d2d::vk {
-    result<image> image::create(logical_device& device, std::uint32_t width, std::uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, std::uint32_t array_count) noexcept {
+    result<image> image::create(std::shared_ptr<logical_device> device, std::uint32_t width, std::uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, std::uint32_t array_count) noexcept {
         return image::create(device, width, height, format, tiling, usage, array_count, 0);
     }
 
-    result<image> image::create(logical_device& device, std::uint32_t width, std::uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, std::uint32_t array_count, std::size_t mem_offset) noexcept {
+    result<image> image::create(std::shared_ptr<logical_device> device, std::uint32_t width, std::uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, std::uint32_t array_count, std::size_t mem_offset) noexcept {
         image ret{};
         ret.dependent_handle = device;
         //TODO: correct index (can't just use format)
@@ -34,14 +34,14 @@ namespace d2d::vk {
             .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
         };
 
-        __D2D_VULKAN_VERIFY(vkCreateImage(device, &image_buffer_info, nullptr, &ret.handle));
+        __D2D_VULKAN_VERIFY(vkCreateImage(*device, &image_buffer_info, nullptr, &ret.handle));
         return ret;
     }
 }
 
 
 namespace d2d::vk {
-    result<image> image::clone(logical_device& device) const noexcept {
+    result<image> image::clone(std::shared_ptr<logical_device> device) const noexcept {
         return image::create(device, extent.width(), extent.height(), image_format, image_tiling, flags, offset);
     }
 }

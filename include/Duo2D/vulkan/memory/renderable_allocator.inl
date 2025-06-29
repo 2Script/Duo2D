@@ -11,19 +11,19 @@ namespace d2d::vk {
     template<typename InputContainerT>
     result<std::pair<buffer, device_memory<1>>> renderable_allocator::stage(std::size_t total_buffer_size, InputContainerT&& inputs, std::size_t buffer_write_offset) const noexcept {
         std::array<buffer, 1> staging_buffs;
-        RESULT_TRY_MOVE(staging_buffs[0], make<buffer>(*logi_device_ptr, total_buffer_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT));
+        RESULT_TRY_MOVE(staging_buffs[0], make<buffer>(logi_device_ptr, total_buffer_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT));
         RESULT_TRY_MOVE_UNSCOPED(device_memory<1> staging_mem, 
-            make<device_memory<1>>(*logi_device_ptr, *phys_device_ptr, staging_buffs, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT), sm);
-        RESULT_VERIFY(staging_mem.bind(*logi_device_ptr, staging_buffs[0], 0));
+            make<device_memory<1>>(logi_device_ptr, phys_device_ptr, staging_buffs, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT), sm);
+        RESULT_VERIFY(staging_mem.bind(logi_device_ptr, staging_buffs[0], 0));
 
         //Fill staging buffer with data
-        RESULT_TRY_COPY_UNSCOPED(void* mapped_data, staging_mem.map(*logi_device_ptr, total_buffer_size), smm);
+        RESULT_TRY_COPY_UNSCOPED(void* mapped_data, staging_mem.map(logi_device_ptr, total_buffer_size), smm);
         std::byte* data_ptr = static_cast<std::byte*>(mapped_data) + buffer_write_offset; 
         for(std::size_t i = 0; i < std::forward<InputContainerT>(inputs).size(); ++i) {
             std::memcpy(data_ptr, std::forward<InputContainerT>(inputs)[i].data(), std::forward<InputContainerT>(inputs)[i].size_bytes());
             data_ptr += std::forward<InputContainerT>(inputs)[i].size_bytes();
         }
-        staging_mem.unmap(*logi_device_ptr);
+        RESULT_VERIFY(staging_mem.unmap(logi_device_ptr));
         return std::pair{std::move(staging_buffs[0]), std::move(staging_mem)};
     }
 }
@@ -36,14 +36,14 @@ namespace d2d::vk {
         RESULT_VERIFY(gpu_alloc_begin());
 
         //Create the device local buffer
-        RESULT_TRY_MOVE(buffs[I], make<buffer>(*logi_device_ptr, total_buffer_size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | BufferUsage));
+        RESULT_TRY_MOVE(buffs[I], make<buffer>(logi_device_ptr, total_buffer_size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | BufferUsage));
 
         //Re-allocate the memory
         device_memory<N> old_mem = std::move(mem); //Make sure old memory used for the rest of the buffers stays alive until after bind
-        auto m = make<device_memory<N>>(*logi_device_ptr, *phys_device_ptr, buffs, MemProps);
+        auto m = make<device_memory<N>>(logi_device_ptr, phys_device_ptr, buffs, MemProps);
         if(m.has_value()) mem = *std::move(m);
         else if(FallbackMemProps != 0 && m.error() == error::device_lacks_suitable_mem_type) {
-            RESULT_TRY_MOVE_UNSCOPED(mem, make<device_memory<N>>(*logi_device_ptr, *phys_device_ptr, buffs, FallbackMemProps), r)
+            RESULT_TRY_MOVE_UNSCOPED(mem, make<device_memory<N>>(logi_device_ptr, phys_device_ptr, buffs, FallbackMemProps), r)
         }
         else return m.error();
         
@@ -97,14 +97,14 @@ namespace d2d::vk {
 namespace d2d::vk {
     result<void> renderable_allocator::gpu_alloc_begin() noexcept {
         //Create copy command buffer
-        RESULT_TRY_MOVE(copy_cmd_buffer, make<command_buffer>(*logi_device_ptr, *copy_cmd_pool_ptr));
+        RESULT_TRY_MOVE(copy_cmd_buffer, make<command_buffer>(logi_device_ptr, copy_cmd_pool_ptr));
         RESULT_VERIFY(copy_cmd_buffer.generic_begin());
         return {};
     }
 
     result<void> renderable_allocator::gpu_alloc_end() noexcept {
         //Clear copy command buffer
-        RESULT_VERIFY(copy_cmd_buffer.generic_end(*logi_device_ptr, *copy_cmd_pool_ptr));
+        RESULT_VERIFY(copy_cmd_buffer.generic_end());
         copy_cmd_buffer = {};
         return {};
     }
@@ -125,7 +125,7 @@ namespace d2d::vk {
             if(elem.empty()) continue;
             
             //Create a new buffer with the same properties as the old one
-            RESULT_TRY_MOVE(std::forward<OutputContainerT>(output_container)[i], elem.clone(*logi_device_ptr, *phys_device_ptr));
+            RESULT_TRY_MOVE(std::forward<OutputContainerT>(output_container)[i], elem.clone(logi_device_ptr, phys_device_ptr));
             if constexpr(requires { elem.idx; }) {
                 std::forward<OutputContainerT>(output_container)[i].idx = static_cast<texture_idx_t>(i);
             }
@@ -133,11 +133,11 @@ namespace d2d::vk {
             //Bind the newly allocated memory to this new buffer
             mem_offset += new_mem.requirements()[i].alignment - 1;
             mem_offset &= ~(new_mem.requirements()[i].alignment - 1);
-            RESULT_VERIFY(new_mem.bind(*logi_device_ptr, std::forward<OutputContainerT>(output_container)[i], mem_offset));
+            RESULT_VERIFY(new_mem.bind(logi_device_ptr, std::forward<OutputContainerT>(output_container)[i], mem_offset));
             mem_offset += new_mem.requirements()[i].size;
 
-            if constexpr(requires (logical_device& l, physical_device& p, VkFormat f, pt3<VkSamplerAddressMode> a){ elem.initialize(l, p, f, a); }) {
-                RESULT_VERIFY(std::forward<OutputContainerT>(output_container)[i].initialize(*logi_device_ptr, *phys_device_ptr, elem.format(), elem.sampler().address_modes()));
+            if constexpr(requires (std::shared_ptr<logical_device> l, std::weak_ptr<physical_device> p, VkFormat f, pt3<VkSamplerAddressMode> a){ elem.initialize(l, p, f, a); }) {
+                RESULT_VERIFY(std::forward<OutputContainerT>(output_container)[i].initialize(logi_device_ptr, phys_device_ptr, elem.format(), elem.sampler().address_modes()));
             }
 
             //Copy the data from all other old buffers into the new ones

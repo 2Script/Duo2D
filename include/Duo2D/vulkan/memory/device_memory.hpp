@@ -13,11 +13,11 @@ __D2D_DECLARE_VK_TRAITS_DEVICE(VkDeviceMemory);
 namespace d2d::vk {
     struct device_memory_base : public vulkan_ptr<VkDeviceMemory, vkFreeMemory> {
     public:
-        inline void unmap(logical_device& device) const noexcept;
-        inline result<void*> map(logical_device& device, std::size_t size, std::size_t offset = 0) const noexcept;
+        inline result<void> unmap(std::weak_ptr<logical_device> device) const noexcept;
+        inline result<void*> map(std::weak_ptr<logical_device> device, std::size_t size, std::size_t offset = 0) const noexcept;
     protected:
         template<typename MemReqsContainer>
-        inline result<void> allocate(logical_device& logi_device, std::optional<std::uint32_t> mem_type_idx, MemReqsContainer&& mem_reqs) noexcept;
+        inline result<void> allocate(std::weak_ptr<logical_device> logi_device, std::optional<std::uint32_t> mem_type_idx, MemReqsContainer&& mem_reqs) noexcept;
     public:
         /*
         constexpr device_memory_base() noexcept = default;
@@ -36,9 +36,9 @@ namespace d2d::vk {
 namespace d2d::vk {
     template<std::size_t N>
     struct device_memory : public device_memory_base {
-        static result<device_memory> create(logical_device& logi_device, physical_device& phys_device, std::span<buffer, N> associated_buffers, VkMemoryPropertyFlags properties) noexcept;
+        static result<device_memory> create(std::shared_ptr<logical_device> logi_device, std::weak_ptr<physical_device> phys_device, std::span<buffer, N> associated_buffers, VkMemoryPropertyFlags properties) noexcept;
 
-        result<void> bind(logical_device& device, buffer& buff, std::size_t offset) const noexcept;
+        result<void> bind(std::weak_ptr<logical_device> device, buffer& buff, std::size_t offset) const noexcept;
 
         constexpr const std::array<VkMemoryRequirements, N>& requirements() const noexcept { return mem_reqs; }
     
@@ -59,10 +59,10 @@ namespace d2d::vk {
 
     template<>
     struct device_memory<std::dynamic_extent> : public device_memory_base {
-        inline static result<device_memory> create(logical_device& logi_device, physical_device& phys_device, texture_map_base& textures, VkMemoryPropertyFlags properties) noexcept;
+        inline static result<device_memory> create(std::shared_ptr<logical_device> logi_device, std::weak_ptr<physical_device> phys_device, texture_map_base& textures, VkMemoryPropertyFlags properties) noexcept;
 
-        inline result<void> bind(logical_device& device, buffer& buff, std::size_t offset) const noexcept;
-        inline result<void> bind(logical_device& device, image& img, std::size_t offset) const noexcept;
+        inline result<void> bind(std::weak_ptr<logical_device> device, buffer& buff, std::size_t offset) const noexcept;
+        inline result<void> bind(std::weak_ptr<logical_device> device, image& img, std::size_t offset) const noexcept;
 
         constexpr const std::vector<VkMemoryRequirements>& requirements() const noexcept { return mem_reqs; }
     

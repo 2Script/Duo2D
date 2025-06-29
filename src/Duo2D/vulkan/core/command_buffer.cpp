@@ -8,19 +8,19 @@
 #include <vulkan/vulkan_core.h>
 
 namespace d2d::vk {
-    result<command_buffer> command_buffer::create(logical_device& device, const command_pool& pool) noexcept {
+    result<command_buffer> command_buffer::create(std::shared_ptr<logical_device> device, std::shared_ptr<command_pool> pool) noexcept {
         command_buffer ret{};
-        //ret.dependent_handle = device;
-        //ret.aux_handle = pool;
+        ret.logi_device_ptr = device;
+        ret.cmd_pool_ptr = pool;
 
         VkCommandBufferAllocateInfo alloc_info{
             .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-            .commandPool = pool,
+            .commandPool = *pool,
             .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
             .commandBufferCount = 1,
         };
 
-        __D2D_VULKAN_VERIFY(vkAllocateCommandBuffers(device, &alloc_info, &ret.handle));
+        __D2D_VULKAN_VERIFY(vkAllocateCommandBuffers(*device, &alloc_info, &ret.handle));
         return ret;
     }
 }
@@ -167,17 +167,17 @@ namespace d2d::vk {
     }
 
 
-    result<void> command_buffer::generic_end(logical_device& device, const command_pool& pool) const noexcept {
+    result<void> command_buffer::generic_end() const noexcept {
         __D2D_VULKAN_VERIFY(vkEndCommandBuffer(handle));
-        
+
         VkSubmitInfo submit_info{};
         submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
         submit_info.commandBufferCount = 1;
         submit_info.pCommandBuffers = &handle;
-        vkQueueSubmit(device.queues[queue_family::graphics], 1, &submit_info, VK_NULL_HANDLE);
-        vkQueueWaitIdle(device.queues[queue_family::graphics]);
+        vkQueueSubmit(logi_device_ptr->queues[queue_family::graphics], 1, &submit_info, VK_NULL_HANDLE);
+        vkQueueWaitIdle(logi_device_ptr->queues[queue_family::graphics]);
 
-        vkFreeCommandBuffers(device, pool, 1, &handle);
+        vkFreeCommandBuffers(*logi_device_ptr, *cmd_pool_ptr, 1, &handle);
         return {};
     }
 }

@@ -7,11 +7,12 @@
 #include <vulkan/vulkan_core.h>
 
 namespace d2d::vk {
-    result<swap_chain> swap_chain::create(logical_device& logi_device, physical_device& phys_device, render_pass& window_render_pass, surface& window_surface, ::d2d::window& w) noexcept {
+    result<swap_chain> swap_chain::create(std::shared_ptr<logical_device> logi_device, std::weak_ptr<physical_device> phys_device, render_pass& window_render_pass, surface& window_surface, ::d2d::window& w) noexcept {
         swap_chain ret{};
         ret.dependent_handle = logi_device;
+        __D2D_WEAK_PTR_TRY_LOCK(phys_device_ptr, phys_device);
         
-        VkSurfaceCapabilitiesKHR device_capabilities = phys_device.surface_capabilities;
+        VkSurfaceCapabilitiesKHR device_capabilities = phys_device_ptr->surface_capabilities;
 
         //Create swap extent
         {
@@ -37,20 +38,20 @@ namespace d2d::vk {
             .sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
             .surface = window_surface,
             .minImageCount = image_count,
-            .imageFormat = logi_device.format.format_id,
-            .imageColorSpace = logi_device.format.color_space_id,
+            .imageFormat = logi_device->format.format_id,
+            .imageColorSpace = logi_device->format.color_space_id,
             .imageExtent = static_cast<VkExtent2D>(ret.extent),
             .imageArrayLayers = 1,
             .imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
             .preTransform = device_capabilities.currentTransform,
             .compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
-            .presentMode = static_cast<VkPresentModeKHR>(logi_device.mode),
+            .presentMode = static_cast<VkPresentModeKHR>(logi_device->mode),
             .clipped = VK_TRUE,
             .oldSwapchain = VK_NULL_HANDLE,
         };
 
         const std::array<std::uint32_t, queue_family::present + 1> core_queue_family_idxs = {
-            *(phys_device.queue_family_idxs[queue_family::graphics]), *(phys_device.queue_family_idxs[queue_family::present])
+            *(phys_device_ptr->queue_family_idxs[queue_family::graphics]), *(phys_device_ptr->queue_family_idxs[queue_family::present])
         };
         if(core_queue_family_idxs[queue_family::graphics] != core_queue_family_idxs[queue_family::present]){
             swap_chain_create_info.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
@@ -62,21 +63,21 @@ namespace d2d::vk {
             swap_chain_create_info.pQueueFamilyIndices = nullptr;
         }
 
-        __D2D_VULKAN_VERIFY(vkCreateSwapchainKHR(logi_device, &swap_chain_create_info, nullptr, &ret));
+        __D2D_VULKAN_VERIFY(vkCreateSwapchainKHR(*logi_device, &swap_chain_create_info, nullptr, &ret));
         }
 
         //Get swap chain images
         {
         ret.image_count = 0;
-        vkGetSwapchainImagesKHR(logi_device, ret.handle, &ret.image_count, nullptr);
+        vkGetSwapchainImagesKHR(*logi_device, ret.handle, &ret.image_count, nullptr);
         ret.images.resize(ret.image_count);
-        vkGetSwapchainImagesKHR(logi_device, ret.handle, &ret.image_count, ret.images.data());
+        vkGetSwapchainImagesKHR(*logi_device, ret.handle, &ret.image_count, ret.images.data());
         }
 
         //Create swap chain image views
         ret.image_views.resize(ret.image_count);
         for (size_t i = 0; i < ret.image_count; i++) {
-            __D2D_TRY_MAKE(ret.image_views[i], make<image_view>(logi_device, ret.images[i], logi_device.format.format_id), iv);
+            __D2D_TRY_MAKE(ret.image_views[i], make<image_view>(logi_device, ret.images[i], logi_device->format.format_id), iv);
         }
 
         //Create framebuffers

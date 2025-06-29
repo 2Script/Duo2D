@@ -14,12 +14,12 @@ __D2D_DECLARE_VK_TRAITS_DEVICE(VkImage);
 
 namespace d2d::vk {
     struct image : public vulkan_ptr<VkImage, vkDestroyImage> {
-        static result<image> create(logical_device& device, std::uint32_t width, std::uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, std::uint32_t array_count = 1) noexcept;
+        static result<image> create(std::shared_ptr<logical_device> device, std::uint32_t width, std::uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, std::uint32_t array_count = 1) noexcept;
     protected:
-        static result<image> create(logical_device& device, std::uint32_t width, std::uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, std::uint32_t array_count, std::size_t mem_offset) noexcept;
+        static result<image> create(std::shared_ptr<logical_device> device, std::uint32_t width, std::uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, std::uint32_t array_count, std::size_t mem_offset) noexcept;
     
     public:
-        result<image> clone(logical_device& device) const noexcept;
+        result<image> clone(std::shared_ptr<logical_device> device) const noexcept;
         
     public:
         constexpr extent2 size() const noexcept { return extent; } 

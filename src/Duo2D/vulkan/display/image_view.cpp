@@ -1,7 +1,7 @@
 #include "Duo2D/vulkan/display/image_view.hpp"
 
 namespace d2d::vk {
-    result<image_view> image_view::create(logical_device& device, VkImage img, VkFormat format, std::uint32_t image_count) noexcept {
+    result<image_view> image_view::create(std::shared_ptr<logical_device> device, VkImage img, VkFormat format, std::uint32_t image_count) noexcept {
         image_view ret{};
         ret.dependent_handle = device;
         VkImageViewCreateInfo image_view_create_info{
@@ -18,7 +18,7 @@ namespace d2d::vk {
                 .layerCount = image_count,
             },
         };
-        __D2D_VULKAN_VERIFY(vkCreateImageView(device, &image_view_create_info, nullptr, &ret));
+        __D2D_VULKAN_VERIFY(vkCreateImageView(*device, &image_view_create_info, nullptr, &ret));
         return ret;
     }
 }

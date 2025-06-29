@@ -10,7 +10,7 @@
 
 namespace d2d::vk {
     template<std::size_t N>
-    result<descriptor_set_layout> descriptor_set_layout::create(logical_device& device, std::span<VkDescriptorSetLayoutBinding, N> bindings, std::span<VkDescriptorBindingFlags, N> binding_flags, std::bitset<N> enabled_bindings) noexcept {
+    result<descriptor_set_layout> descriptor_set_layout::create(std::shared_ptr<logical_device> device, std::span<VkDescriptorSetLayoutBinding, N> bindings, std::span<VkDescriptorBindingFlags, N> binding_flags, std::bitset<N> enabled_bindings) noexcept {
         descriptor_set_layout ret{};
         ret.dependent_handle = device;
         const std::uint32_t binding_count = std::numeric_limits<unsigned long long>::digits - std::countl_zero(enabled_bindings.to_ullong());
@@ -27,7 +27,7 @@ namespace d2d::vk {
             .bindingCount = binding_count,//static_cast<std::uint32_t>(bindings.size()),
             .pBindings = bindings.data(),
         };
-        __D2D_VULKAN_VERIFY(vkCreateDescriptorSetLayout(device, &descriptor_layout_info, nullptr, &ret.handle));
+        __D2D_VULKAN_VERIFY(vkCreateDescriptorSetLayout(*device, &descriptor_layout_info, nullptr, &ret.handle));
         return ret;
     }
 }

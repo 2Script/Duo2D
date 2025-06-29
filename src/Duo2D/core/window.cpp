@@ -22,7 +22,7 @@
 #include "Duo2D/vulkan/device/queue_family.hpp"
 
 namespace d2d {
-    result<window> window::create(std::string_view title, std::size_t width, std::size_t height, vk::instance const& i) noexcept {
+    result<window> window::create(std::string_view title, std::size_t width, std::size_t height, std::shared_ptr<vk::instance> i) noexcept {
 
         //Create window
         glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
@@ -38,12 +38,17 @@ namespace d2d {
 }
 
 namespace d2d {
-    result<void> window::initialize(vk::logical_device& logi_device, vk::physical_device& phys_device) noexcept {
+    result<void> window::initialize(std::shared_ptr<vk::logical_device> logi_device, std::shared_ptr<vk::physical_device> phys_device) noexcept {
         if(_swap_chain) 
             return {}; //return error::window_already_initialized;
 
-        logi_device_ptr = std::addressof(logi_device);
-        phys_device_ptr = std::addressof(phys_device);
+        logi_device_ptr = logi_device;
+        phys_device_ptr = phys_device;
+
+        //Create command pool
+        vk::command_pool c;
+        RESULT_TRY_MOVE(c, make<vk::command_pool>(logi_device, phys_device));
+        copy_cmd_pool_ptr = std::make_shared<vk::command_pool>(std::move(c));
         
         //Create render pass
         __D2D_TRY_MAKE(_render_pass, make<vk::render_pass>(logi_device), rp);
@@ -51,12 +56,9 @@ namespace d2d {
         //Create swap chain
         __D2D_TRY_MAKE(_swap_chain, make<vk::swap_chain>(logi_device, phys_device, _render_pass, _surface, *this), s);
 
-        //Create command pool
-        __D2D_TRY_MAKE(_command_pool, make<vk::command_pool>(logi_device, phys_device), cp);
-
         for(std::size_t i = 0; i < impl::frames_in_flight; ++i) {
             //Create command buffers
-            __D2D_TRY_MAKE(command_buffers[i], make<vk::command_buffer>(logi_device, _command_pool), cb);
+            __D2D_TRY_MAKE(command_buffers[i], make<vk::command_buffer>(logi_device, copy_cmd_pool_ptr), cb);
 
             //Create fences & sempahores
             __D2D_TRY_MAKE(render_fences[i], make<vk::fence>(logi_device), f);
@@ -96,7 +98,7 @@ namespace d2d {
             break;
         case VK_ERROR_OUT_OF_DATE_KHR:
         case VK_SUBOPTIMAL_KHR: {
-            __D2D_TRY_MAKE(_swap_chain, make<vk::swap_chain>(*logi_device_ptr, *phys_device_ptr, _render_pass, _surface, *this), s);
+            __D2D_TRY_MAKE(_swap_chain, make<vk::swap_chain>(logi_device_ptr, phys_device_ptr, _render_pass, _surface, *this), s);
             std::memcpy(&uniform_map<clone_rect>()[frame_idx], &_swap_chain.extent, sizeof(extent2));
             std::memcpy(&uniform_map<styled_rect>()[frame_idx], &_swap_chain.extent, sizeof(extent2));
             std::memcpy(&uniform_map<debug_rect>()[frame_idx], &_swap_chain.extent, sizeof(extent2));

@@ -8,10 +8,10 @@ namespace d2d::vk {
 
     class texture : public image {
     public:
-        static result<texture> create(logical_device& logi_device, std::uint32_t width, std::uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, std::uint32_t array_count = 1) noexcept;
-        result<void> initialize(logical_device& logi_device, physical_device& phys_device, VkFormat format, pt3<VkSamplerAddressMode> address_modes = {image_sampler::clamp_to_border, image_sampler::clamp_to_border, image_sampler::clamp_to_border}) noexcept;
+        static result<texture> create(std::shared_ptr<logical_device> logi_device, std::uint32_t width, std::uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, std::uint32_t array_count = 1) noexcept;
+        result<void> initialize(std::shared_ptr<logical_device> logi_device, std::weak_ptr<physical_device> phys_device, VkFormat format, pt3<VkSamplerAddressMode> address_modes = {image_sampler::clamp_to_border, image_sampler::clamp_to_border, image_sampler::clamp_to_border}) noexcept;
 
-        result<texture> clone(logical_device& logi_device, physical_device& phys_device) const noexcept;
+        result<texture> clone(std::shared_ptr<logical_device> logi_device, std::weak_ptr<physical_device> phys_device) const noexcept;
     public:
         constexpr image_view    const& view()    const noexcept { return img_view; }
         constexpr image_sampler const& sampler() const noexcept { return img_sampler; }

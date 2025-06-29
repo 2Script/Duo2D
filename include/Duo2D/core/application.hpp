@@ -25,8 +25,8 @@ namespace d2d {
     public:
         result<std::set<vk::physical_device>> devices() const noexcept;
 
-        const vk::physical_device& selected_device() const& noexcept { return phys_device; }
-        vk::physical_device& selected_device() & noexcept { return phys_device; }
+        const vk::physical_device& selected_device() const& noexcept { return *phys_device_ptr; }
+        vk::physical_device& selected_device() & noexcept { return *phys_device_ptr; }
 
         result<void> initialize_device() noexcept;
 
@@ -46,9 +46,9 @@ namespace d2d {
 
         
     private:
-        vk::instance vk_instance;
-        vk::physical_device phys_device;
-        vk::logical_device logi_device;
+        std::shared_ptr<vk::instance>        instance_ptr;
+        std::shared_ptr<vk::physical_device> phys_device_ptr;
+        std::shared_ptr<vk::logical_device>  logi_device_ptr;
         std::string name;
 
         //ORDER MATTERS: glfw must be terminated after all windows have been destroyed

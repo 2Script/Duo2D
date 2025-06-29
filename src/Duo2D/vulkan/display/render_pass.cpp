@@ -2,13 +2,13 @@
 #include <vulkan/vulkan_core.h>
 
 namespace d2d::vk {
-    result<render_pass> render_pass::create(logical_device& logi_device) noexcept {
+    result<render_pass> render_pass::create(std::shared_ptr<logical_device> logi_device) noexcept {
         render_pass ret{};
         ret.dependent_handle = logi_device;
 
         //Specify load/store of color and stencil data (TEMP: specify that images are to be presented in swap chain)
         VkAttachmentDescription attachment{
-            .format = logi_device.format.format_id,
+            .format = logi_device->format.format_id,
             .samples = VK_SAMPLE_COUNT_1_BIT,
             .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
             .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
@@ -50,7 +50,7 @@ namespace d2d::vk {
             .pDependencies = &dependency,
         };
 
-        __D2D_VULKAN_VERIFY(vkCreateRenderPass(logi_device, &render_pass_info, nullptr, &ret.handle));
+        __D2D_VULKAN_VERIFY(vkCreateRenderPass(*logi_device, &render_pass_info, nullptr, &ret.handle));
 
         return ret;
     }

@@ -4,11 +4,11 @@
 
 
 namespace d2d::vk {
-    result<buffer> buffer::create(logical_device& device, std::size_t size, VkBufferUsageFlags usage) noexcept {
+    result<buffer> buffer::create(std::shared_ptr<logical_device> device, std::size_t size, VkBufferUsageFlags usage) noexcept {
         return buffer::create(device, size, usage, 0);
     }
 
-    result<buffer> buffer::create(logical_device& device, std::size_t size, VkBufferUsageFlags usage, std::size_t mem_offset) noexcept {
+    result<buffer> buffer::create(std::shared_ptr<logical_device> device, std::size_t size, VkBufferUsageFlags usage, std::size_t mem_offset) noexcept {
         buffer ret{};
         ret.dependent_handle = device;
         ret.flags = usage;
@@ -22,17 +22,17 @@ namespace d2d::vk {
             .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
         };
 
-        __D2D_VULKAN_VERIFY(vkCreateBuffer(device, &generic_buffer_info, nullptr, &ret.handle));
+        __D2D_VULKAN_VERIFY(vkCreateBuffer(*device, &generic_buffer_info, nullptr, &ret.handle));
         return ret;
     }
 }
 
 namespace d2d::vk {
-    result<buffer> buffer::clone(logical_device& device) const noexcept {
+    result<buffer> buffer::clone(std::shared_ptr<logical_device> device) const noexcept {
         return buffer::create(device, bytes, flags, offset);
     }
 
-    result<buffer> buffer::clone(logical_device& device, physical_device&) const noexcept {
+    result<buffer> buffer::clone(std::shared_ptr<logical_device> device, std::weak_ptr<physical_device>) const noexcept {
         return clone(device);
     }
 }

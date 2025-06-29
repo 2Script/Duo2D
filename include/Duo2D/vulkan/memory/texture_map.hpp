@@ -21,13 +21,13 @@ namespace d2d::vk {
     class texture_map : public texture_map_base {
     public:
         //TODO (HIGH PRIO): Split this into (multithreaded) loading/decoding the file | allocating multiple files into image buffers
-        result<texture_idx_t> load(std::string_view path, logical_device& logi_device, physical_device& phys_device, command_pool& copy_cmd_pool, device_memory<std::dynamic_extent>& texture_mem) noexcept;
-        result<texture_idx_t> load(const font& f,         logical_device& logi_device, physical_device& phys_device, command_pool& copy_cmd_pool, device_memory<std::dynamic_extent>& texture_mem) noexcept;
+        result<texture_idx_t> load(std::string_view path, std::shared_ptr<logical_device> logi_device, std::shared_ptr<physical_device> phys_device, std::shared_ptr<command_pool> copy_cmd_pool, device_memory<std::dynamic_extent>& texture_mem) noexcept;
+        result<texture_idx_t> load(const font& f,         std::shared_ptr<logical_device> logi_device, std::shared_ptr<physical_device> phys_device, std::shared_ptr<command_pool> copy_cmd_pool, device_memory<std::dynamic_extent>& texture_mem) noexcept;
         //void unload(std::string_view key) noexcept;
     private:
         result<texture_idx_t> create_texture(
             iterator& tex_iter, std::span<std::span<const std::byte>> bytes, extent2 texture_size, VkFormat format,
-            logical_device& logi_device, physical_device& phys_device, command_pool& copy_cmd_pool, device_memory<std::dynamic_extent>& texture_mem
+            std::shared_ptr<logical_device> logi_device, std::shared_ptr<physical_device> phys_device, std::shared_ptr<command_pool> copy_cmd_pool, device_memory<std::dynamic_extent>& texture_mem
         ) noexcept;
     
     private:

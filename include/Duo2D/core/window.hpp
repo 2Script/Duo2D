@@ -35,10 +35,10 @@ namespace d2d::impl {
 
 namespace d2d {
     struct window : public vk::renderable_tuple<impl::frames_in_flight, styled_rect, debug_rect, clone_rect, glyph> {
-        static result<window> create(std::string_view title, std::size_t width, std::size_t height, const vk::instance& i) noexcept;
+        static result<window> create(std::string_view title, std::size_t width, std::size_t height, std::shared_ptr<vk::instance> i) noexcept;
 
         window() noexcept : window(nullptr) {}
-        result<void> initialize(vk::logical_device& logi_device, vk::physical_device& phys_device) noexcept;
+        result<void> initialize(std::shared_ptr<vk::logical_device> logi_device, std::shared_ptr<vk::physical_device> phys_device) noexcept;
 
     public:
         template<typename T>
@@ -65,23 +65,23 @@ namespace d2d {
         
         window(GLFWwindow* w) noexcept : 
             vk::renderable_tuple<impl::frames_in_flight, styled_rect, debug_rect, clone_rect, glyph>(),
-            handle(w, {}), logi_device_ptr(nullptr), phys_device_ptr(nullptr),
+            handle(w, {}), logi_device_ptr(), phys_device_ptr(), command_pool_ptr(),
             _surface(), _swap_chain(), _render_pass(),
-            frame_idx(0), _command_pool(), command_buffers{}, render_fences{}, frame_semaphores{}, submit_semaphores() {}
+            frame_idx(0), command_buffers{}, render_fences{}, frame_semaphores{}, submit_semaphores() {}
         friend vk::physical_device;
         
     private:
 
         std::unique_ptr<GLFWwindow, generic_functor<glfwDestroyWindow>> handle;
-        vk::logical_device* logi_device_ptr;
-        vk::physical_device* phys_device_ptr;
+        std::shared_ptr<vk::logical_device> logi_device_ptr;
+        std::shared_ptr<vk::physical_device> phys_device_ptr;
+        std::shared_ptr<vk::command_pool> command_pool_ptr;
         //Decleration order matters: swap_chain MUST be destroyed before surface
         vk::surface _surface;
         vk::swap_chain _swap_chain;
         vk::render_pass _render_pass;
 
         std::size_t frame_idx;
-        vk::command_pool _command_pool;
         std::array<vk::command_buffer, impl::frames_in_flight> command_buffers;
         std::array<vk::fence, impl::frames_in_flight> render_fences;
         struct semaphore_type { enum { image_available, /*cmd_buffer_finished,*/ num_semaphore_types }; };

@@ -1,5 +1,6 @@
 #pragma once 
-#include <concepts>
+#include <memory>
+#include <type_traits>
 #include <utility>
 
 #include "Duo2D/core/error.hpp"
@@ -8,6 +9,9 @@
 namespace d2d::vk {
     template<impl::vulkan_like VkTy>
     class vulkan_ptr_base {
+    public:
+        using element_type = std::remove_pointer_t<VkTy>;
+        using pointer = VkTy;
     public:
         constexpr vulkan_ptr_base() noexcept = default;
         ~vulkan_ptr_base() noexcept = default;
@@ -57,16 +61,16 @@ namespace d2d::vk {
     class vulkan_ptr<VkTy, DeleterFn> : public vulkan_ptr_base<VkTy> {
     public:
         constexpr vulkan_ptr() noexcept = default;
-        ~vulkan_ptr() noexcept { if(this->handle) DeleterFn(dependent_handle, this->handle, nullptr); };
+        ~vulkan_ptr() noexcept { if(this->handle) DeleterFn(*dependent_handle, this->handle, nullptr); };
     
     public:
         constexpr vulkan_ptr(vulkan_ptr&& other) noexcept : 
-            vulkan_ptr_base<VkTy>(std::move(other)), dependent_handle(other.dependent_handle) {}
+            vulkan_ptr_base<VkTy>(std::move(other)), dependent_handle(std::move(other.dependent_handle)) {}
         constexpr vulkan_ptr& operator=(vulkan_ptr&& other) noexcept { 
             if(this->handle && this->handle != other.handle) 
-                DeleterFn(dependent_handle, this->handle, nullptr);
+                DeleterFn(*dependent_handle, this->handle, nullptr);
             vulkan_ptr_base<VkTy>::operator=(std::move(other));
-            dependent_handle = other.dependent_handle;
+            dependent_handle = std::move(other.dependent_handle);
             return *this;
         };
 
@@ -75,22 +79,24 @@ namespace d2d::vk {
 
 
     protected:
-        typename impl::vk_traits<VkTy>::dependent_type dependent_handle;
+        std::shared_ptr<typename impl::vk_traits<VkTy>::dependent_type> dependent_handle;
     };
 
     template<impl::multiple_dependent_vulkan_like VkTy, typename impl::vk_traits<VkTy>::deleter_type& DeleterFn>
     class vulkan_ptr<VkTy, DeleterFn> : public vulkan_ptr_base<VkTy> {
     public:
         constexpr vulkan_ptr() noexcept = default;
-        ~vulkan_ptr() noexcept { if(this->handle) DeleterFn(dependent_handle, aux_handle, 1, &this->handle); };
+        ~vulkan_ptr() noexcept { if(this->handle) DeleterFn(*dependent_handle, *aux_handle, 1, &this->handle); };
     
     public:
         constexpr vulkan_ptr(vulkan_ptr&& other) noexcept : 
-            vulkan_ptr_base<VkTy>(std::move(other)), dependent_handle(other.dependent_handle), aux_handle(other.aux_handle) {}
+            vulkan_ptr_base<VkTy>(std::move(other)), dependent_handle(std::move(other.dependent_handle)), aux_handle(std::move(other.aux_handle)) {}
         constexpr vulkan_ptr& operator=(vulkan_ptr&& other) noexcept { 
+            if(this->handle && this->handle != other.handle) 
+                DeleterFn(*dependent_handle, *aux_handle, 1, &this->handle);
             vulkan_ptr_base<VkTy>::operator=(std::move(other));
-            dependent_handle = other.dependent_handle;
-            aux_handle = other.aux_handle;
+            dependent_handle = std::move(other.dependent_handle);
+            aux_handle = std::move(other.aux_handle);
             return *this;
         };
 
@@ -99,7 +105,7 @@ namespace d2d::vk {
 
 
     protected:
-        typename impl::vk_traits<VkTy>::dependent_type dependent_handle;
-        typename impl::vk_traits<VkTy>::auxilary_type aux_handle;
+        std::shared_ptr<typename impl::vk_traits<VkTy>::dependent_type> dependent_handle;
+        std::shared_ptr<typename impl::vk_traits<VkTy>::auxilary_type> aux_handle;
     };
 }

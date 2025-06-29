@@ -3,7 +3,7 @@
 
 namespace d2d::vk {
     template<::d2d::impl::renderable_like T>
-    result<pipeline_layout<T>> pipeline_layout<T>::create(logical_device& device, descriptor_set_layout& set_layout) noexcept {
+    result<pipeline_layout<T>> pipeline_layout<T>::create(std::shared_ptr<logical_device> device, descriptor_set_layout& set_layout) noexcept {
         pipeline_layout ret{};
         ret.dependent_handle = device;
 
@@ -18,13 +18,13 @@ namespace d2d::vk {
             pipeline_layout_create_info.pPushConstantRanges = ranges.data();
         }
 
-        __D2D_VULKAN_VERIFY(vkCreatePipelineLayout(device, &pipeline_layout_create_info, nullptr, &ret.handle));
+        __D2D_VULKAN_VERIFY(vkCreatePipelineLayout(*device, &pipeline_layout_create_info, nullptr, &ret.handle));
 
         return ret;
     }
 
     template<::d2d::impl::renderable_like T>
-    result<pipeline_layout<T>> pipeline_layout<T>::create(logical_device& device) noexcept {
+    result<pipeline_layout<T>> pipeline_layout<T>::create(std::shared_ptr<logical_device> device) noexcept {
         pipeline_layout ret{};
         ret.dependent_handle = device;
 
@@ -38,7 +38,7 @@ namespace d2d::vk {
             pipeline_layout_create_info.pPushConstantRanges = ranges.data();
         }
 
-        __D2D_VULKAN_VERIFY(vkCreatePipelineLayout(device, &pipeline_layout_create_info, nullptr, &ret.handle));
+        __D2D_VULKAN_VERIFY(vkCreatePipelineLayout(*device, &pipeline_layout_create_info, nullptr, &ret.handle));
 
         return ret;
     }

@@ -6,7 +6,7 @@
 
 namespace d2d::vk {
     template<std::size_t N>
-    result<shader_module> shader_module::create(logical_device& device, const unsigned char (&data)[N], VkShaderStageFlagBits type) noexcept {
+    result<shader_module> shader_module::create(std::shared_ptr<logical_device> device, const unsigned char (&data)[N], VkShaderStageFlagBits type) noexcept {
         shader_module ret{};
         ret.dependent_handle = device;
 
@@ -16,7 +16,7 @@ namespace d2d::vk {
             .codeSize = N,
             .pCode = reinterpret_cast<uint32_t const*>(data),
         };
-        __D2D_VULKAN_VERIFY(vkCreateShaderModule(device, &shader_module_create_info, nullptr, &ret.handle));
+        __D2D_VULKAN_VERIFY(vkCreateShaderModule(*device, &shader_module_create_info, nullptr, &ret.handle));
 
         ret.shader_stage_info = {
             .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,

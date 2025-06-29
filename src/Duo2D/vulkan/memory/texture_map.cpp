@@ -26,7 +26,7 @@
 #include FT_OUTLINE_H
 
 namespace d2d::vk {
-    result<texture_idx_t> texture_map::load(std::string_view path, logical_device& logi_device, physical_device& phys_device, command_pool& copy_cmd_pool, device_memory<std::dynamic_extent>& texture_mem) noexcept {
+    result<texture_idx_t> texture_map::load(std::string_view path, std::shared_ptr<logical_device> logi_device, std::shared_ptr<physical_device> phys_device, std::shared_ptr<command_pool> copy_cmd_pool, device_memory<std::dynamic_extent>& texture_mem) noexcept {
         std::pair<iterator, bool> emplace_result = emplace(std::piecewise_construct, std::forward_as_tuple(path), std::forward_as_tuple());
         texture& tex = emplace_result.first->second;
         if(!emplace_result.second) return tex.index();
@@ -55,7 +55,7 @@ namespace d2d::vk {
     }
 
 
-    result<texture_idx_t> texture_map::load(const font& f, logical_device& logi_device, physical_device& phys_device, command_pool& copy_cmd_pool, device_memory<std::dynamic_extent>& texture_mem) noexcept {
+    result<texture_idx_t> texture_map::load(const font& f, std::shared_ptr<logical_device> logi_device, std::shared_ptr<physical_device> phys_device, std::shared_ptr<command_pool> copy_cmd_pool, device_memory<std::dynamic_extent>& texture_mem) noexcept {
         std::string key("font::");
         key.append(f.name());
         std::pair<iterator, bool> emplace_result = emplace(std::piecewise_construct, std::forward_as_tuple(std::move(key)), std::forward_as_tuple());
@@ -209,7 +209,7 @@ namespace d2d::vk {
 }
 
 namespace d2d::vk {    
-    result<texture_idx_t> texture_map::create_texture(iterator& tex_iter, std::span<std::span<const std::byte>> textures_as_bytes, extent2 texture_size, VkFormat format, logical_device& logi_device, physical_device& phys_device, command_pool& copy_cmd_pool, device_memory<std::dynamic_extent>& texture_mem) noexcept {
+    result<texture_idx_t> texture_map::create_texture(iterator& tex_iter, std::span<std::span<const std::byte>> textures_as_bytes, extent2 texture_size, VkFormat format, std::shared_ptr<logical_device> logi_device, std::shared_ptr<physical_device> phys_device, std::shared_ptr<command_pool> copy_cmd_pool, device_memory<std::dynamic_extent>& texture_mem) noexcept {
         texture& tex = tex_iter->second;
         RESULT_TRY_MOVE(tex, make<texture>(
             logi_device, 

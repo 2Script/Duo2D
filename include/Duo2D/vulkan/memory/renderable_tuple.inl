@@ -18,16 +18,18 @@
 
 namespace d2d::vk {
     template<std::size_t FiF, ::d2d::impl::renderable_like... Ts> //requires (sizeof...(Ts) > 0)
-    result<renderable_tuple<FiF, Ts...>> renderable_tuple<FiF, Ts...>::create(logical_device& logi_device, physical_device& phys_device, render_pass& window_render_pass) noexcept {
+    result<renderable_tuple<FiF, Ts...>> renderable_tuple<FiF, Ts...>::create(std::shared_ptr<logical_device> logi_device, std::shared_ptr<physical_device> phys_device, render_pass& window_render_pass) noexcept {
         renderable_tuple ret{};
-        ret.logi_device_ptr = std::addressof(logi_device);
-        ret.phys_device_ptr = std::addressof(phys_device);
+        ret.logi_device_ptr = logi_device;
+        ret.phys_device_ptr = phys_device;
         
         //Create command pool for copy commands
-        RESULT_TRY_MOVE(ret.copy_cmd_pool, make<command_pool>(logi_device, phys_device));
+        vk::command_pool c;
+        RESULT_TRY_MOVE(c, make<command_pool>(logi_device, phys_device));
+        ret.copy_cmd_pool_ptr = std::make_shared<command_pool>(std::move(c));
 
         //Create allocator
-        renderable_allocator allocator(logi_device, phys_device, ret.copy_cmd_pool);
+        renderable_allocator allocator(logi_device, phys_device, ret.copy_cmd_pool_ptr);
 
         //If theres no static index or vertex data, skip creating their buffers
         constexpr static std::size_t static_buffer_size = ((ret.renderable_data_of<Ts>().static_index_data_bytes.size()) + ...) + ((ret.renderable_data_of<Ts>().static_vertex_data_bytes.size()) + ...);
@@ -100,9 +102,9 @@ namespace d2d::vk {
             return {};
         }
         
-        renderable_allocator allocator(*logi_device_ptr, *phys_device_ptr, copy_cmd_pool);
+        renderable_allocator allocator(logi_device_ptr, phys_device_ptr, copy_cmd_pool_ptr);
         auto load_texture = [this]<typename K>(K&& key) noexcept -> auto {
-            return textures.load(std::forward<K>(key), *logi_device_ptr, *phys_device_ptr, copy_cmd_pool, texture_mem);
+            return textures.load(std::forward<K>(key), logi_device_ptr, phys_device_ptr, copy_cmd_pool_ptr, texture_mem);
         };
         
         //Get the input data bytes, stage them, then move them to device local memory
@@ -124,8 +126,8 @@ namespace d2d::vk {
                     if(current_error_code != error::unknown) return current_error_code;
                     RESULT_VERIFY(renderable_data_of<U>().template update_texture_indices<T>(load_texture, allocator, data_buffs[renderable_index<U>]));
                     RESULT_VERIFY(renderable_data_of<U>().create_texture_descriptors(textures));
-                    RESULT_VERIFY(renderable_data_of<U>().create_pipeline_layout(*logi_device_ptr));
-                    RESULT_VERIFY(renderable_data_of<U>().create_pipeline(*logi_device_ptr, window_render_pass));
+                    RESULT_VERIFY(renderable_data_of<U>().create_pipeline_layout(logi_device_ptr));
+                    RESULT_VERIFY(renderable_data_of<U>().create_pipeline(logi_device_ptr, window_render_pass));
                     return error::unknown;
                 }
             };
@@ -154,7 +156,7 @@ namespace d2d::vk {
         }
 
         //Must recreate ALL attribute span maps
-        RESULT_TRY_COPY_UNSCOPED(void* shared_mem_map, shared_mem.map(*logi_device_ptr, VK_WHOLE_SIZE), smm);
+        RESULT_TRY_COPY_UNSCOPED(void* shared_mem_map, shared_mem.map(logi_device_ptr, VK_WHOLE_SIZE), smm);
         std::size_t buffer_offset = 0;
 
         (renderable_data_of<Ts>().emplace_attributes(buffer_offset, shared_mem_map, shared_mem.requirements()[renderable_index_with_attrib<Ts>].size), ...);

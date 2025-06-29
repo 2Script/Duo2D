@@ -8,7 +8,7 @@
 
 namespace d2d::vk {
     template<::d2d::impl::renderable_like T>
-    result<pipeline<T>> pipeline<T>::create(logical_device& device, render_pass& associated_render_pass, pipeline_layout<T>& layout) noexcept {
+    result<pipeline<T>> pipeline<T>::create(std::shared_ptr<logical_device> device, render_pass& associated_render_pass, pipeline_layout<T>& layout) noexcept {
         pipeline ret{};
         ret.dependent_handle = device;
 
@@ -105,7 +105,7 @@ namespace d2d::vk {
             .basePipelineHandle = VK_NULL_HANDLE,
             .basePipelineIndex = -1,
         };
-        __D2D_VULKAN_VERIFY(vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipeline_create_info, nullptr, &ret.handle));
+        __D2D_VULKAN_VERIFY(vkCreateGraphicsPipelines(*device, VK_NULL_HANDLE, 1, &pipeline_create_info, nullptr, &ret.handle));
 
         return ret;
     }

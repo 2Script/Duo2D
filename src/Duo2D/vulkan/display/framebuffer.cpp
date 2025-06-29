@@ -3,7 +3,7 @@
 #include <vulkan/vulkan_core.h>
 
 namespace d2d::vk {
-    result<framebuffer> framebuffer::create(logical_device& device, image_view& attachment, render_pass& associated_render_pass, extent2 size) noexcept {
+    result<framebuffer> framebuffer::create(std::shared_ptr<logical_device> device, image_view& attachment, render_pass& associated_render_pass, extent2 size) noexcept {
         framebuffer ret{};
         ret.dependent_handle = device;
 
@@ -17,7 +17,7 @@ namespace d2d::vk {
             .layers = 1,
         };
 
-        __D2D_VULKAN_VERIFY(vkCreateFramebuffer(device, &framebuffer_info, nullptr, &ret.handle));
+        __D2D_VULKAN_VERIFY(vkCreateFramebuffer(*device, &framebuffer_info, nullptr, &ret.handle));
         return ret;
     }
 }

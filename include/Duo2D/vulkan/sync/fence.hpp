@@ -9,7 +9,7 @@ __D2D_DECLARE_VK_TRAITS_DEVICE(VkFence);
 
 namespace d2d::vk {
     struct fence : vulkan_ptr<VkFence, vkDestroyFence> {
-        static result<fence> create(logical_device& device) noexcept;
+        static result<fence> create(std::shared_ptr<logical_device> device) noexcept;
 
     public:
         result<void> wait(std::uint64_t timeout = UINT64_MAX) const noexcept;
