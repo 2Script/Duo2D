@@ -33,7 +33,7 @@ namespace d2d {
         __D2D_GLFW_VERIFY(ret.handle);
 
         //Create surface
-        __D2D_TRY_MAKE(ret._surface, make<vk::surface>(ret, i), s);
+        RESULT_TRY_MOVE(ret._surface, make<vk::surface>(ret, i));
 
         return ret;
     }
@@ -54,18 +54,18 @@ namespace d2d {
         command_pool_ptr = std::make_shared<vk::command_pool>(std::move(c));
         
         //Create render pass
-        __D2D_TRY_MAKE(_render_pass, make<vk::render_pass>(logi_device), rp);
+        RESULT_TRY_MOVE(_render_pass, make<vk::render_pass>(logi_device));
 
         //Create swap chain
-        __D2D_TRY_MAKE(_swap_chain, make<vk::swap_chain>(logi_device, phys_device, _render_pass, _surface, *this), s);
+        RESULT_TRY_MOVE(_swap_chain, make<vk::swap_chain>(logi_device, phys_device, _render_pass, _surface, *this));
 
         for(std::size_t i = 0; i < impl::frames_in_flight; ++i) {
             //Create command buffers
-            __D2D_TRY_MAKE(command_buffers[i], make<vk::command_buffer>(logi_device, command_pool_ptr), cb);
+            RESULT_TRY_MOVE(command_buffers[i], make<vk::command_buffer>(logi_device, command_pool_ptr));
 
             //Create fences & sempahores
-            __D2D_TRY_MAKE(render_fences[i], make<vk::fence>(logi_device), f);
-            __D2D_TRY_MAKE(frame_semaphores[semaphore_type::image_available][i], make<vk::semaphore>(logi_device), ia);
+            RESULT_TRY_MOVE(render_fences[i], make<vk::fence>(logi_device));
+            RESULT_TRY_MOVE(frame_semaphores[semaphore_type::image_available][i], make<vk::semaphore>(logi_device));
         }
         
         //Create submit sempahores
@@ -75,7 +75,7 @@ namespace d2d {
             submit_semaphores.push_back(*std::move(submit_semaphore));
         }
 
-        __D2D_TRY_MAKE((*static_cast<vk::renderable_tuple<impl::frames_in_flight, styled_rect, debug_rect, clone_rect, glyph>*>(this)), (make<vk::renderable_tuple<impl::frames_in_flight, styled_rect, debug_rect, clone_rect, glyph>>(logi_device, phys_device, _render_pass)), rb);
+        RESULT_TRY_MOVE((*static_cast<vk::renderable_tuple<impl::frames_in_flight, styled_rect, debug_rect, clone_rect, glyph>*>(this)), (make<vk::renderable_tuple<impl::frames_in_flight, styled_rect, debug_rect, clone_rect, glyph>>(logi_device, phys_device, _render_pass)));
 
         //update uniform buffer
         (std::memcpy(&this->template uniform_map<Ts>()[frame_idx], &_swap_chain.extent(), sizeof(extent2)), ...);
@@ -99,7 +99,7 @@ namespace d2d {
             break;
         case VK_ERROR_OUT_OF_DATE_KHR:
         case VK_SUBOPTIMAL_KHR: {
-            __D2D_TRY_MAKE(_swap_chain, make<vk::swap_chain>(logi_device_ptr, phys_device_ptr, _render_pass, _surface, *this), s);
+            RESULT_TRY_MOVE(_swap_chain, make<vk::swap_chain>(logi_device_ptr, phys_device_ptr, _render_pass, _surface, *this));
             (std::memcpy(&this->template uniform_map<Ts>()[frame_idx], &_swap_chain.extent(), sizeof(extent2)), ...);
             return {};
         }

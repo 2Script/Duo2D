@@ -81,8 +81,8 @@ namespace d2d::vk {
         };
 
 
-        __D2D_TRY_MAKE(shader_module vert_shader, make<shader_module>(device, T::shader_data_type::vert, VK_SHADER_STAGE_VERTEX_BIT), tv);
-        __D2D_TRY_MAKE(shader_module frag_shader, make<shader_module>(device, T::shader_data_type::frag, VK_SHADER_STAGE_FRAGMENT_BIT), tf);
+        RESULT_TRY_MOVE_UNSCOPED(shader_module vert_shader, make<shader_module>(device, T::shader_data_type::vert, VK_SHADER_STAGE_VERTEX_BIT), vs);
+        RESULT_TRY_MOVE_UNSCOPED(shader_module frag_shader, make<shader_module>(device, T::shader_data_type::frag, VK_SHADER_STAGE_FRAGMENT_BIT), fs);
         std::array<VkPipelineShaderStageCreateInfo, 2> shader_stages = {vert_shader.stage_info(), frag_shader.stage_info()};
 
         

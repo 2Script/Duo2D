@@ -20,8 +20,3 @@ namespace d2d {
         else*/ return T::create(std::forward<Args>(args)...);
     } 
 }
-
-#define __D2D_TRY_MAKE(lhs, rhs, var_name) \
-auto var_name = rhs; \
-if(!var_name.has_value()) return var_name.error(); \
-lhs = *std::move(var_name);
