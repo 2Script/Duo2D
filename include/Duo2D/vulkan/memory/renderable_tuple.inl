@@ -330,7 +330,7 @@ namespace d2d::vk {
 
     template<std::size_t FiF, ::d2d::impl::renderable_like... Ts> //requires (sizeof...(Ts) > 0)
     template<typename T> 
-    constexpr const buffer& renderable_tuple<FiF, Ts...>::instance_buffer() const noexcept requires (renderable_constraints<T>::instanced) { 
+    constexpr const buffer& renderable_tuple<FiF, Ts...>::instance_buffer() const noexcept requires renderable_constraints<T>::instanced { 
         return data_buffs[renderable_index<T>]; 
     };
 
@@ -427,13 +427,8 @@ namespace d2d::vk {
     }
 }
 
-namespace d2d::vk {
-    template<std::size_t FiF, ::d2d::impl::renderable_like... Ts> //requires (sizeof...(Ts) > 0)
-    template<typename T> 
-    constexpr std::span<typename T::uniform_type> renderable_tuple<FiF, Ts...>::uniform_map() const noexcept requires renderable_constraints<T>::has_uniform { 
-        return {reinterpret_cast<typename T::uniform_type*>(reinterpret_cast<std::uintptr_t>(uniform_buffer_map) + static_offsets<T>()[buffer_data_type::uniform]), FiF}; 
-    }
 
+namespace d2d::vk {
     template<std::size_t FiF, ::d2d::impl::renderable_like... Ts> //requires (sizeof...(Ts) > 0)
     template<typename T> 
     constexpr const pipeline<T>& renderable_tuple<FiF, Ts...>::associated_pipeline() const noexcept{ 
@@ -450,5 +445,20 @@ namespace d2d::vk {
     template<typename T> 
     constexpr const std::array<VkDescriptorSet, FiF>& renderable_tuple<FiF, Ts...>::desc_set() const noexcept{ 
         return renderable_data_of<T>().sets;
+    }
+}
+
+
+namespace d2d::vk {
+    template<std::size_t FiF, ::d2d::impl::renderable_like... Ts> //requires (sizeof...(Ts) > 0)
+    template<typename T> 
+    constexpr std::span<typename T::uniform_type, FiF> renderable_tuple<FiF, Ts...>::uniform_map() const noexcept requires (renderable_constraints<T>::has_uniform) { 
+        return std::span<typename T::uniform_type, FiF>{reinterpret_cast<typename T::uniform_type*>(reinterpret_cast<std::uintptr_t>(uniform_buffer_map) + static_offsets<T>()[buffer_data_type::uniform]), FiF}; 
+    }
+
+    template<std::size_t FiF, ::d2d::impl::renderable_like... Ts> //requires (sizeof...(Ts) > 0)
+    template<typename T> 
+    constexpr std::span<const std::byte, 0> renderable_tuple<FiF, Ts...>::uniform_map() const noexcept requires (!renderable_constraints<T>::has_uniform) { 
+        return {}; 
     }
 }

@@ -1,7 +1,5 @@
 #pragma once
 #include "Duo2D/core/error.hpp"
-#include "Duo2D/graphics/prim/debug_rect.hpp"
-#include "Duo2D/graphics/prim/styled_rect.hpp"
 #include "Duo2D/vulkan/traits/buffer_traits.hpp"
 #include "Duo2D/traits/renderable_traits.hpp"
 #include "Duo2D/vulkan/core/command_buffer.hpp"

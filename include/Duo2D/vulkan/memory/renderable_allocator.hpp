@@ -2,7 +2,6 @@
 #include <optional>
 #include <span>
 #include <cstddef>
-#include <type_traits>
 #include <utility>
 #include <memory>
 #include "Duo2D/vulkan/memory/device_memory.hpp"

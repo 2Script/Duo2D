@@ -5,11 +5,9 @@
 #include <cstdlib>
 #include <utility>
 #include <tuple>
-#include <vector>
 #include <vulkan/vulkan.h>
 #include <zstring.hpp>
 #include "Duo2D/vulkan/core/command_buffer.hpp"
-#include "Duo2D/vulkan/display/texture.hpp"
 #include "Duo2D/vulkan/traits/buffer_traits.hpp"
 #include "Duo2D/vulkan/core/command_pool.hpp"
 #include "Duo2D/vulkan/display/render_pass.hpp"
@@ -18,13 +16,12 @@
 #include "Duo2D/vulkan/device/physical_device.hpp"
 #include "Duo2D/vulkan/memory/buffer.hpp"
 #include "Duo2D/vulkan/memory/texture_map.hpp"
-#include "Duo2D/vulkan/memory/renderable_allocator.hpp"
 #include "Duo2D/vulkan/memory/renderable_data.hpp"
 #include "Duo2D/vulkan/memory/pipeline.hpp"
 #include "Duo2D/vulkan/memory/pipeline_layout.hpp"
 #include "Duo2D/traits/renderable_traits.hpp"
+#include "Duo2D/traits/renderable_constraints.hpp"
 
-#include "Duo2D/graphics/prim/styled_rect.hpp"
 
 namespace d2d::vk::impl {
     template<typename P>
@@ -94,36 +91,37 @@ namespace d2d::vk {
 
 
     private:
-        template<typename T> constexpr const buffer& index_buffer() const noexcept requires renderable_constraints<T>::has_indices;
-        template<typename T> constexpr const buffer& uniform_buffer() const noexcept requires renderable_constraints<T>::has_uniform;
-        template<typename T> constexpr const buffer& vertex_buffer() const noexcept requires renderable_constraints<T>::has_vertices;
-        template<typename T> constexpr const buffer& instance_buffer() const noexcept requires (renderable_constraints<T>::instanced);
-        template<typename T> constexpr const buffer& attribute_buffer() const noexcept requires renderable_constraints<T>::has_attributes;
+        template<typename T> constexpr const buffer& index_buffer()       const noexcept requires renderable_constraints<T>::has_indices;
+        template<typename T> constexpr const buffer& uniform_buffer()     const noexcept requires renderable_constraints<T>::has_uniform;
+        template<typename T> constexpr const buffer& vertex_buffer()      const noexcept requires renderable_constraints<T>::has_vertices;
+        template<typename T> constexpr const buffer& instance_buffer()    const noexcept requires renderable_constraints<T>::instanced;
+        template<typename T> constexpr const buffer& attribute_buffer()   const noexcept requires renderable_constraints<T>::has_attributes;
         template<typename T> constexpr const buffer& texture_idx_buffer() const noexcept requires renderable_constraints<T>::has_textures;
 
 
-        template<typename T> constexpr std::uint32_t index_count(std::size_t i) const noexcept requires (!renderable_constraints<T>::instanced && renderable_constraints<T>::has_indices);
+        template<typename T> constexpr std::uint32_t index_count(std::size_t i)  const noexcept requires (!renderable_constraints<T>::instanced && renderable_constraints<T>::has_indices);
         template<typename T> constexpr std::uint32_t vertex_count(std::size_t i) const noexcept requires (!renderable_constraints<T>::instanced && renderable_constraints<T>::has_vertices);
-        template<typename T> constexpr std::size_t instance_count() const noexcept;
+        template<typename T> constexpr std::size_t   instance_count()            const noexcept;
 
-        template<typename T> constexpr std::uint32_t first_index(std::size_t i) const noexcept requires (!renderable_constraints<T>::instanced && renderable_constraints<T>::has_indices); 
+        template<typename T> constexpr std::uint32_t first_index(std::size_t i)  const noexcept requires (!renderable_constraints<T>::instanced && renderable_constraints<T>::has_indices); 
         template<typename T> constexpr std::uint32_t first_vertex(std::size_t i) const noexcept requires (!renderable_constraints<T>::instanced && renderable_constraints<T>::has_vertices); 
 
-        template<typename T> constexpr std::size_t vertex_buffer_offset() const noexcept requires (renderable_constraints<T>::has_vertices); 
-        template<typename T> constexpr std::size_t index_buffer_offset() const noexcept requires (renderable_constraints<T>::has_indices); 
+        template<typename T> constexpr std::size_t vertex_buffer_offset()      const noexcept requires (renderable_constraints<T>::has_vertices); 
+        template<typename T> constexpr std::size_t index_buffer_offset()       const noexcept requires (renderable_constraints<T>::has_indices); 
         template<typename T> constexpr std::size_t texture_idx_buffer_offset() const noexcept requires (renderable_constraints<T>::has_textures); 
         template<typename T> consteval static buffer_bytes_t static_offsets() noexcept;
 
 
-        template<typename T> constexpr const pipeline<T>& associated_pipeline() const noexcept;
-        template<typename T> constexpr const pipeline_layout<T>& associated_pipeline_layout() const noexcept;
-        template<typename T> constexpr const std::array<VkDescriptorSet, FramesInFlight>& desc_set() const noexcept;
+        template<typename T> constexpr const pipeline<T>&                                 associated_pipeline()        const noexcept;
+        template<typename T> constexpr const pipeline_layout<T>&                          associated_pipeline_layout() const noexcept;
+        template<typename T> constexpr const std::array<VkDescriptorSet, FramesInFlight>& desc_set()                   const noexcept;
 
         friend struct command_buffer;
 
     public:
         //template<typename T> constexpr const attribute_types<T>& attributes() const noexcept;
-        template<typename T> constexpr std::span<typename T::uniform_type> uniform_map() const noexcept requires renderable_constraints<T>::has_uniform;
+        template<typename T> constexpr std::span<typename T::uniform_type, FramesInFlight> uniform_map() const noexcept requires (renderable_constraints<T>::has_uniform);
+        template<typename T> constexpr std::span<const std::byte, 0>                       uniform_map() const noexcept requires (!renderable_constraints<T>::has_uniform);
         template<typename T> constexpr typename T::push_constant_types push_constants() const noexcept requires renderable_constraints<T>::has_push_constants;
 
     private:

@@ -54,6 +54,11 @@ namespace d2d {
             return ret; 
         }
         constexpr attribute_types attributes() noexcept { return std::tie(transform, border_width); }
-        
+    
+    public:
+        template<typename... Ts, typename UniformT, std::size_t N>
+        constexpr static void on_swap_chain_update(basic_window<Ts...> const& win, std::span<UniformT, N> uniform_map) noexcept {
+            for(std::size_t i = 0; i < N; ++i) std::memcpy(&uniform_map[i], &win.swap_chain().extent(), sizeof(UniformT));
+        }
     };
 }

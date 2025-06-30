@@ -8,8 +8,6 @@
 #include "Duo2D/vulkan/display/texture.hpp"
 #include "Duo2D/vulkan/traits/attribute_traits.hpp"
 #include "Duo2D/traits/renderable_traits.hpp"
-#include "Duo2D/vulkan/display/image_sampler.hpp"
-#include "Duo2D/vulkan/display/image_view.hpp"
 #include "Duo2D/vulkan/memory/buffer.hpp"
 #include "Duo2D/vulkan/memory/descriptor_pool.hpp"
 #include "Duo2D/vulkan/memory/descriptor_set_layout.hpp"

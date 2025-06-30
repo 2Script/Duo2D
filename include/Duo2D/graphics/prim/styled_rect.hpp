@@ -4,8 +4,8 @@
 #include "Duo2D/arith/vector.hpp"
 #include "Duo2D/graphics/core/color.hpp"
 #include "Duo2D/graphics/core/renderable.hpp"
-#include "Duo2D/traits/renderable_constraints.hpp"
 #include "Duo2D/traits/renderable_traits.hpp"
+#include "Duo2D/vulkan/traits/attribute_traits.hpp"
 #include "Duo2D/arith/size.hpp"
 #include "Duo2D/arith/matrix.hpp"
 #include "Duo2D/traits/shader_traits.hpp"
@@ -59,6 +59,12 @@ namespace d2d {
         consteval static std::array<index_type, index_count> indices() noexcept { return {0, 1, 2, 2, 1, 3}; }
         constexpr instance_type instance() const noexcept { return std::bit_cast<instance_type>(bounds); }
         constexpr attribute_types attributes() noexcept { return std::tie(color, transform, border_width, texture_bounds); }
+    
+    public:
+        template<typename... Ts, typename UniformT, std::size_t N>
+        constexpr static void on_swap_chain_update(basic_window<Ts...> const& win, std::span<UniformT, N> uniform_map) noexcept {
+            for(std::size_t i = 0; i < N; ++i) std::memcpy(&uniform_map[i], &win.swap_chain().extent(), sizeof(UniformT));
+        }
     };
     
     struct clone_rect : styled_rect {};

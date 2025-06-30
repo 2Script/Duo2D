@@ -2,7 +2,7 @@
 #include <string_view>
 #include <llfio.hpp>
 #include <msdfgen.h>
-#include <unordered_map>
+#include <map>
 #include "Duo2D/arith/point.hpp"
 #include "Duo2D/graphics/core/font.hpp"
 #include "Duo2D/traits/generic_functor.hpp"

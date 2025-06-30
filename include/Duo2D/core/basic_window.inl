@@ -1,8 +1,7 @@
 #pragma once
-#include "Duo2D/core/window.hpp"
+#include "Duo2D/core/basic_window.hpp"
 
 #include <GLFW/glfw3.h>
-#include <cmath>
 #include <cstring>
 #include <memory>
 #include <result/verify.h>
@@ -10,15 +9,12 @@
 #include <vulkan/vulkan_core.h>
 
 #include "Duo2D/core/error.hpp"
-#include "Duo2D/graphics/prim/glyph.hpp"
-#include "Duo2D/graphics/prim/debug_rect.hpp"
 #include "Duo2D/vulkan/core/command_buffer.hpp"
 #include "Duo2D/vulkan/device/logical_device.hpp"
 #include "Duo2D/vulkan/memory/renderable_tuple.hpp"
 #include "Duo2D/vulkan/display/surface.hpp"
 #include "Duo2D/vulkan/display/swap_chain.hpp"
 #include "Duo2D/core/make.hpp"
-#include "Duo2D/graphics/prim/styled_rect.hpp"
 #include "Duo2D/vulkan/sync/semaphore.hpp"
 #include "Duo2D/vulkan/device/queue_family.hpp"
 
@@ -29,7 +25,7 @@ namespace d2d {
         //Create window
         glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
         glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE); //temporary
-        window ret{glfwCreateWindow(width, height, title.data(), nullptr, nullptr)};
+        basic_window ret{glfwCreateWindow(width, height, title.data(), nullptr, nullptr)};
         __D2D_GLFW_VERIFY(ret.handle);
 
         //Create surface
@@ -53,7 +49,7 @@ namespace d2d {
         RESULT_TRY_MOVE(c, make<vk::command_pool>(logi_device, phys_device));
         command_pool_ptr = std::make_shared<vk::command_pool>(std::move(c));
         
-        //Create render pass
+        //Create render pass/
         RESULT_TRY_MOVE(_render_pass, make<vk::render_pass>(logi_device));
 
         //Create swap chain
@@ -75,10 +71,10 @@ namespace d2d {
             submit_semaphores.push_back(*std::move(submit_semaphore));
         }
 
-        RESULT_TRY_MOVE((*static_cast<vk::renderable_tuple<impl::frames_in_flight, styled_rect, debug_rect, clone_rect, glyph>*>(this)), (make<vk::renderable_tuple<impl::frames_in_flight, styled_rect, debug_rect, clone_rect, glyph>>(logi_device, phys_device, _render_pass)));
+        RESULT_TRY_MOVE((*static_cast<vk::renderable_tuple<impl::frames_in_flight, Ts...>*>(this)), (make<vk::renderable_tuple<impl::frames_in_flight, Ts...>>(logi_device, phys_device, _render_pass)));
 
         //update uniform buffer
-        (std::memcpy(&this->template uniform_map<Ts>()[frame_idx], &_swap_chain.extent(), sizeof(extent2)), ...);
+        (Ts::on_swap_chain_update(*this, this->template uniform_map<Ts>()), ...);
 
         return {};
     }
@@ -100,7 +96,7 @@ namespace d2d {
         case VK_ERROR_OUT_OF_DATE_KHR:
         case VK_SUBOPTIMAL_KHR: {
             RESULT_TRY_MOVE(_swap_chain, make<vk::swap_chain>(logi_device_ptr, phys_device_ptr, _render_pass, _surface, *this));
-            (std::memcpy(&this->template uniform_map<Ts>()[frame_idx], &_swap_chain.extent(), sizeof(extent2)), ...);
+            (Ts::on_swap_chain_update(*this, this->template uniform_map<Ts>()), ...);
             return {};
         }
         default: 
