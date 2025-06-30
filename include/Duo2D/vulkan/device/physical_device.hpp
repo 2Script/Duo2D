@@ -3,11 +3,11 @@
 #include <array>
 #include <set>
 #include <compare>
-#include <memory>
 #include <vulkan/vulkan.h>
 #include <vulkan/vulkan_core.h>
 
 #include "Duo2D/core/error.hpp"
+#include "Duo2D/traits/renderable_traits.hpp"
 #include "Duo2D/vulkan/core/vulkan_ptr.hpp"
 #include "Duo2D/vulkan/device/queue_family.hpp"
 #include "Duo2D/vulkan/device/extension.hpp"
@@ -15,14 +15,15 @@
 #include "Duo2D/vulkan/device/device_type.hpp"
 #include "Duo2D/vulkan/display/display_format.hpp"
 #include "Duo2D/vulkan/display/present_mode.hpp"
+#include "Duo2D/vulkan/display/surface.hpp"
 
 namespace d2d {
-    struct window;
+    template<impl::renderable_like... Ts> struct basic_window;
 }
 
 namespace d2d::vk {
     struct physical_device : vulkan_ptr_base<VkPhysicalDevice> {
-        static result<physical_device> create(VkPhysicalDevice& device_handle, ::d2d::window& dummy_window) noexcept;
+        static result<physical_device> create(VkPhysicalDevice& device_handle, surface const& dummy_surface) noexcept;
         
     public:
         std::string_view name;

@@ -1,3 +1,4 @@
+#pragma once
 #include "Duo2D/core/window.hpp"
 
 #include <GLFW/glfw3.h>
@@ -22,7 +23,8 @@
 #include "Duo2D/vulkan/device/queue_family.hpp"
 
 namespace d2d {
-    result<window> window::create(std::string_view title, std::size_t width, std::size_t height, std::shared_ptr<vk::instance> i) noexcept {
+    template<impl::renderable_like... Ts>
+    result<basic_window<Ts...>> basic_window<Ts...>::create(std::string_view title, std::size_t width, std::size_t height, std::shared_ptr<vk::instance> i) noexcept {
 
         //Create window
         glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
@@ -38,7 +40,8 @@ namespace d2d {
 }
 
 namespace d2d {
-    result<void> window::initialize(std::shared_ptr<vk::logical_device> logi_device, std::shared_ptr<vk::physical_device> phys_device) noexcept {
+    template<impl::renderable_like... Ts>
+    result<void> basic_window<Ts...>::initialize(std::shared_ptr<vk::logical_device> logi_device, std::shared_ptr<vk::physical_device> phys_device) noexcept {
         if(_swap_chain) 
             return {}; //return error::window_already_initialized;
 
@@ -48,7 +51,7 @@ namespace d2d {
         //Create command pool
         vk::command_pool c;
         RESULT_TRY_MOVE(c, make<vk::command_pool>(logi_device, phys_device));
-        copy_cmd_pool_ptr = std::make_shared<vk::command_pool>(std::move(c));
+        command_pool_ptr = std::make_shared<vk::command_pool>(std::move(c));
         
         //Create render pass
         __D2D_TRY_MAKE(_render_pass, make<vk::render_pass>(logi_device), rp);
@@ -58,7 +61,7 @@ namespace d2d {
 
         for(std::size_t i = 0; i < impl::frames_in_flight; ++i) {
             //Create command buffers
-            __D2D_TRY_MAKE(command_buffers[i], make<vk::command_buffer>(logi_device, copy_cmd_pool_ptr), cb);
+            __D2D_TRY_MAKE(command_buffers[i], make<vk::command_buffer>(logi_device, command_pool_ptr), cb);
 
             //Create fences & sempahores
             __D2D_TRY_MAKE(render_fences[i], make<vk::fence>(logi_device), f);
@@ -66,8 +69,8 @@ namespace d2d {
         }
         
         //Create submit sempahores
-        submit_semaphores.reserve(_swap_chain.image_count);
-        for(std::size_t i = 0; i < _swap_chain.image_count; ++i) {
+        submit_semaphores.reserve(_swap_chain.image_count());
+        for(std::size_t i = 0; i < _swap_chain.image_count(); ++i) {
             RESULT_VERIFY_UNSCOPED(make<vk::semaphore>(logi_device), submit_semaphore);
             submit_semaphores.push_back(*std::move(submit_semaphore));
         }
@@ -75,17 +78,15 @@ namespace d2d {
         __D2D_TRY_MAKE((*static_cast<vk::renderable_tuple<impl::frames_in_flight, styled_rect, debug_rect, clone_rect, glyph>*>(this)), (make<vk::renderable_tuple<impl::frames_in_flight, styled_rect, debug_rect, clone_rect, glyph>>(logi_device, phys_device, _render_pass)), rb);
 
         //update uniform buffer
-        std::memcpy(&uniform_map<clone_rect>()[frame_idx], &_swap_chain.extent, sizeof(extent2));
-        std::memcpy(&uniform_map<styled_rect>()[frame_idx], &_swap_chain.extent, sizeof(extent2));
-        std::memcpy(&uniform_map<debug_rect>()[frame_idx], &_swap_chain.extent, sizeof(extent2));
-        std::memcpy(&uniform_map<glyph>()[frame_idx], &_swap_chain.extent, sizeof(extent2));
+        (std::memcpy(&this->template uniform_map<Ts>()[frame_idx], &_swap_chain.extent(), sizeof(extent2)), ...);
 
         return {};
     }
 }
 
 namespace d2d {
-    result<void> window::render() noexcept {
+    template<impl::renderable_like... Ts>
+    result<void> basic_window<Ts...>::render() noexcept {
         //wait for rendering to finish last frame
         RESULT_VERIFY(render_fences[frame_idx].wait());
 
@@ -99,30 +100,32 @@ namespace d2d {
         case VK_ERROR_OUT_OF_DATE_KHR:
         case VK_SUBOPTIMAL_KHR: {
             __D2D_TRY_MAKE(_swap_chain, make<vk::swap_chain>(logi_device_ptr, phys_device_ptr, _render_pass, _surface, *this), s);
-            std::memcpy(&uniform_map<clone_rect>()[frame_idx], &_swap_chain.extent, sizeof(extent2));
-            std::memcpy(&uniform_map<styled_rect>()[frame_idx], &_swap_chain.extent, sizeof(extent2));
-            std::memcpy(&uniform_map<debug_rect>()[frame_idx], &_swap_chain.extent, sizeof(extent2));
-            std::memcpy(&uniform_map<glyph>()[frame_idx], &_swap_chain.extent, sizeof(extent2));
+            (std::memcpy(&this->template uniform_map<Ts>()[frame_idx], &_swap_chain.extent(), sizeof(extent2)), ...);
             return {};
         }
         default: 
             return static_cast<errc>(__D2D_VKRESULT_TO_ERRC(nir));
         }
 
-        if(empty<styled_rect>() && empty<debug_rect>())
+        if((this->template empty<Ts>() && ...))
             return {};
-
-        
 
 
         RESULT_VERIFY(render_fences[frame_idx].reset());
 
         RESULT_VERIFY(command_buffers[frame_idx].reset());
         RESULT_VERIFY(command_buffers[frame_idx].render_begin(_swap_chain, _render_pass, image_index));
-        RESULT_VERIFY(command_buffers[frame_idx].draw<clone_rect>(*this));
-        RESULT_VERIFY(command_buffers[frame_idx].draw<styled_rect>(*this));
-        RESULT_VERIFY(command_buffers[frame_idx].draw<debug_rect>(*this));
-        RESULT_VERIFY(command_buffers[frame_idx].draw<glyph>(*this));
+        
+        //TODO: Simplify this
+        errc error_code = error::unknown;
+        auto create_descriptors = [&]<typename T>(errc& current_error_code) noexcept -> errc {
+            if(current_error_code != error::unknown) return current_error_code;
+            RESULT_VERIFY(command_buffers[frame_idx].draw<T>(*this));
+            return error::unknown;
+        };
+        ((error_code = create_descriptors.template operator()<Ts>(error_code)), ...);
+        if(error_code != error::unknown) return error_code;
+
         RESULT_VERIFY(command_buffers[frame_idx].render_end());
 
         constexpr static std::array<VkPipelineStageFlags, 1> wait_stages = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};

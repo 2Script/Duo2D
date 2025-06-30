@@ -270,7 +270,6 @@ namespace d2d::vk {
 
         template<std::size_t FramesInFlight, ::d2d::impl::renderable_like... Ts>
         friend struct renderable_tuple;
-        friend struct ::d2d::window;
     };
 }
 

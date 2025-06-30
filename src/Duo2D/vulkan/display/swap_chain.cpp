@@ -2,12 +2,11 @@
 #include "Duo2D/vulkan/display/image_view.hpp"
 #include "Duo2D/core/make.hpp"
 #include "Duo2D/vulkan/device/physical_device.hpp"
+#include "Duo2D/vulkan/device/logical_device.hpp"
 #include "Duo2D/vulkan/display/render_pass.hpp"
-#include "Duo2D/core/window.hpp"
-#include <vulkan/vulkan_core.h>
 
 namespace d2d::vk {
-    result<swap_chain> swap_chain::create(std::shared_ptr<logical_device> logi_device, std::weak_ptr<physical_device> phys_device, render_pass& window_render_pass, surface& window_surface, ::d2d::window& w) noexcept {
+    result<swap_chain> swap_chain::create(std::shared_ptr<logical_device> logi_device, std::weak_ptr<physical_device> phys_device, render_pass& window_render_pass, surface& window_surface, GLFWwindow* w) noexcept {
         swap_chain ret{};
         ret.dependent_handle = logi_device;
         __D2D_WEAK_PTR_TRY_LOCK(phys_device_ptr, phys_device);
@@ -17,11 +16,12 @@ namespace d2d::vk {
         //Create swap extent
         {
         if(device_capabilities.currentExtent.width != std::numeric_limits<std::uint32_t>().max())
-            ret.extent = {device_capabilities.currentExtent.width, device_capabilities.currentExtent.height};
+            ret._extent = {device_capabilities.currentExtent.width, device_capabilities.currentExtent.height};
         else {
             int width = 0, height = 0;
             glfwGetFramebufferSize(w, &width, &height);
-            ret.extent = {
+            __D2D_GLFW_VERIFY((width != 0 && height != 0));
+            ret._extent = {
                 std::clamp(static_cast<uint32_t>(width), device_capabilities.minImageExtent.width, device_capabilities.maxImageExtent.width),
                 std::clamp(static_cast<uint32_t>(height), device_capabilities.minImageExtent.height, device_capabilities.maxImageExtent.height)
             };
@@ -40,7 +40,7 @@ namespace d2d::vk {
             .minImageCount = image_count,
             .imageFormat = logi_device->format.format_id,
             .imageColorSpace = logi_device->format.color_space_id,
-            .imageExtent = static_cast<VkExtent2D>(ret.extent),
+            .imageExtent = static_cast<VkExtent2D>(ret._extent),
             .imageArrayLayers = 1,
             .imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
             .preTransform = device_capabilities.currentTransform,
@@ -68,22 +68,22 @@ namespace d2d::vk {
 
         //Get swap chain images
         {
-        ret.image_count = 0;
-        vkGetSwapchainImagesKHR(*logi_device, ret.handle, &ret.image_count, nullptr);
-        ret.images.resize(ret.image_count);
-        vkGetSwapchainImagesKHR(*logi_device, ret.handle, &ret.image_count, ret.images.data());
+        ret._image_count = 0;
+        vkGetSwapchainImagesKHR(*logi_device, ret.handle, &ret._image_count, nullptr);
+        ret.images.resize(ret._image_count);
+        vkGetSwapchainImagesKHR(*logi_device, ret.handle, &ret._image_count, ret.images.data());
         }
 
         //Create swap chain image views
-        ret.image_views.resize(ret.image_count);
-        for (size_t i = 0; i < ret.image_count; i++) {
+        ret.image_views.resize(ret._image_count);
+        for (size_t i = 0; i < ret._image_count; i++) {
             __D2D_TRY_MAKE(ret.image_views[i], make<image_view>(logi_device, ret.images[i], logi_device->format.format_id), iv);
         }
 
         //Create framebuffers
-        ret.framebuffers.resize(ret.image_count);
-        for (size_t i = 0; i < ret.image_count; i++) {
-            __D2D_TRY_MAKE(ret.framebuffers[i], make<framebuffer>(logi_device, ret.image_views[i], window_render_pass, ret.extent), f);
+        ret.framebuffers.resize(ret._image_count);
+        for (size_t i = 0; i < ret._image_count; i++) {
+            __D2D_TRY_MAKE(ret.framebuffers[i], make<framebuffer>(logi_device, ret.image_views[i], window_render_pass, ret._extent), f);
         }
 
         return ret;

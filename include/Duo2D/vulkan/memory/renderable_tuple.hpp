@@ -136,8 +136,6 @@ namespace d2d::vk {
             return std::get<renderable_data<T, FramesInFlight>>(renderable_datas);
         }
 
-        friend struct ::d2d::window;
-
 
     protected:
         std::tuple<renderable_data<Ts, FramesInFlight>...> renderable_datas;
