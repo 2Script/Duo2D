@@ -6,5 +6,8 @@
 #include "Duo2D/graphics/prim/styled_rect.hpp"
 
 namespace d2d {
-    using window = basic_window<styled_rect, debug_rect, clone_rect, glyph>;
+    template<typename... Ts>
+    using extended_window = basic_window<styled_rect, debug_rect, clone_rect, glyph, Ts...>;
+
+    using window = extended_window<>;
 }
