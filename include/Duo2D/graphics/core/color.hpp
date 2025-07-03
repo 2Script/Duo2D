@@ -1,5 +1,6 @@
 #pragma once
 #include <array>
+#include <bit>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
@@ -27,8 +28,8 @@ namespace d2d {
 
         constexpr static std::size_t component_max = std::numeric_limits<component_type>::max() >> ((sizeof(component_type) * 8) - BPC);
 
-    private:
-        constexpr static bool perfect_sizing = (Channels * sizeof(component_type)) == sizeof(value_type);
+    public:
+        constexpr static bool perfect_sizing = sizeof(basic_color_array<Channels, BPC>) == sizeof(value_type);
 
     public:
         constexpr basic_color() noexcept = default;
@@ -55,6 +56,13 @@ namespace d2d {
 
     };
 }
+
+template<std::size_t Channels, std::size_t BPC> requires (sizeof(typename d2d::basic_color<Channels, BPC>::value_type) <= sizeof(std::size_t) && d2d::basic_color<Channels, BPC>::perfect_sizing)
+struct std::hash<d2d::basic_color<Channels, BPC>> {
+    constexpr std::size_t operator()(d2d::basic_color<Channels, BPC> const& color) const noexcept {
+        return static_cast<std::size_t>(std::bit_cast<typename d2d::basic_color<Channels, BPC>::value_type>(color));
+    }
+};
 
 
 namespace d2d {

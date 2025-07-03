@@ -1,10 +1,10 @@
 #pragma once
 #include <algorithm>
 #include <array>
+#include <climits>
 #include <cstddef>
 #include <cstdint>
 #include <functional>
-#include <span>
 #include <tuple>
 #include <type_traits>
 #include <utility>
@@ -30,6 +30,14 @@ namespace d2d {
         constexpr static bool rotatable    = impl::vector_traits<Dims, UnitTy, HoldsData, TransformFlags>::rotatable;
         constexpr static bool translatable = impl::vector_traits<Dims, UnitTy, HoldsData, TransformFlags>::translatable;
 
+    public:
+        using punned_integer_type = 
+            std::conditional_t<sizeof(std::array<UnitTy, Dims>) * CHAR_BIT ==  8, std::uint8_t,
+            std::conditional_t<sizeof(std::array<UnitTy, Dims>) * CHAR_BIT == 16, std::uint16_t,
+            std::conditional_t<sizeof(std::array<UnitTy, Dims>) * CHAR_BIT == 32, std::uint32_t, 
+            std::conditional_t<sizeof(std::array<UnitTy, Dims>) * CHAR_BIT == 64, std::uint64_t,
+        void>>>>;
+        constexpr static bool punnable = !std::is_same_v<punned_integer_type, void>;
 
     public:
         constexpr       UnitTy& x()       noexcept requires (impl::within_graphical_coordinates<Dims> && HoldsData == impl::vec_data_type::point) { return (*this)[0]; }
@@ -129,6 +137,15 @@ namespace d2d {
         return {(lhs[1] * rhs[2] - lhs[2] * rhs[1]), (lhs[2] * rhs[0] - lhs[0] * rhs[2]), (lhs[0] * rhs[1] - lhs[1] * rhs[0])};
     }
 }
+
+
+//TODO?: make a generalized std::hash specialization and make this a custom hash type
+template<std::size_t Dims, typename UnitTy, d2d::impl::vec_data_type HoldsData, std::uint8_t TransformFlags> requires (sizeof(d2d::vector<Dims, UnitTy, HoldsData, TransformFlags>) <= sizeof(std::size_t) && d2d::vector<Dims, UnitTy, HoldsData, TransformFlags>::punnable)
+struct std::hash<d2d::vector<Dims, UnitTy, HoldsData, TransformFlags>> {
+    constexpr std::size_t operator()(d2d::vector<Dims, UnitTy, HoldsData, TransformFlags> const& vec) const noexcept {
+        return static_cast<std::size_t>(std::bit_cast<typename d2d::vector<Dims, UnitTy, HoldsData, TransformFlags>::punned_integer_type>(vec));
+    }
+};
 
 
 namespace d2d {
