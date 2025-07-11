@@ -8,11 +8,11 @@
 #include "Duo2D/vulkan/traits/attribute_traits.hpp"
 #include "Duo2D/arith/size.hpp"
 #include "Duo2D/arith/matrix.hpp"
-#include "Duo2D/traits/shader_traits.hpp"
 #include "Duo2D/shaders/rect.hpp"
 #include "Duo2D/vulkan/memory/attribute.hpp"
 #include <bit>
 #include <cstddef>
+#include <cstdint>
 #include <tuple>
 #include <vulkan/vulkan_core.h>
 
@@ -23,24 +23,24 @@ namespace d2d {
         vk_mat2 rotation;
         vec2<float> translation;
     };
-    template<> struct shader_traits<styled_rect> {
+    template<> struct renderable_traits<styled_rect> {
         using shader_type = styled_rect;
         using shader_data_type = shaders::rect;
         using uniform_type = extent2;
         using push_constant_types = std::tuple<extent2&>;
         using attribute_types = vk::make_attribute_types_t<true_color, transform2, std::uint32_t, rect<std::uint32_t>>;
         using texture_type = vk::texture;
-        constexpr static std::size_t max_texture_count = 2;
-        constexpr static VkCullModeFlags cull_mode = VK_CULL_MODE_BACK_BIT;
-        constexpr static VkFrontFace front_face = VK_FRONT_FACE_CLOCKWISE;
-    };
-    template<> struct renderable_traits<styled_rect> : shader_traits<styled_rect> {
         using index_type = std::uint16_t;
         struct instance_type {
             pt2<float> pos;
             size2<float> size;
         }; 
+
+        constexpr static std::size_t max_texture_count = 2;
         constexpr static std::size_t index_count = 6;
+
+        constexpr static VkCullModeFlags cull_mode = VK_CULL_MODE_BACK_BIT;
+        constexpr static VkFrontFace front_face = VK_FRONT_FACE_CLOCKWISE;
     };
 }
 
@@ -66,6 +66,9 @@ namespace d2d {
             for(std::size_t i = 0; i < N; ++i) std::memcpy(&uniform_map[i], &win.swap_chain().extent(), sizeof(UniformT));
         }
     };
-    
+}
+
+namespace d2d {
     struct clone_rect : styled_rect {};
+    template<> struct renderable_traits<clone_rect> : public renderable_traits<styled_rect> {};
 }

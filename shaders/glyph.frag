@@ -7,7 +7,7 @@ layout(binding = 1) uniform sampler2DArray sampled_textures[];
 layout(location = 0) in vec4 color_in;
 layout(location = 1) flat in uint font_texture_idx_in;
 layout(location = 2) in vec3 uv_in;
-layout(location = 3) in vec2 size_in;
+layout(location = 3) flat in uint size_in;
 
 layout(location = 0) out vec4 color_out;
 
@@ -17,8 +17,8 @@ float median(vec3 value){
 }
 
 void main() {
-    if(font_texture_idx_in >= 65535) {
-        color_out = color_in;
+    if(uv_in == vec3(0,0,0) || font_texture_idx_in >= 65535) {
+        color_out = vec4(0.0, 0.0, 0.0, 0.0);;
         return;
     }
     

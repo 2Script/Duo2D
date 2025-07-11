@@ -1,5 +1,6 @@
 #pragma once
 #include <filesystem>
+#include <format>
 #include <string>
 #include <utility>
 
@@ -15,6 +16,10 @@ namespace d2d {
         constexpr std::filesystem::path const&& path() const&& noexcept { return std::move(second); }
         constexpr std::filesystem::path      && path()      && noexcept { return std::move(second); }
 
+    public:
         constexpr bool empty() const noexcept { return first.empty() || second.empty(); }
+
+    public:
+        constexpr std::string key() const noexcept { return std::format("font::{}", first); }
     };
 }

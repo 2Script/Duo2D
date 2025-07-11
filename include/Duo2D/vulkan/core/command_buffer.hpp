@@ -1,6 +1,7 @@
 #pragma once
 #include <cstddef>
 #include <memory>
+#include <span>
 #include <vulkan/vulkan.h>
 #include "Duo2D/vulkan/memory/buffer.hpp"
 #include "Duo2D/vulkan/memory/image.hpp"
@@ -9,11 +10,11 @@
 #include "Duo2D/vulkan/core/command_pool.hpp"
 #include "Duo2D/vulkan/display/render_pass.hpp"
 #include "Duo2D/vulkan/display/swap_chain.hpp"
-#include "Duo2D/traits/renderable_traits.hpp"
+#include "Duo2D/traits/directly_renderable.hpp"
 
 __D2D_DECLARE_VK_TRAITS_DEVICE_AUX(VkCommandBuffer, command_pool);
 
-namespace d2d::vk { template<std::size_t FiF, ::d2d::impl::renderable_like... Rs> /*requires (sizeof...(Rs) > 0)*/ struct renderable_tuple; }
+namespace d2d::vk { template<std::size_t FramesInFlight, typename> struct renderable_tuple; }
 
 
 namespace d2d::vk {
@@ -24,8 +25,8 @@ namespace d2d::vk {
         result<void> render_end() const noexcept;
         result<void> reset() const noexcept;
 
-        template<::d2d::impl::renderable_like T, std::size_t FiF, ::d2d::impl::renderable_like... Rs> 
-        result<void> draw(const renderable_tuple<FiF, Rs...>& renderables) const noexcept; 
+        template<::d2d::impl::directly_renderable T, std::size_t FiF, ::d2d::impl::directly_renderable... Rs> 
+        result<void> draw(const renderable_tuple<FiF, std::tuple<Rs...>>& renderables) const noexcept; 
         
         result<void> generic_begin() const noexcept;
         void copy_alike(buffer& dest, const buffer& src, std::size_t size, std::size_t offset = 0) const noexcept;

@@ -56,9 +56,7 @@ namespace d2d::vk {
 
 
     result<texture_idx_t> texture_map::load(const font& f, std::shared_ptr<logical_device> logi_device, std::shared_ptr<physical_device> phys_device, std::shared_ptr<command_pool> copy_cmd_pool, device_memory<std::dynamic_extent>& texture_mem) noexcept {
-        std::string key("font::");
-        key.append(f.name());
-        std::pair<iterator, bool> emplace_result = emplace(std::piecewise_construct, std::forward_as_tuple(std::move(key)), std::forward_as_tuple());
+        std::pair<iterator, bool> emplace_result = emplace(std::piecewise_construct, std::forward_as_tuple(f.key()), std::forward_as_tuple());
         texture& tex = emplace_result.first->second;
         if(!emplace_result.second) return tex.index();
 

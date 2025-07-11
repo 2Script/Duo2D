@@ -1,6 +1,7 @@
 #pragma once
 #include <type_traits>
 #include "Duo2D/graphics/core/color.hpp"
+#include "Duo2D/arith/vector.hpp"
 #include "Duo2D/traits/size_constant.hpp"
 
 namespace d2d::impl {
@@ -39,6 +40,10 @@ namespace d2d::impl {
     struct as_tuple<std::tuple<Ts...>> { using type = std::tuple<Ts...>; };
     template<typename T, std::size_t N>
     struct as_tuple<std::array<T, N>> { using type = std::array<T, N>; };
+    template<std::size_t Dims, arithmetic UnitTy, impl::vec_data_type HoldsData> requires (Dims <= 4)
+    struct as_tuple<vector<Dims, UnitTy, HoldsData>> { using type = std::tuple<vector<Dims, UnitTy, HoldsData>>; };
+    template<std::size_t Dims, typename UnitTy, impl::vec_data_type HoldsData>
+    struct as_tuple<vector<Dims, UnitTy, HoldsData>> { using type = std::array<UnitTy, Dims>; };
     template<std::size_t Channels, std::size_t BPC>
     struct as_tuple<basic_color<Channels, BPC>> { using type = std::tuple<basic_color<Channels, BPC>>; };
 

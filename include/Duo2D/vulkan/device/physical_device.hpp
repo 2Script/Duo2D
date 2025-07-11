@@ -7,7 +7,6 @@
 #include <vulkan/vulkan_core.h>
 
 #include "Duo2D/core/error.hpp"
-#include "Duo2D/traits/renderable_traits.hpp"
 #include "Duo2D/vulkan/core/vulkan_ptr.hpp"
 #include "Duo2D/vulkan/device/queue_family.hpp"
 #include "Duo2D/vulkan/device/extension.hpp"
@@ -18,7 +17,7 @@
 #include "Duo2D/vulkan/display/surface.hpp"
 
 namespace d2d {
-    template<impl::renderable_like... Ts> struct basic_window;
+    template<typename... Ts> struct basic_window;
 }
 
 namespace d2d::vk {

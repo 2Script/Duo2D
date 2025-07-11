@@ -1,4 +1,5 @@
 #pragma once
+#include "Duo2D/core/error.hpp"
 #include "Duo2D/vulkan/device/logical_device.hpp"
 #include "Duo2D/vulkan/device/physical_device.hpp"
 #include "Duo2D/vulkan/memory/renderable_allocator.hpp"
@@ -42,8 +43,8 @@ namespace d2d::vk {
         device_memory<N> old_mem = std::move(mem); //Make sure old memory used for the rest of the buffers stays alive until after bind
         auto m = make<device_memory<N>>(logi_device_ptr, phys_device_ptr, buffs, MemProps);
         if(m.has_value()) mem = *std::move(m);
-        else if(FallbackMemProps != 0 && m.error() == error::device_lacks_suitable_mem_type) {
-            RESULT_TRY_MOVE_UNSCOPED(mem, make<device_memory<N>>(logi_device_ptr, phys_device_ptr, buffs, FallbackMemProps), r)
+        else if(FallbackMemProps != 0 && (m.error() == error::device_lacks_suitable_mem_type || m.error() == error::out_of_gpu_memory)) {
+            RESULT_TRY_MOVE_UNSCOPED(mem, make<device_memory<N>>(logi_device_ptr, phys_device_ptr, buffs, FallbackMemProps), r);
         }
         else return m.error();
         

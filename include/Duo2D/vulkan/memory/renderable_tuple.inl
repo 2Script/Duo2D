@@ -2,7 +2,8 @@
 #include "Duo2D/core/error.hpp"
 #include "Duo2D/vulkan/display/texture.hpp"
 #include "Duo2D/vulkan/traits/buffer_traits.hpp"
-#include "Duo2D/traits/renderable_traits.hpp"
+#include "Duo2D/traits/renderable_properties.hpp"
+#include "Duo2D/traits/directly_renderable.hpp"
 #include "Duo2D/vulkan/memory/buffer.hpp"
 #include "Duo2D/vulkan/memory/renderable_allocator.hpp"
 #include "Duo2D/vulkan/memory/renderable_data.hpp"
@@ -17,8 +18,8 @@
 
 
 namespace d2d::vk {
-    template<std::size_t FiF, ::d2d::impl::renderable_like... Ts> //requires (sizeof...(Ts) > 0)
-    result<renderable_tuple<FiF, Ts...>> renderable_tuple<FiF, Ts...>::create(std::shared_ptr<logical_device> logi_device, std::shared_ptr<physical_device> phys_device, render_pass& window_render_pass) noexcept {
+    template<std::size_t FiF, ::d2d::impl::directly_renderable... Ts> //requires (sizeof...(Ts) > 0)
+    result<renderable_tuple<FiF, std::tuple<Ts...>>> renderable_tuple<FiF, std::tuple<Ts...>>::create(std::shared_ptr<logical_device> logi_device, std::shared_ptr<physical_device> phys_device, render_pass& window_render_pass) noexcept {
         renderable_tuple ret{};
         ret.logi_device_ptr = logi_device;
         ret.phys_device_ptr = phys_device;
@@ -93,11 +94,11 @@ namespace d2d::vk {
 }
 
 namespace d2d::vk {
-    template<std::size_t FiF, ::d2d::impl::renderable_like... Ts> //requires (sizeof...(Ts) > 0)
+    template<std::size_t FiF, ::d2d::impl::directly_renderable... Ts> //requires (sizeof...(Ts) > 0)
     template<typename T>
-    result<void> renderable_tuple<FiF, Ts...>::apply_changes(render_pass& window_render_pass) noexcept {
+    result<void> renderable_tuple<FiF, std::tuple<Ts...>>::apply_changes(render_pass& window_render_pass) noexcept {
         constexpr static std::size_t I = renderable_index<T>;
-        if(renderable_data_of<T>().input_renderables.size() == 0) {
+        if(renderable_data_of<T>().size() == 0) {
             data_buffs[I] = buffer{};
             return {};
         }
@@ -114,7 +115,7 @@ namespace d2d::vk {
         auto [staging_buffer, staging_mem] = *std::move(s);
 
         if(renderable_data_of<T>().input_size() > data_buffs[I].size()) 
-            RESULT_VERIFY((allocator.template alloc_buffer<I, renderable_data<T, FiF>::usage_flags(), VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 0>(std::span{data_buffs}, renderable_data_of<T>().input_size(), device_local_mem)));
+            RESULT_VERIFY((allocator.template alloc_buffer<I, renderable_data<T, FiF>::input_usage_flags(), VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 0>(std::span{data_buffs}, renderable_data_of<T>().input_size(), device_local_mem)));
         RESULT_VERIFY((allocator.staging_to_device_local(data_buffs[I], staging_buffer)));
 
         if constexpr (renderable_constraints<T>::has_textures) {
@@ -137,7 +138,7 @@ namespace d2d::vk {
         }
         
         if constexpr (!renderable_constraints<T>::has_attributes) {
-            renderable_data_of<T>().outdated = false;
+            renderable_data_of<T>().has_changes() = false;
             return {};
         }
 
@@ -161,146 +162,68 @@ namespace d2d::vk {
 
         (renderable_data_of<Ts>().emplace_attributes(buffer_offset, shared_mem_map, shared_mem.requirements()[renderable_index_with_attrib<Ts>].size), ...);
 
-        renderable_data_of<T>().outdated = false;
+        renderable_data_of<T>().has_changes() = false;
         return {};
     }
 
-    template<std::size_t FiF, ::d2d::impl::renderable_like... Ts> //requires (sizeof...(Ts) > 0)
+    template<std::size_t FiF, ::d2d::impl::directly_renderable... Ts> //requires (sizeof...(Ts) > 0)
     template<typename T>
-    constexpr bool renderable_tuple<FiF, Ts...>::has_changes() const noexcept {
-        return renderable_data_of<T>().outdated;
+    constexpr bool const& renderable_tuple<FiF, std::tuple<Ts...>>::has_changes() const noexcept {
+        return renderable_data_of<T>().has_changes();
+    }
+    template<std::size_t FiF, ::d2d::impl::directly_renderable... Ts> //requires (sizeof...(Ts) > 0)
+    template<typename T>
+    constexpr bool& renderable_tuple<FiF, std::tuple<Ts...>>::has_changes() noexcept {
+        return renderable_data_of<T>().has_changes();
     }
 }
 
 
-
-
 namespace d2d::vk {
-    template<std::size_t FiF, ::d2d::impl::renderable_like... Ts> //requires (sizeof...(Ts) > 0)
-    template<::d2d::impl::renderable_like R>
-    std::pair<typename renderable_tuple<FiF, Ts...>::template iterator<R>, bool> renderable_tuple<FiF, Ts...>::insert(const renderable_tuple<FiF, Ts...>::value_type<R>& value) noexcept {
-        using T = std::remove_cvref_t<R>;
-        auto ins = renderable_data_of<T>().input_renderables.insert(value);
-        if(ins.second) renderable_data_of<T>().outdated = true;
-        return ins;
+    template<std::size_t FiF, ::d2d::impl::directly_renderable... Ts> //requires (sizeof...(Ts) > 0)
+    template<typename T>
+    renderable_tuple<FiF, std::tuple<Ts...>>::iterator<T> renderable_tuple<FiF, std::tuple<Ts...>>::end() noexcept {
+        return renderable_data_of<T>().end();
     }
-
-    template<std::size_t FiF, ::d2d::impl::renderable_like... Ts> //requires (sizeof...(Ts) > 0)
-    template<::d2d::impl::renderable_like R>
-    std::pair<typename renderable_tuple<FiF, Ts...>::template iterator<R>, bool> renderable_tuple<FiF, Ts...>::insert(renderable_tuple<FiF, Ts...>::value_type<R>&& value) noexcept {
-        using T = std::remove_cvref_t<R>;
-        auto ins = renderable_data_of<T>().input_renderables.insert(std::move(value));
-        if(ins.second) renderable_data_of<T>().outdated = true;
-        return ins;
+    template<std::size_t FiF, ::d2d::impl::directly_renderable... Ts> //requires (sizeof...(Ts) > 0)
+    template<typename T>
+    renderable_tuple<FiF, std::tuple<Ts...>>::const_iterator<T> renderable_tuple<FiF, std::tuple<Ts...>>::end() const noexcept {
+        return renderable_data_of<T>().end();
     }
-    
-    template<std::size_t FiF, ::d2d::impl::renderable_like... Ts> //requires (sizeof...(Ts) > 0)
-    template<impl::constructible_from_second_type_of P>
-    std::pair<typename renderable_tuple<FiF, Ts...>::template iterator<typename std::remove_cvref_t<P>::second_type>, bool> renderable_tuple<FiF, Ts...>::insert(P&& value) noexcept {
-        using T = typename std::remove_cvref_t<P>::second_type;
-        auto ins = renderable_data_of<T>().input_renderables.insert(std::forward<P>(value));
-        if(ins.second) renderable_data_of<T>().outdated = true;
-        return ins;
-    }
-
-
-    template<std::size_t FiF, ::d2d::impl::renderable_like... Ts> //requires (sizeof...(Ts) > 0)
-    template<typename T, typename... Args>
-    std::pair<typename renderable_tuple<FiF, Ts...>::template iterator<T>, bool> renderable_tuple<FiF, Ts...>::emplace(Args&&... args) noexcept {
-        auto ins = renderable_data_of<T>().input_renderables.emplace(std::forward<Args>(args)...);
-        if(ins.second) renderable_data_of<T>().outdated = true;
-        return ins;
-    }
-
-    template<std::size_t FiF, ::d2d::impl::renderable_like... Ts> //requires (sizeof...(Ts) > 0)
-    template<typename T, typename... Args>
-    std::pair<typename renderable_tuple<FiF, Ts...>::template iterator<T>, bool> renderable_tuple<FiF, Ts...>::try_emplace(std::string_view str, Args&&... args) noexcept {
-        auto ins = renderable_data_of<T>().input_renderables.try_emplace(str, std::forward<Args>(args)...);
-        if(ins.second) renderable_data_of<T>().outdated = true;
-        return ins;
-    }
-
-    template<std::size_t FiF, ::d2d::impl::renderable_like... Ts> //requires (sizeof...(Ts) > 0)
-    template<typename T, typename S, typename... Args> requires std::is_constructible_v<std::string, S&&>
-    std::pair<typename renderable_tuple<FiF, Ts...>::template iterator<T>, bool> renderable_tuple<FiF, Ts...>::try_emplace(S&& str, Args&&... args) noexcept {
-        auto ins = renderable_data_of<T>().input_renderables.try_emplace(std::forward<S>(str), std::forward<Args>(args)...);
-        if(ins.second) renderable_data_of<T>().outdated = true;
-        return ins;
+    template<std::size_t FiF, ::d2d::impl::directly_renderable... Ts> //requires (sizeof...(Ts) > 0)
+    template<typename T>
+    renderable_tuple<FiF, std::tuple<Ts...>>::const_iterator<T> renderable_tuple<FiF, std::tuple<Ts...>>::cend() const noexcept {
+        return renderable_data_of<T>().cend();
     }
     
 
-    template<std::size_t FiF, ::d2d::impl::renderable_like... Ts> //requires (sizeof...(Ts) > 0)
+    template<std::size_t FiF, ::d2d::impl::directly_renderable... Ts> //requires (sizeof...(Ts) > 0)
     template<typename T>
-    renderable_tuple<FiF, Ts...>::iterator<T> renderable_tuple<FiF, Ts...>::erase(renderable_tuple<FiF, Ts...>::iterator<T> pos) noexcept {
-        renderable_data_of<T>().outdated = true;
-        return renderable_data_of<T>().input_renderables.erase(pos);
+    renderable_tuple<FiF, std::tuple<Ts...>>::iterator<T> renderable_tuple<FiF, std::tuple<Ts...>>::begin() noexcept {
+        return renderable_data_of<T>().begin();
     }
-    template<std::size_t FiF, ::d2d::impl::renderable_like... Ts> //requires (sizeof...(Ts) > 0)
+    template<std::size_t FiF, ::d2d::impl::directly_renderable... Ts> //requires (sizeof...(Ts) > 0)
     template<typename T>
-    renderable_tuple<FiF, Ts...>::iterator<T> renderable_tuple<FiF, Ts...>::erase(renderable_tuple<FiF, Ts...>::const_iterator<T> pos) noexcept {
-        renderable_data_of<T>().outdated = true;
-        return renderable_data_of<T>().input_renderables.erase(pos);
+    renderable_tuple<FiF, std::tuple<Ts...>>::const_iterator<T> renderable_tuple<FiF, std::tuple<Ts...>>::begin() const noexcept {
+        return renderable_data_of<T>().begin();
     }
-    template<std::size_t FiF, ::d2d::impl::renderable_like... Ts> //requires (sizeof...(Ts) > 0)
+    template<std::size_t FiF, ::d2d::impl::directly_renderable... Ts> //requires (sizeof...(Ts) > 0)
     template<typename T>
-    renderable_tuple<FiF, Ts...>::iterator<T> renderable_tuple<FiF, Ts...>::erase(renderable_tuple<FiF, Ts...>::const_iterator<T> first, renderable_tuple<FiF, Ts...>::const_iterator<T> last) noexcept {
-        renderable_data_of<T>().outdated = true;
-        return renderable_data_of<T>().input_renderables.erase(first, last);
-    }
-    template<std::size_t FiF, ::d2d::impl::renderable_like... Ts> //requires (sizeof...(Ts) > 0)
-    template<typename T>
-    std::size_t renderable_tuple<FiF, Ts...>::erase(std::string_view key) noexcept {
-        const std::size_t erased_count = renderable_data_of<T>().input_renderables.erase(key);
-        if(erased_count) renderable_data_of<T>().outdated = true;
-        return erased_count;
+    renderable_tuple<FiF, std::tuple<Ts...>>::const_iterator<T> renderable_tuple<FiF, std::tuple<Ts...>>::cbegin() const noexcept {
+        return renderable_data_of<T>().cbegin();
     }
 }
 
 namespace d2d::vk {
-    template<std::size_t FiF, ::d2d::impl::renderable_like... Ts> //requires (sizeof...(Ts) > 0)
+    template<std::size_t FiF, ::d2d::impl::directly_renderable... Ts> //requires (sizeof...(Ts) > 0)
     template<typename T>
-    renderable_tuple<FiF, Ts...>::iterator<T> renderable_tuple<FiF, Ts...>::end() noexcept {
-        return renderable_data_of<T>().input_renderables.end();
+    bool renderable_tuple<FiF, std::tuple<Ts...>>::empty() const noexcept {
+        return renderable_data_of<T>().empty();
     }
-    template<std::size_t FiF, ::d2d::impl::renderable_like... Ts> //requires (sizeof...(Ts) > 0)
+    template<std::size_t FiF, ::d2d::impl::directly_renderable... Ts> //requires (sizeof...(Ts) > 0)
     template<typename T>
-    renderable_tuple<FiF, Ts...>::const_iterator<T> renderable_tuple<FiF, Ts...>::end() const noexcept {
-        return renderable_data_of<T>().input_renderables.end();
-    }
-    template<std::size_t FiF, ::d2d::impl::renderable_like... Ts> //requires (sizeof...(Ts) > 0)
-    template<typename T>
-    renderable_tuple<FiF, Ts...>::const_iterator<T> renderable_tuple<FiF, Ts...>::cend() const noexcept {
-        return renderable_data_of<T>().input_renderables.cend();
-    }
-    
-
-    template<std::size_t FiF, ::d2d::impl::renderable_like... Ts> //requires (sizeof...(Ts) > 0)
-    template<typename T>
-    renderable_tuple<FiF, Ts...>::iterator<T> renderable_tuple<FiF, Ts...>::begin() noexcept {
-        return renderable_data_of<T>().input_renderables.begin();
-    }
-    template<std::size_t FiF, ::d2d::impl::renderable_like... Ts> //requires (sizeof...(Ts) > 0)
-    template<typename T>
-    renderable_tuple<FiF, Ts...>::const_iterator<T> renderable_tuple<FiF, Ts...>::begin() const noexcept {
-        return renderable_data_of<T>().input_renderables.begin();
-    }
-    template<std::size_t FiF, ::d2d::impl::renderable_like... Ts> //requires (sizeof...(Ts) > 0)
-    template<typename T>
-    renderable_tuple<FiF, Ts...>::const_iterator<T> renderable_tuple<FiF, Ts...>::cbegin() const noexcept {
-        return renderable_data_of<T>().input_renderables.cbegin();
-    }
-}
-
-namespace d2d::vk {
-    template<std::size_t FiF, ::d2d::impl::renderable_like... Ts> //requires (sizeof...(Ts) > 0)
-    template<typename T>
-    bool renderable_tuple<FiF, Ts...>::empty() const noexcept {
-        return renderable_data_of<T>().input_renderables.empty();
-    }
-    template<std::size_t FiF, ::d2d::impl::renderable_like... Ts> //requires (sizeof...(Ts) > 0)
-    template<typename T>
-    std::size_t renderable_tuple<FiF, Ts...>::size() const noexcept {
-        return renderable_data_of<T>().input_renderables.size();
+    std::size_t renderable_tuple<FiF, std::tuple<Ts...>>::size() const noexcept {
+        return renderable_data_of<T>().size();
     }
 }
 
@@ -308,99 +231,99 @@ namespace d2d::vk {
 
 
 namespace d2d::vk {
-    template<std::size_t FiF, ::d2d::impl::renderable_like... Ts> //requires (sizeof...(Ts) > 0)
+    template<std::size_t FiF, ::d2d::impl::directly_renderable... Ts> //requires (sizeof...(Ts) > 0)
     template<typename T>
-    constexpr const buffer& renderable_tuple<FiF, Ts...>::index_buffer() const noexcept requires renderable_constraints<T>::has_indices { 
-        if constexpr (renderable_constraints<T>::instanced) return static_data_buff; 
+    constexpr const buffer& renderable_tuple<FiF, std::tuple<Ts...>>::index_buffer() const noexcept requires renderable_constraints<T>::has_indices { 
+        if constexpr (renderable_constraints<T>::has_fixed_indices) return static_data_buff; 
         else return data_buffs[renderable_index<T>];
     }
 
-    template<std::size_t FiF, ::d2d::impl::renderable_like... Ts> //requires (sizeof...(Ts) > 0)
+    template<std::size_t FiF, ::d2d::impl::directly_renderable... Ts> //requires (sizeof...(Ts) > 0)
     template<typename T>
-    constexpr const buffer& renderable_tuple<FiF, Ts...>::uniform_buffer() const noexcept requires renderable_constraints<T>::has_uniform { 
+    constexpr const buffer& renderable_tuple<FiF, std::tuple<Ts...>>::uniform_buffer() const noexcept requires renderable_constraints<T>::has_uniform { 
         return uniform_buff; 
     }
 
-    template<std::size_t FiF, ::d2d::impl::renderable_like... Ts> //requires (sizeof...(Ts) > 0)
+    template<std::size_t FiF, ::d2d::impl::directly_renderable... Ts> //requires (sizeof...(Ts) > 0)
     template<typename T>
-    constexpr const buffer& renderable_tuple<FiF, Ts...>::vertex_buffer() const noexcept requires renderable_constraints<T>::has_vertices  { 
-        if constexpr (renderable_constraints<T>::instanced) return static_data_buff; 
+    constexpr const buffer& renderable_tuple<FiF, std::tuple<Ts...>>::vertex_buffer() const noexcept requires renderable_constraints<T>::has_vertices  { 
+        if constexpr (renderable_constraints<T>::has_fixed_vertices) return static_data_buff; 
         else return data_buffs[renderable_index<T>];
     };
 
-    template<std::size_t FiF, ::d2d::impl::renderable_like... Ts> //requires (sizeof...(Ts) > 0)
+    template<std::size_t FiF, ::d2d::impl::directly_renderable... Ts> //requires (sizeof...(Ts) > 0)
     template<typename T> 
-    constexpr const buffer& renderable_tuple<FiF, Ts...>::instance_buffer() const noexcept requires renderable_constraints<T>::instanced { 
+    constexpr const buffer& renderable_tuple<FiF, std::tuple<Ts...>>::instance_buffer() const noexcept requires renderable_constraints<T>::has_instance_data { 
         return data_buffs[renderable_index<T>]; 
     };
 
-    template<std::size_t FiF, ::d2d::impl::renderable_like... Ts> //requires (sizeof...(Ts) > 0)
+    template<std::size_t FiF, ::d2d::impl::directly_renderable... Ts> //requires (sizeof...(Ts) > 0)
     template<typename T> 
-    constexpr const buffer& renderable_tuple<FiF, Ts...>::attribute_buffer() const noexcept requires renderable_constraints<T>::has_attributes { 
+    constexpr const buffer& renderable_tuple<FiF, std::tuple<Ts...>>::attribute_buffer() const noexcept requires renderable_constraints<T>::has_attributes { 
         return attribute_buffs[renderable_index_with_attrib<T>]; 
     };
 
-    template<std::size_t FiF, ::d2d::impl::renderable_like... Ts> //requires (sizeof...(Ts) > 0)
+    template<std::size_t FiF, ::d2d::impl::directly_renderable... Ts> //requires (sizeof...(Ts) > 0)
     template<typename T> 
-    constexpr const buffer& renderable_tuple<FiF, Ts...>::texture_idx_buffer() const noexcept requires renderable_constraints<T>::has_textures { 
+    constexpr const buffer& renderable_tuple<FiF, std::tuple<Ts...>>::texture_idx_buffer() const noexcept requires renderable_constraints<T>::has_textures { 
         return data_buffs[renderable_index<T>];
     };
 
 
-    template<std::size_t FiF, ::d2d::impl::renderable_like... Ts> //requires (sizeof...(Ts) > 0)
+    template<std::size_t FiF, ::d2d::impl::directly_renderable... Ts> //requires (sizeof...(Ts) > 0)
     template<typename T>
-    constexpr std::uint32_t renderable_tuple<FiF, Ts...>::index_count(std::size_t i) const noexcept requires (!renderable_constraints<T>::instanced && renderable_constraints<T>::has_indices) {
+    constexpr std::uint32_t renderable_tuple<FiF, std::tuple<Ts...>>::index_count(std::size_t i) const noexcept requires (!renderable_constraints<T>::has_fixed_indices && renderable_constraints<T>::has_indices) {
         return renderable_data_of<T>().index_count(i);
     }
 
-    template<std::size_t FiF, ::d2d::impl::renderable_like... Ts> //requires (sizeof...(Ts) > 0)
+    template<std::size_t FiF, ::d2d::impl::directly_renderable... Ts> //requires (sizeof...(Ts) > 0)
     template<typename T>
-    constexpr std::uint32_t renderable_tuple<FiF, Ts...>::vertex_count(std::size_t i) const noexcept requires (!renderable_constraints<T>::instanced && renderable_constraints<T>::has_vertices) {
+    constexpr std::uint32_t renderable_tuple<FiF, std::tuple<Ts...>>::vertex_count(std::size_t i) const noexcept requires (!renderable_constraints<T>::has_fixed_vertices && renderable_constraints<T>::has_vertices) {
         return renderable_data_of<T>().vertex_count(i);
     }
 
-    template<std::size_t FiF, ::d2d::impl::renderable_like... Ts> //requires (sizeof...(Ts) > 0)
+    template<std::size_t FiF, ::d2d::impl::directly_renderable... Ts> //requires (sizeof...(Ts) > 0)
     template<typename T>
-    constexpr std::size_t renderable_tuple<FiF, Ts...>::instance_count() const noexcept { 
+    constexpr std::size_t renderable_tuple<FiF, std::tuple<Ts...>>::instance_count() const noexcept { 
         return renderable_data_of<T>().instance_count();
     }
 
 
-    template<std::size_t FiF, ::d2d::impl::renderable_like... Ts> //requires (sizeof...(Ts) > 0)
+    template<std::size_t FiF, ::d2d::impl::directly_renderable... Ts> //requires (sizeof...(Ts) > 0)
     template<typename T>
-    constexpr std::uint32_t renderable_tuple<FiF, Ts...>::first_index(std::size_t i) const noexcept requires (!renderable_constraints<T>::instanced && renderable_constraints<T>::has_indices) {
+    constexpr std::uint32_t renderable_tuple<FiF, std::tuple<Ts...>>::first_index(std::size_t i) const noexcept requires (!renderable_constraints<T>::has_fixed_indices && renderable_constraints<T>::has_indices) {
         return renderable_data_of<T>().first_index(i);
     }
 
-    template<std::size_t FiF, ::d2d::impl::renderable_like... Ts> //requires (sizeof...(Ts) > 0)
+    template<std::size_t FiF, ::d2d::impl::directly_renderable... Ts> //requires (sizeof...(Ts) > 0)
     template<typename T>
-    constexpr std::uint32_t renderable_tuple<FiF, Ts...>::first_vertex(std::size_t i) const noexcept requires (!renderable_constraints<T>::instanced && renderable_constraints<T>::has_vertices) {
+    constexpr std::uint32_t renderable_tuple<FiF, std::tuple<Ts...>>::first_vertex(std::size_t i) const noexcept requires (!renderable_constraints<T>::has_fixed_vertices && renderable_constraints<T>::has_vertices) {
         return renderable_data_of<T>().first_vertex(i);
     }
 
-    template<std::size_t FiF, ::d2d::impl::renderable_like... Ts> //requires (sizeof...(Ts) > 0)
+    template<std::size_t FiF, ::d2d::impl::directly_renderable... Ts> //requires (sizeof...(Ts) > 0)
     template<typename T>
-    constexpr std::size_t renderable_tuple<FiF, Ts...>::vertex_buffer_offset() const noexcept requires (renderable_constraints<T>::has_vertices) {
-        if constexpr (renderable_constraints<T>::instanced) return static_offsets<T>()[buffer_data_type::vertex];
+    constexpr std::size_t renderable_tuple<FiF, std::tuple<Ts...>>::vertex_buffer_offset() const noexcept requires (renderable_constraints<T>::has_vertices) {
+        if constexpr (renderable_constraints<T>::has_fixed_vertices) return static_offsets<T>()[buffer_data_type::vertex];
         else return renderable_data_of<T>().vertex_buffer_offset();
     }
 
-    template<std::size_t FiF, ::d2d::impl::renderable_like... Ts> //requires (sizeof...(Ts) > 0)
+    template<std::size_t FiF, ::d2d::impl::directly_renderable... Ts> //requires (sizeof...(Ts) > 0)
     template<typename T>
-    constexpr std::size_t renderable_tuple<FiF, Ts...>::index_buffer_offset() const noexcept requires (renderable_constraints<T>::has_indices) {
-        if constexpr (renderable_constraints<T>::instanced) return static_offsets<T>()[buffer_data_type::index];
+    constexpr std::size_t renderable_tuple<FiF, std::tuple<Ts...>>::index_buffer_offset() const noexcept requires (renderable_constraints<T>::has_indices) {
+        if constexpr (renderable_constraints<T>::has_fixed_indices) return static_offsets<T>()[buffer_data_type::index];
         else return renderable_data_of<T>().index_buffer_offset();
     }
 
-    template<std::size_t FiF, ::d2d::impl::renderable_like... Ts> //requires (sizeof...(Ts) > 0)
+    template<std::size_t FiF, ::d2d::impl::directly_renderable... Ts> //requires (sizeof...(Ts) > 0)
     template<typename T>
-    constexpr std::size_t renderable_tuple<FiF, Ts...>::texture_idx_buffer_offset() const noexcept requires (renderable_constraints<T>::has_textures) {
+    constexpr std::size_t renderable_tuple<FiF, std::tuple<Ts...>>::texture_idx_buffer_offset() const noexcept requires (renderable_constraints<T>::has_textures) {
         return renderable_data_of<T>().texture_idx_buffer_offset();
     }
 
-    template<std::size_t FiF, ::d2d::impl::renderable_like... Ts> //requires (sizeof...(Ts) > 0)
+    template<std::size_t FiF, ::d2d::impl::directly_renderable... Ts> //requires (sizeof...(Ts) > 0)
     template<typename T> 
-    consteval buffer_bytes_t renderable_tuple<FiF, Ts...>::static_offsets() noexcept { 
+    consteval buffer_bytes_t renderable_tuple<FiF, std::tuple<Ts...>>::static_offsets() noexcept { 
         //TODO: cleanup
         std::array<buffer_bytes_t, sizeof...(Ts)> buff_offsets;
         constexpr std::array<buffer_bytes_t,sizeof...(Ts)> static_sizes = {
@@ -429,36 +352,36 @@ namespace d2d::vk {
 
 
 namespace d2d::vk {
-    template<std::size_t FiF, ::d2d::impl::renderable_like... Ts> //requires (sizeof...(Ts) > 0)
+    template<std::size_t FiF, ::d2d::impl::directly_renderable... Ts> //requires (sizeof...(Ts) > 0)
     template<typename T> 
-    constexpr const pipeline<T>& renderable_tuple<FiF, Ts...>::associated_pipeline() const noexcept{ 
+    constexpr const pipeline<T>& renderable_tuple<FiF, std::tuple<Ts...>>::associated_pipeline() const noexcept{ 
         return renderable_data_of<T>().pl;
     }
 
-    template<std::size_t FiF, ::d2d::impl::renderable_like... Ts> //requires (sizeof...(Ts) > 0)
+    template<std::size_t FiF, ::d2d::impl::directly_renderable... Ts> //requires (sizeof...(Ts) > 0)
     template<typename T> 
-    constexpr const pipeline_layout<T>& renderable_tuple<FiF, Ts...>::associated_pipeline_layout() const noexcept{ 
+    constexpr const pipeline_layout<T>& renderable_tuple<FiF, std::tuple<Ts...>>::associated_pipeline_layout() const noexcept{ 
         return renderable_data_of<T>().pl_layout;
     }
 
-    template<std::size_t FiF, ::d2d::impl::renderable_like... Ts> //requires (sizeof...(Ts) > 0)
+    template<std::size_t FiF, ::d2d::impl::directly_renderable... Ts> //requires (sizeof...(Ts) > 0)
     template<typename T> 
-    constexpr const std::array<VkDescriptorSet, FiF>& renderable_tuple<FiF, Ts...>::desc_set() const noexcept{ 
+    constexpr const std::array<VkDescriptorSet, FiF>& renderable_tuple<FiF, std::tuple<Ts...>>::desc_set() const noexcept{ 
         return renderable_data_of<T>().sets;
     }
 }
 
 
 namespace d2d::vk {
-    template<std::size_t FiF, ::d2d::impl::renderable_like... Ts> //requires (sizeof...(Ts) > 0)
+    template<std::size_t FiF, ::d2d::impl::directly_renderable... Ts> //requires (sizeof...(Ts) > 0)
     template<typename T> 
-    constexpr std::span<typename T::uniform_type, FiF> renderable_tuple<FiF, Ts...>::uniform_map() const noexcept requires (renderable_constraints<T>::has_uniform) { 
-        return std::span<typename T::uniform_type, FiF>{reinterpret_cast<typename T::uniform_type*>(reinterpret_cast<std::uintptr_t>(uniform_buffer_map) + static_offsets<T>()[buffer_data_type::uniform]), FiF}; 
+    constexpr std::span<typename renderable_properties<T>::uniform_type, FiF> renderable_tuple<FiF, std::tuple<Ts...>>::uniform_map() const noexcept requires (renderable_constraints<T>::has_uniform) { 
+        return std::span<typename renderable_properties<T>::uniform_type, FiF>{reinterpret_cast<typename renderable_properties<T>::uniform_type*>(reinterpret_cast<std::uintptr_t>(uniform_buffer_map) + static_offsets<T>()[buffer_data_type::uniform]), FiF}; 
     }
 
-    template<std::size_t FiF, ::d2d::impl::renderable_like... Ts> //requires (sizeof...(Ts) > 0)
+    template<std::size_t FiF, ::d2d::impl::directly_renderable... Ts> //requires (sizeof...(Ts) > 0)
     template<typename T> 
-    constexpr std::span<const std::byte, 0> renderable_tuple<FiF, Ts...>::uniform_map() const noexcept requires (!renderable_constraints<T>::has_uniform) { 
+    constexpr std::span<std::byte, 0> renderable_tuple<FiF, std::tuple<Ts...>>::uniform_map() const noexcept requires (!renderable_constraints<T>::has_uniform) { 
         return {}; 
     }
 }

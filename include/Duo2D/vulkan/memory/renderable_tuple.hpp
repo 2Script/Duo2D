@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <cstdio>
 #include <cstdlib>
+#include <type_traits>
 #include <utility>
 #include <tuple>
 #include <vulkan/vulkan.h>
@@ -19,19 +20,21 @@
 #include "Duo2D/vulkan/memory/renderable_data.hpp"
 #include "Duo2D/vulkan/memory/pipeline.hpp"
 #include "Duo2D/vulkan/memory/pipeline_layout.hpp"
-#include "Duo2D/traits/renderable_traits.hpp"
+#include "Duo2D/traits/renderable_properties.hpp"
+#include "Duo2D/traits/directly_renderable.hpp"
 #include "Duo2D/traits/renderable_constraints.hpp"
 
 
-namespace d2d::vk::impl {
-    template<typename P>
-    concept constructible_from_second_type_of = std::constructible_from<typename renderable_input_map<typename std::remove_cvref_t<P>::second_type>::value_type, P&&>;
-}
-
 namespace d2d::vk {
-    template<std::size_t FramesInFlight, ::d2d::impl::renderable_like... Ts> //requires (sizeof...(Ts) > 0)
-    struct renderable_tuple {
+    template<std::size_t FramesInFlight, typename> struct renderable_tuple {};
+
+    template<std::size_t FramesInFlight, ::d2d::impl::directly_renderable... Ts> //requires (sizeof...(Ts) > 0)
+    struct renderable_tuple<FramesInFlight, std::tuple<Ts...>> {
         static_assert(sizeof...(Ts) > 0, "renderable_tuple needs at least 1 renderable type");
+
+        template<typename T> using renderable_data_type = renderable_data<T, FramesInFlight>;
+        using renderable_data_tuple_type = std::tuple<renderable_data_type<Ts>...>;
+    
     public:
         //could benefit from SIMD? (just a target_clones)
         static result<renderable_tuple> create(std::shared_ptr<logical_device> logi_device, std::shared_ptr<physical_device> phys_device, render_pass& window_render_pass) noexcept;
@@ -40,35 +43,17 @@ namespace d2d::vk {
         template<typename T>
         result<void> apply_changes(render_pass& window_render_pass) noexcept;
         template<typename T>
-        constexpr bool has_changes() const noexcept;
+        constexpr bool const& has_changes() const noexcept;
+        template<typename T>
+        constexpr bool      & has_changes()       noexcept;
 
     public:
-        template<typename R> using value_type = typename std::unordered_map<std::string_view, R>::value_type;
-        template<typename R> using iterator = typename std::unordered_map<std::string_view, R>::iterator;
-        template<typename R> using const_iterator = typename std::unordered_map<std::string_view, R>::const_iterator;
+        template<typename T> using key_type       = typename renderable_data_type<T>::key_type;
+        template<typename T> using mapped_type    = typename renderable_data_type<T>::mapped_type;
+        template<typename T> using value_type     = typename renderable_data_type<T>::value_type;
+        template<typename T> using iterator       = typename renderable_data_type<T>::iterator;
+        template<typename T> using const_iterator = typename renderable_data_type<T>::const_iterator;
 
-        template<::d2d::impl::renderable_like R>
-        std::pair<iterator<R>, bool> insert(const value_type<R>& value) noexcept;
-        template<::d2d::impl::renderable_like R>
-        std::pair<iterator<R>, bool> insert(value_type<R>&& value) noexcept;
-        template<impl::constructible_from_second_type_of P>
-        std::pair<iterator<typename std::remove_cvref_t<P>::second_type>, bool> insert(P&& value) noexcept;
-
-        template<typename T, typename... Args>
-        std::pair<iterator<T>, bool> emplace(Args&&... args) noexcept;
-        template<typename T, typename... Args>
-        std::pair<iterator<T>, bool> try_emplace(std::string_view str, Args&&... args) noexcept;
-        template<typename T, typename S, typename... Args> requires std::is_constructible_v<std::string, S&&>
-        std::pair<iterator<T>, bool> try_emplace(S&& str, Args&&... args) noexcept;
-
-        template<typename T>
-        iterator<T> erase(iterator<T> pos) noexcept;
-        template<typename T>
-        iterator<T> erase(const_iterator<T> pos) noexcept;
-        template<typename T>
-        iterator<T> erase(const_iterator<T> first, const_iterator<T> last) noexcept;
-        template<typename T>
-        std::size_t erase(std::string_view key) noexcept;
 
         template<typename T>
         iterator<T> end() noexcept;
@@ -94,17 +79,17 @@ namespace d2d::vk {
         template<typename T> constexpr const buffer& index_buffer()       const noexcept requires renderable_constraints<T>::has_indices;
         template<typename T> constexpr const buffer& uniform_buffer()     const noexcept requires renderable_constraints<T>::has_uniform;
         template<typename T> constexpr const buffer& vertex_buffer()      const noexcept requires renderable_constraints<T>::has_vertices;
-        template<typename T> constexpr const buffer& instance_buffer()    const noexcept requires renderable_constraints<T>::instanced;
+        template<typename T> constexpr const buffer& instance_buffer()    const noexcept requires renderable_constraints<T>::has_instance_data;
         template<typename T> constexpr const buffer& attribute_buffer()   const noexcept requires renderable_constraints<T>::has_attributes;
         template<typename T> constexpr const buffer& texture_idx_buffer() const noexcept requires renderable_constraints<T>::has_textures;
 
 
-        template<typename T> constexpr std::uint32_t index_count(std::size_t i)  const noexcept requires (!renderable_constraints<T>::instanced && renderable_constraints<T>::has_indices);
-        template<typename T> constexpr std::uint32_t vertex_count(std::size_t i) const noexcept requires (!renderable_constraints<T>::instanced && renderable_constraints<T>::has_vertices);
+        template<typename T> constexpr std::uint32_t index_count(std::size_t i)  const noexcept requires (!renderable_constraints<T>::has_fixed_indices && renderable_constraints<T>::has_indices);
+        template<typename T> constexpr std::uint32_t vertex_count(std::size_t i) const noexcept requires (!renderable_constraints<T>::has_fixed_vertices && renderable_constraints<T>::has_vertices);
         template<typename T> constexpr std::size_t   instance_count()            const noexcept;
 
-        template<typename T> constexpr std::uint32_t first_index(std::size_t i)  const noexcept requires (!renderable_constraints<T>::instanced && renderable_constraints<T>::has_indices); 
-        template<typename T> constexpr std::uint32_t first_vertex(std::size_t i) const noexcept requires (!renderable_constraints<T>::instanced && renderable_constraints<T>::has_vertices); 
+        template<typename T> constexpr std::uint32_t first_index(std::size_t i)  const noexcept requires (!renderable_constraints<T>::has_fixed_indices && renderable_constraints<T>::has_indices); 
+        template<typename T> constexpr std::uint32_t first_vertex(std::size_t i) const noexcept requires (!renderable_constraints<T>::has_fixed_vertices && renderable_constraints<T>::has_vertices); 
 
         template<typename T> constexpr std::size_t vertex_buffer_offset()      const noexcept requires (renderable_constraints<T>::has_vertices); 
         template<typename T> constexpr std::size_t index_buffer_offset()       const noexcept requires (renderable_constraints<T>::has_indices); 
@@ -120,13 +105,13 @@ namespace d2d::vk {
 
     public:
         //template<typename T> constexpr const attribute_types<T>& attributes() const noexcept;
-        template<typename T> constexpr std::span<typename T::uniform_type, FramesInFlight> uniform_map() const noexcept requires (renderable_constraints<T>::has_uniform);
-        template<typename T> constexpr std::span<const std::byte, 0>                       uniform_map() const noexcept requires (!renderable_constraints<T>::has_uniform);
-        template<typename T> constexpr typename T::push_constant_types push_constants() const noexcept requires renderable_constraints<T>::has_push_constants;
+        template<typename T> constexpr std::span<typename renderable_properties<T>::uniform_type, FramesInFlight> uniform_map() const noexcept requires (renderable_constraints<T>::has_uniform);
+        template<typename T> constexpr std::span<std::byte                                      , 0             > uniform_map() const noexcept requires (!renderable_constraints<T>::has_uniform);
+        template<typename T> constexpr typename renderable_properties<T>::push_constant_types push_constants() const noexcept requires renderable_constraints<T>::has_push_constants;
 
-    private:
+    protected:
         template<typename T>
-        constexpr renderable_data<T, FramesInFlight>& renderable_data_of() noexcept {
+        constexpr renderable_data<T, FramesInFlight>      & renderable_data_of()       noexcept {
             return std::get<renderable_data<T, FramesInFlight>>(renderable_datas);
         }
         template<typename T>
@@ -134,9 +119,10 @@ namespace d2d::vk {
             return std::get<renderable_data<T, FramesInFlight>>(renderable_datas);
         }
 
+        friend struct renderable_event_callbacks;
 
     protected:
-        std::tuple<renderable_data<Ts, FramesInFlight>...> renderable_datas;
+        renderable_data_tuple_type renderable_datas;
 
         constexpr static std::size_t renderable_count = sizeof...(Ts);
         constexpr static std::size_t renderable_count_with_attrib = (static_cast<bool>(renderable_data<Ts, FramesInFlight>::attribute_data_size) + ...);

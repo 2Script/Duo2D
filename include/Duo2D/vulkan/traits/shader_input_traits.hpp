@@ -7,13 +7,16 @@
 #include "Duo2D/arith/matrix.hpp"
 #include "Duo2D/arith/vector.hpp"
 #include "Duo2D/graphics/core/color.hpp"
+#include "Duo2D/traits/size_constant.hpp"
 #include "Duo2D/traits/vector_traits.hpp"
 
 
 namespace d2d::vk::impl {
     template<VkFormat V> using format_constant = std::integral_constant<VkFormat, V>;
-    template<typename T> struct format_of : format_constant<VK_FORMAT_UNDEFINED> {};
     template<typename T> struct location_size_of : size_constant<1> {};
+    template<typename T> struct format_of : format_constant<VK_FORMAT_UNDEFINED> {
+        static_assert(!std::is_same_v<T, T>, "Missing format specialization for T"); 
+    };
 
     template<typename T, std::size_t LocationSize = 1>
     struct shader_input_traits {

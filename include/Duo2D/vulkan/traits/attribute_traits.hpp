@@ -2,7 +2,7 @@
 #include <span>
 #include <tuple>
 #include <utility>
-#include "Duo2D/traits/renderable_traits.hpp"
+#include "Duo2D/traits/renderable_constraints.hpp"
 #include "Duo2D/vulkan/memory/attribute.hpp"
 #include "Duo2D/traits/aggregate_traits.hpp"
 

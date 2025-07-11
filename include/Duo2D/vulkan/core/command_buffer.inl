@@ -1,7 +1,8 @@
 #pragma once
 #include "Duo2D/core/error.hpp"
 #include "Duo2D/vulkan/traits/buffer_traits.hpp"
-#include "Duo2D/traits/renderable_traits.hpp"
+#include "Duo2D/traits/directly_renderable.hpp"
+#include "Duo2D/traits/renderable_constraints.hpp"
 #include "Duo2D/vulkan/core/command_buffer.hpp"
 #include <cstdint>
 #include <memory>
@@ -10,8 +11,8 @@
 #include <vulkan/vulkan_core.h>
 
 namespace d2d::vk {
-    template<::d2d::impl::renderable_like T, std::size_t FiF, ::d2d::impl::renderable_like... Rs>
-    result<void> command_buffer::draw(const renderable_tuple<FiF, Rs...>& renderables) const noexcept {
+    template<::d2d::impl::directly_renderable T, std::size_t FiF, ::d2d::impl::directly_renderable... Rs>
+    result<void> command_buffer::draw(const renderable_tuple<FiF, std::tuple<Rs...>>& renderables) const noexcept {
         if(renderables.template empty<T>())
             return {};
 
@@ -25,35 +26,35 @@ namespace d2d::vk {
         if constexpr (!renderable_constraints<T>::instanced || renderable_constraints<T>::has_vertices) {
             const VkBuffer vk_vertex_buffer = static_cast<VkBuffer>(renderables.template vertex_buffer<T>());
             const std::size_t vertex_offset = renderables.template vertex_buffer_offset<T>();
-            vkCmdBindVertexBuffers(handle, T::vertex_binding(), 1, &vk_vertex_buffer, &vertex_offset);
+            vkCmdBindVertexBuffers(handle, renderable_properties<T>::vertex_binding(), 1, &vk_vertex_buffer, &vertex_offset);
         }
 
         //Bind instance buffer
-        if constexpr (renderable_constraints<T>::instanced) {
+        if constexpr (renderable_constraints<T>::has_instance_data) {
             const VkBuffer vk_instance_buffer = static_cast<VkBuffer>(renderables.template instance_buffer<T>());
-            constexpr static std::size_t instance_offset = renderable_tuple<FiF, Rs...>::template static_offsets<T>()[buffer_data_type::instance];
-            vkCmdBindVertexBuffers(handle, T::instance_binding(), 1, &vk_instance_buffer, &instance_offset);
+            constexpr static std::size_t instance_offset = renderable_tuple<FiF, std::tuple<Rs...>>::template static_offsets<T>()[buffer_data_type::instance];
+            vkCmdBindVertexBuffers(handle, renderable_properties<T>::instance_binding(), 1, &vk_instance_buffer, &instance_offset);
         } 
 
         //Bind attribute buffer
         if constexpr (renderable_constraints<T>::has_attributes) {
             const VkBuffer vk_attrib_buffer = static_cast<VkBuffer>(renderables.template attribute_buffer<T>());
             constexpr static std::size_t attribute_offset = 0;
-            vkCmdBindVertexBuffers(handle, T::attribute_binding(), 1, &vk_attrib_buffer, &attribute_offset);
+            vkCmdBindVertexBuffers(handle, renderable_properties<T>::attribute_binding(), 1, &vk_attrib_buffer, &attribute_offset);
         }
 
         //Bind texture index buffer
         if constexpr (renderable_constraints<T>::has_textures) {
             const VkBuffer vk_texture_idx_buffer = static_cast<VkBuffer>(renderables.template texture_idx_buffer<T>());
             const std::size_t texture_idx_offset = renderables.template texture_idx_buffer_offset<T>();
-            vkCmdBindVertexBuffers(handle, T::texture_idx_binding(), 1, &vk_texture_idx_buffer, &texture_idx_offset);
+            vkCmdBindVertexBuffers(handle, renderable_properties<T>::texture_idx_binding(), 1, &vk_texture_idx_buffer, &texture_idx_offset);
         }
 
         //Bind index buffer
         if constexpr (renderable_constraints<T>::has_indices) {
             const VkBuffer vk_index_buffer = static_cast<VkBuffer>(renderables.template index_buffer<T>());
             const std::size_t index_offset = renderables.template index_buffer_offset<T>();
-            constexpr static VkIndexType vk_index_type = static_cast<VkIndexType>(sizeof(typename T::index_type) == sizeof(std::uint32_t));
+            constexpr static VkIndexType vk_index_type = static_cast<VkIndexType>(sizeof(typename renderable_properties<T>::index_type) == sizeof(std::uint32_t));
             vkCmdBindIndexBuffer(handle, vk_index_buffer, index_offset, vk_index_type);
         }
 
@@ -73,11 +74,11 @@ namespace d2d::vk {
         }
 
         //Draw vertices
-        if constexpr (renderable_constraints<T>::instanced) {
+        if constexpr (renderable_constraints<T>::has_fixed_vertices || renderable_constraints<T>::has_fixed_indices) {
             if constexpr (renderable_constraints<T>::has_indices) 
-                vkCmdDrawIndexed(handle, T::index_count, renderables.template instance_count<T>(), 0, 0, 0);
+                vkCmdDrawIndexed(handle, renderable_properties<T>::index_count, renderables.template instance_count<T>(), 0, 0, 0);
             else
-                vkCmdDraw(handle, T::vertex_count, renderables.template instance_count<T>(), 0, 0);
+                vkCmdDraw(handle, renderable_properties<T>::vertex_count, renderables.template instance_count<T>(), 0, 0);
         }
         else {
             for(std::size_t i = 0; i < renderables.template instance_count<T>(); ++i) {

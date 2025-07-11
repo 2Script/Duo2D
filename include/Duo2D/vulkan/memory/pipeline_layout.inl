@@ -2,7 +2,7 @@
 #include "Duo2D/vulkan/memory/pipeline_layout.hpp"
 
 namespace d2d::vk {
-    template<::d2d::impl::renderable_like T>
+    template<::d2d::impl::directly_renderable T>
     result<pipeline_layout<T>> pipeline_layout<T>::create(std::shared_ptr<logical_device> device, descriptor_set_layout& set_layout) noexcept {
         pipeline_layout ret{};
         ret.dependent_handle = device;
@@ -23,7 +23,7 @@ namespace d2d::vk {
         return ret;
     }
 
-    template<::d2d::impl::renderable_like T>
+    template<::d2d::impl::directly_renderable T>
     result<pipeline_layout<T>> pipeline_layout<T>::create(std::shared_ptr<logical_device> device) noexcept {
         pipeline_layout ret{};
         ret.dependent_handle = device;

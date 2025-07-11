@@ -2,13 +2,9 @@
 #include <concepts>
 #include <array>
 #include <string_view>
+#include "Duo2D/traits/renderable_traits.hpp"
 #include "Duo2D/graphics/core/font.hpp"
 #include "Duo2D/vulkan/display/texture.hpp"
-
-namespace d2d {
-    template<typename T>
-    struct renderable_traits;
-}
 
 namespace d2d::impl {
     template<typename T, typename TextureT>

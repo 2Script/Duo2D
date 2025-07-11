@@ -3,12 +3,11 @@
 #include <GLFW/glfw3.h>
 #include <memory>
 #include <vulkan/vulkan_core.h>
-#include "Duo2D/traits/renderable_traits.hpp"
 #include "Duo2D/vulkan/core/vulkan_ptr.hpp"
 #include "Duo2D/vulkan/core/instance.hpp"
 
 
-namespace d2d { template<impl::renderable_like... Ts> struct basic_window; }
+namespace d2d { template<typename... Ts> struct basic_window; }
 
 __D2D_DECLARE_VK_TRAITS_INST(VkSurfaceKHR);
 

@@ -9,6 +9,7 @@
 #include <vulkan/vulkan_core.h>
 
 #include "Duo2D/core/error.hpp"
+#include "Duo2D/traits/directly_renderable.hpp"
 #include "Duo2D/vulkan/core/command_buffer.hpp"
 #include "Duo2D/vulkan/device/logical_device.hpp"
 #include "Duo2D/vulkan/memory/renderable_tuple.hpp"
@@ -19,7 +20,7 @@
 #include "Duo2D/vulkan/device/queue_family.hpp"
 
 namespace d2d {
-    template<impl::renderable_like... Ts>
+    template<typename... Ts>
     result<basic_window<Ts...>> basic_window<Ts...>::create(std::string_view title, std::size_t width, std::size_t height, std::shared_ptr<vk::instance> i) noexcept {
 
         //Create window
@@ -36,7 +37,7 @@ namespace d2d {
 }
 
 namespace d2d {
-    template<impl::renderable_like... Ts>
+    template<typename... Ts>
     result<void> basic_window<Ts...>::initialize(std::shared_ptr<vk::logical_device> logi_device, std::shared_ptr<vk::physical_device> phys_device) noexcept {
         if(_swap_chain) 
             return {}; //return error::window_already_initialized;
@@ -71,7 +72,7 @@ namespace d2d {
             submit_semaphores.push_back(*std::move(submit_semaphore));
         }
 
-        RESULT_TRY_MOVE((*static_cast<vk::renderable_tuple<impl::frames_in_flight, Ts...>*>(this)), (make<vk::renderable_tuple<impl::frames_in_flight, Ts...>>(logi_device, phys_device, _render_pass)));
+        RESULT_TRY_MOVE((*static_cast<base_type*>(this)), (make<base_type>(logi_device, phys_device, _render_pass)));
 
         //update uniform buffer
         (Ts::on_swap_chain_update(*this, this->template uniform_map<Ts>()), ...);
@@ -81,7 +82,46 @@ namespace d2d {
 }
 
 namespace d2d {
-    template<impl::renderable_like... Ts>
+    template<typename... Ts>
+    template<typename T>
+    result<void> basic_window<Ts...>::apply_changes() noexcept {
+        for(typename vk::impl::renderable_input_map<T>::value_type& renderable_pair : renderable_data_of<T>())
+            RESULT_VERIFY(renderable_pair.second.before_changes_applied(*this));
+
+        if constexpr(impl::directly_renderable<T>)
+            RESULT_VERIFY((base_type::template apply_changes<T>(_render_pass)))
+        else 
+            RESULT_VERIFY(apply_changes<typename T::element_type>());
+
+        for(typename vk::impl::renderable_input_map<T>::value_type& renderable_pair : renderable_data_of<T>())
+            RESULT_VERIFY(renderable_pair.second.after_changes_applied(*this));
+
+        return {};
+    }
+
+
+    template<typename... Ts>
+    template<typename T>
+    constexpr bool const& basic_window<Ts...>::has_changes() const noexcept {
+        if constexpr(impl::directly_renderable<T>)
+            return base_type::template has_changes<T>();
+        else 
+            return has_changes<typename T::element_type>();
+    }
+
+    template<typename... Ts>
+    template<typename T>
+    constexpr bool& basic_window<Ts...>::has_changes() noexcept {
+        if constexpr(impl::directly_renderable<T>)
+            return base_type::template has_changes<T>();
+        else 
+            return has_changes<typename T::element_type>();
+    }
+}
+
+
+namespace d2d {
+    template<typename... Ts>
     result<void> basic_window<Ts...>::render() noexcept {
         //wait for rendering to finish last frame
         RESULT_VERIFY(render_fences[frame_idx].wait());
@@ -116,7 +156,7 @@ namespace d2d {
         errc error_code = error::unknown;
         auto create_descriptors = [&]<typename T>(errc& current_error_code) noexcept -> errc {
             if(current_error_code != error::unknown) return current_error_code;
-            RESULT_VERIFY(command_buffers[frame_idx].draw<T>(*this));
+            if constexpr(impl::directly_renderable<T>) RESULT_VERIFY(command_buffers[frame_idx].draw<T>(*this));
             return error::unknown;
         };
         ((error_code = create_descriptors.template operator()<Ts>(error_code)), ...);
@@ -152,6 +192,146 @@ namespace d2d {
     }
 }
 
+
 namespace d2d {
-    
+    template<typename... Ts>
+    template<typename R>
+    std::pair<typename basic_window<Ts...>::template iterator<R>, bool> basic_window<Ts...>::insert(const basic_window<Ts...>::value_type<R>& value) noexcept {
+        using T = std::remove_cvref_t<R>;
+        auto ins = renderable_data_of<T>().insert(value);
+        if(!ins.second) return ins;
+        this->template has_changes<T>() = true;
+        insert_children<T>(ins.first);
+        ins.first->second.template on_window_insert<T>(*this, ins.first);
+        return ins;
+    }
+
+    template<typename... Ts>
+    template<typename R>
+    std::pair<typename basic_window<Ts...>::template iterator<R>, bool> basic_window<Ts...>::insert(basic_window<Ts...>::value_type<R>&& value) noexcept {
+        using T = std::remove_cvref_t<R>;
+        auto ins = renderable_data_of<T>().insert(std::move(value));
+        if(!ins.second) return ins;
+        this->template has_changes<T>() = true;
+        insert_children<T>(ins.first);
+        ins.first->second.template on_window_insert<T>(*this, ins.first);
+        return ins;
+    }
+
+
+
+    template<typename... Ts>
+    template<impl::constructible_from_second_type_of P>
+    std::pair<typename basic_window<Ts...>::template iterator<typename std::remove_cvref_t<P>::second_type>, bool>  basic_window<Ts...>::insert(P&& value) noexcept {
+        using T = typename std::remove_cvref_t<P>::second_type;
+        auto ins = renderable_data_of<T>().insert(std::forward<P>(value));
+        if(!ins.second) return ins;
+        this->template has_changes<T>() = true;
+        insert_children<T>(ins.first);
+        ins.first->second.template on_window_insert<T>(*this, ins.first);
+        return ins;
+    }
+}
+
+namespace d2d {
+    template<typename... Ts>
+    template<typename T, typename... Args>
+    std::pair<typename basic_window<Ts...>::template iterator<T>, bool> basic_window<Ts...>::emplace(Args&&... args) noexcept {
+        auto ins = renderable_data_of<T>().emplace(std::forward<Args>(args)...);
+        if(!ins.second) return ins;
+        this->template has_changes<T>() = true;
+        insert_children<T>(ins.first);
+        ins.first->second.template on_window_insert<T>(*this, ins.first);
+        return ins;
+    }
+
+    template<typename... Ts>
+    template<typename T, typename S, typename... Args>
+    std::pair<typename basic_window<Ts...>::template iterator<T>, bool> basic_window<Ts...>::try_emplace(S&& str, Args&&... args) noexcept 
+    requires impl::not_convertible_to_iters<S, T, basic_window<Ts...>::template iterator, basic_window<Ts...>::template const_iterator> {
+        auto ins = renderable_data_of<T>().try_emplace(std::forward<S>(str), std::forward<Args>(args)...);
+        if(!ins.second) return ins;
+        this->template has_changes<T>() = true;
+        insert_children<T>(ins.first);
+        ins.first->second.template on_window_insert<T>(*this, ins.first);
+        return ins;
+    }
+}
+
+
+namespace d2d {
+    template<typename... Ts>
+    template<typename T>
+    basic_window<Ts...>::iterator<T> basic_window<Ts...>::erase(basic_window<Ts...>::iterator<T> pos) noexcept {
+        return renderable_data_of<T>().erase(pos);
+    }
+    template<typename... Ts>
+    template<typename T>
+    basic_window<Ts...>::iterator<T> basic_window<Ts...>::erase(basic_window<Ts...>::const_iterator<T> pos) noexcept {
+        return renderable_data_of<T>().erase(pos);
+    }
+    template<typename... Ts>
+    template<typename T>
+    basic_window<Ts...>::iterator<T> basic_window<Ts...>::erase(basic_window<Ts...>::const_iterator<T> first, basic_window<Ts...>::const_iterator<T> last) noexcept {
+        return renderable_data_of<T>().erase(first, last);
+    }
+    template<typename... Ts>
+    template<typename T>
+    std::size_t basic_window<Ts...>::erase(std::string_view key) noexcept {
+        return renderable_data_of<T>().erase(key);
+    }
+}
+
+
+namespace d2d {
+    template<typename... Ts>
+    template<typename T>
+    bool basic_window<Ts...>::empty() const noexcept {
+        return renderable_data_of<T>().empty();
+    }
+    template<typename... Ts>
+    template<typename T>
+    std::size_t basic_window<Ts...>::size() const noexcept {
+        return renderable_data_of<T>().size();
+    }
+}
+
+
+
+namespace d2d {
+    template<typename... Ts>
+    template<impl::directly_renderable T>
+    constexpr vk::renderable_data<T, basic_window<Ts...>::frames_in_flight>& basic_window<Ts...>::renderable_data_of() noexcept {
+        return base_type::template renderable_data_of<T>();
+    }
+    template<typename... Ts>
+    template<impl::directly_renderable T>
+    constexpr vk::renderable_data<T, basic_window<Ts...>::frames_in_flight> const& basic_window<Ts...>::renderable_data_of() const noexcept {
+        return base_type::template renderable_data_of<T>();
+    }
+
+    template<typename... Ts>
+    template<impl::renderable_container_like T>
+    constexpr vk::impl::renderable_input_map<T>& basic_window<Ts...>::renderable_data_of() noexcept {
+        return std::get<vk::impl::renderable_input_map<T>>(renderable_container_datas);
+    }
+    template<typename... Ts>
+    template<impl::renderable_container_like T>
+    constexpr vk::impl::renderable_input_map<T> const& basic_window<Ts...>::renderable_data_of() const noexcept {
+        return std::get<vk::impl::renderable_input_map<T>>(renderable_container_datas);
+    }
+
+
+    template<typename... Ts>
+    template<impl::renderable_container_like T> 
+    constexpr bool basic_window<Ts...>::insert_children(iterator<T> iter) noexcept {
+        bool emplaced = false;
+        for(std::size_t i = 0; i < iter->second.size(); ++i) {
+            std::string s = std::format(container_child_format_key, iter->first, i);
+            auto insert_result = try_emplace<typename T::element_type>(s, *(iter->second[i]));
+            if(insert_result.second) iter->second.template on_window_insert_child<typename T::element_type>(*this, insert_result.first, i);
+            emplaced = insert_result.second || emplaced;
+        }
+        return emplaced;
+    }
 }

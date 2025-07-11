@@ -20,6 +20,9 @@ namespace d2d::vk {
 
     class texture_map : public texture_map_base {
     public:
+        using face_ptr = std::unique_ptr<std::remove_pointer_t<FT_Face>, generic_functor<FT_Done_Face>>;
+        using font_face_map_type = std::map<std::string_view, face_ptr>;
+    public:
         //TODO (HIGH PRIO): Split this into (multithreaded) loading/decoding the file | allocating multiple files into image buffers
         result<texture_idx_t> load(std::string_view path, std::shared_ptr<logical_device> logi_device, std::shared_ptr<physical_device> phys_device, std::shared_ptr<command_pool> copy_cmd_pool, device_memory<std::dynamic_extent>& texture_mem) noexcept;
         result<texture_idx_t> load(const font& f,         std::shared_ptr<logical_device> logi_device, std::shared_ptr<physical_device> phys_device, std::shared_ptr<command_pool> copy_cmd_pool, device_memory<std::dynamic_extent>& texture_mem) noexcept;
@@ -29,18 +32,24 @@ namespace d2d::vk {
             iterator& tex_iter, std::span<std::span<const std::byte>> bytes, extent2 texture_size, VkFormat format,
             std::shared_ptr<logical_device> logi_device, std::shared_ptr<physical_device> phys_device, std::shared_ptr<command_pool> copy_cmd_pool, device_memory<std::dynamic_extent>& texture_mem
         ) noexcept;
+
     
     private:
-        using face_ptr = std::unique_ptr<std::remove_pointer_t<FT_Face>, generic_functor<FT_Done_Face>>;
         struct freetype_context {
             pt2d pos;
             double scale;
             msdfgen::Shape& shape;
         };
 
+
+    public:
+        inline font_face_map_type const& font_faces() const noexcept { return faces; }
+        inline font_face_map_type      & font_faces()       noexcept { return faces; }
+
+
     private:
         ::d2d::impl::instance_tracker<FT_Library, FT_Done_FreeType> freetype_init{};
-        std::map<std::string_view, face_ptr> faces;
+        font_face_map_type faces;
 
     private:
         using texture_map_base::insert;

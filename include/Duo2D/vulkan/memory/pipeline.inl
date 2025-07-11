@@ -7,15 +7,15 @@
 #include <vulkan/vulkan_core.h>
 
 namespace d2d::vk {
-    template<::d2d::impl::renderable_like T>
+    template<::d2d::impl::directly_renderable T>
     result<pipeline<T>> pipeline<T>::create(std::shared_ptr<logical_device> device, render_pass& associated_render_pass, pipeline_layout<T>& layout) noexcept {
         pipeline ret{};
         ret.dependent_handle = device;
 
 
         //Specify vertex input state
-        constexpr static auto vertex_bindings = T::shader_type::binding_descs();
-        constexpr static auto vertex_attributes = T::shader_type::attribute_descs();
+        constexpr static auto vertex_bindings = renderable_properties<T>::binding_descs();
+        constexpr static auto vertex_attributes = renderable_properties<T>::attribute_descs();
         VkPipelineVertexInputStateCreateInfo vertex_input_info {
             .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
             .vertexBindingDescriptionCount = vertex_bindings.size(),
@@ -50,8 +50,8 @@ namespace d2d::vk {
             .depthClampEnable = VK_FALSE,
             .rasterizerDiscardEnable = VK_FALSE,
             .polygonMode = VK_POLYGON_MODE_FILL,
-            .cullMode = T::cull_mode,
-            .frontFace = T::front_face,
+            .cullMode = renderable_properties<T>::cull_mode,
+            .frontFace = renderable_properties<T>::front_face,
             .depthBiasEnable = VK_FALSE,
             .depthBiasConstantFactor = 0.0f,
             .depthBiasClamp = 0.0f,
@@ -81,8 +81,8 @@ namespace d2d::vk {
         };
 
 
-        RESULT_TRY_MOVE_UNSCOPED(shader_module vert_shader, make<shader_module>(device, T::shader_data_type::vert, VK_SHADER_STAGE_VERTEX_BIT), vs);
-        RESULT_TRY_MOVE_UNSCOPED(shader_module frag_shader, make<shader_module>(device, T::shader_data_type::frag, VK_SHADER_STAGE_FRAGMENT_BIT), fs);
+        RESULT_TRY_MOVE_UNSCOPED(shader_module vert_shader, make<shader_module>(device, renderable_properties<T>::shader_data_type::vert, VK_SHADER_STAGE_VERTEX_BIT), vs);
+        RESULT_TRY_MOVE_UNSCOPED(shader_module frag_shader, make<shader_module>(device, renderable_properties<T>::shader_data_type::frag, VK_SHADER_STAGE_FRAGMENT_BIT), fs);
         std::array<VkPipelineShaderStageCreateInfo, 2> shader_stages = {vert_shader.stage_info(), frag_shader.stage_info()};
 
         

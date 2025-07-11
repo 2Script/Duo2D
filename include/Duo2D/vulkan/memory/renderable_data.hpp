@@ -4,10 +4,11 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
-#include <vulkan/vulkan_core.h>
+#include <string>
+#include <vulkan/vulkan.h>
 #include "Duo2D/vulkan/display/texture.hpp"
 #include "Duo2D/vulkan/traits/attribute_traits.hpp"
-#include "Duo2D/traits/renderable_traits.hpp"
+#include "Duo2D/traits/directly_renderable.hpp"
 #include "Duo2D/vulkan/memory/buffer.hpp"
 #include "Duo2D/vulkan/memory/descriptor_pool.hpp"
 #include "Duo2D/vulkan/memory/descriptor_set_layout.hpp"
@@ -17,19 +18,43 @@
 #include "Duo2D/vulkan/memory/texture_map.hpp"
 
 namespace d2d::vk::impl {
-    template<::d2d::impl::renderable_like T>
-    using renderable_input_map = std::unordered_map<std::string_view, T>;
+    template<typename T>
+    using renderable_input_map = std::unordered_map<std::string, T>;
 }
+
+
+namespace d2d::vk::impl {
+    template<::d2d::impl::directly_renderable T>
+    class renderable_input_data : public renderable_input_map<T> {
+    public:
+        using key_type       = typename renderable_input_map<T>::key_type;
+        using mapped_type    = typename renderable_input_map<T>::mapped_type;
+        using value_type     = typename renderable_input_map<T>::value_type;
+        using iterator       = typename renderable_input_map<T>::iterator;
+        using const_iterator = typename renderable_input_map<T>::const_iterator;
+    public:
+        iterator erase(iterator pos) noexcept;
+        iterator erase(const_iterator pos) noexcept;
+        iterator erase(const_iterator first, const_iterator last) noexcept;
+        std::size_t erase(std::string_view key) noexcept;
+
+    public:
+        constexpr bool const& has_changes() const noexcept { return outdated; }
+        constexpr bool      & has_changes()       noexcept { return outdated; }
+
+    private:
+        bool outdated = false;
+    };
+}
+
 
 //Attributes vs No Attributes
 namespace d2d::vk::impl {
-    template<::d2d::impl::renderable_like T>
-    class renderable_attribute_data  {
+    template<::d2d::impl::directly_renderable T>
+    class renderable_attribute_data : public renderable_input_data<T>  {
     public:
         constexpr static std::size_t attribute_data_size = 0;
         constexpr static std::size_t num_attributes = 0;
-    protected:
-        renderable_input_map<T> input_renderables;
 
     public:
         std::size_t emplace_attributes(std::size_t& buff_offset, void*, VkDeviceSize) noexcept { return buff_offset; }
@@ -38,14 +63,12 @@ namespace d2d::vk::impl {
         constexpr std::size_t attribute_buffer_size() const noexcept { return 0; }
     };
 
-    template<::d2d::impl::renderable_like T> requires renderable_constraints<T>::has_attributes
-    class renderable_attribute_data<T> {
+    template<::d2d::impl::directly_renderable T> requires renderable_constraints<T>::has_attributes
+    class renderable_attribute_data<T> : public renderable_input_data<T> {
     private:
         std::span<std::byte> attributes_span;
-    protected:
-        renderable_input_map<T> input_renderables;
     public:
-        constexpr static std::size_t attribute_data_size = impl::attribute_traits<typename T::attribute_types>::total_size;
+        constexpr static std::size_t attribute_data_size = impl::attribute_traits<typename renderable_traits<T>::attribute_types>::total_size;
         constexpr static std::size_t num_attributes = std::tuple_size_v<decltype(std::declval<T>().attributes())>;
     
     private:
@@ -57,31 +80,25 @@ namespace d2d::vk::impl {
         std::size_t emplace_attributes(std::size_t& buff_offset, void* mem_map, VkDeviceSize mem_align) noexcept;
         void unbind_attributes() noexcept;
 
-        constexpr std::size_t attribute_buffer_size() const noexcept { return attribute_data_size * input_renderables.size(); }
+        constexpr std::size_t attribute_buffer_size() const noexcept { return attribute_data_size * this->size(); }
     };
 }
 
 
-//Instanced vs Not Instanced
+//Fixed vs Not Fixed 
 namespace d2d::vk::impl {
-    //Instanced
-    template<::d2d::impl::renderable_like T>
-    class renderable_instance_data : public renderable_attribute_data<T> {
-        using instance_input_type = decltype(std::declval<T>().instance());
-    private:
-        std::vector<instance_input_type> instance_inputs;
-    protected:
-        std::size_t input_data_size;
+    //Fixed
+    template<::d2d::impl::directly_renderable T>
+    class renderable_fixed_data : public renderable_attribute_data<T> {
     public:
-        constexpr static std::size_t instance_data_size = sizeof(typename T::instance_type);
         constexpr static std::size_t static_index_data_size = []() noexcept {
             if constexpr (renderable_constraints<T>::has_fixed_indices) 
-                return T::index_count * sizeof(typename T::index_type);
+                return renderable_traits<T>::index_count * sizeof(typename renderable_traits<T>::index_type);
             return static_cast<std::size_t>(0); 
         }();
         constexpr static std::size_t static_vertex_data_size = []() noexcept{
             if constexpr (renderable_constraints<T>::has_fixed_vertices)
-                return T::vertex_count * sizeof(typename T::vertex_type);
+                return renderable_traits<T>::vertex_count * sizeof(typename renderable_traits<T>::vertex_type);
             return static_cast<std::size_t>(0); 
         }();
 
@@ -98,22 +115,72 @@ namespace d2d::vk::impl {
         
 
     public:
+        constexpr std::size_t instance_count() const noexcept { return this->size(); }
+    };
+
+
+    //Not Fixed
+    template<::d2d::impl::directly_renderable T> requires (!renderable_constraints<T>::has_fixed_vertices && !renderable_constraints<T>::has_fixed_indices)
+    class renderable_fixed_data<T> : public renderable_attribute_data<T> {
+    public:
+        constexpr static std::size_t static_index_data_size = 0;
+        constexpr static std::size_t static_vertex_data_size = 0;
+        constexpr static std::array<std::byte, static_index_data_size> static_index_data_bytes = {};
+        constexpr static std::array<std::byte, static_vertex_data_size> static_vertex_data_bytes = {};
+
+    public:
+        constexpr std::size_t instance_count() const noexcept { return this->size(); }
+    };
+    
+}
+
+
+//Instance Data vs No Instance Data
+namespace d2d::vk::impl {
+    //No Instanced Data (but instanced)
+    template<::d2d::impl::directly_renderable T>
+    class renderable_instance_data : public renderable_fixed_data<T> {
+    protected:
+        std::size_t input_data_size;
+    public:
+        constexpr static std::size_t instance_data_size = 0;
+    public:
+        template<typename LoadTextureFn>
+        result<std::vector<std::span<const std::byte>>> make_inputs(LoadTextureFn&&) noexcept;
+        constexpr void clear_inputs() noexcept { return; }
+
+        constexpr std::size_t input_size() const noexcept { return input_data_size; }
+        consteval static VkBufferUsageFlags input_usage_flags() noexcept { return VK_BUFFER_USAGE_VERTEX_BUFFER_BIT; }
+
+    };
+
+    //Instance Data
+    template<::d2d::impl::directly_renderable T> requires renderable_constraints<T>::has_instance_data
+    class renderable_instance_data<T> : public renderable_fixed_data<T> {
+        using instance_input_type = decltype(std::declval<T>().instance());
+    private:
+        std::vector<instance_input_type> instance_inputs;
+    protected:
+        std::size_t input_data_size;
+    public:
+        constexpr static std::size_t instance_data_size = sizeof(typename renderable_traits<T>::instance_type);
+        
+
+    public:
         template<typename LoadTextureFn>
         result<std::vector<std::span<const std::byte>>> make_inputs(LoadTextureFn&&) noexcept;
         constexpr void clear_inputs() noexcept { instance_inputs.clear(); }
 
-        constexpr std::size_t instance_count() const noexcept { return this->input_renderables.size(); }
-
         constexpr std::size_t input_size() const noexcept { return input_data_size; }
-        consteval static VkBufferUsageFlags usage_flags() noexcept {
+        consteval static VkBufferUsageFlags input_usage_flags() noexcept {
             return VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | (renderable_constraints<T>::has_indices ? VK_BUFFER_USAGE_INDEX_BUFFER_BIT : 0);
         }
     
     };
 
-    //Non-instanced (no indices)
-    template<::d2d::impl::renderable_like T> requires (!renderable_constraints<T>::instanced)
-    class renderable_instance_data<T> : public renderable_attribute_data<T> {
+    //No Instanced Data (and not instanced)
+    template<::d2d::impl::directly_renderable T> requires (!renderable_constraints<T>::instanced)
+    class renderable_instance_data<T> : public renderable_fixed_data<T> {
         using vertex_input_type = decltype(std::declval<T>().vertices());
     private:
         std::vector<vertex_input_type> vertex_inputs;
@@ -124,35 +191,30 @@ namespace d2d::vk::impl {
         std::size_t input_data_size;
     public:
         constexpr static std::size_t instance_data_size = 0;
-        constexpr static std::size_t static_index_data_size = 0;
-        constexpr static std::size_t static_vertex_data_size = 0;
-        constexpr static std::array<std::byte, static_index_data_size> static_index_data_bytes = {};
-        constexpr static std::array<std::byte, static_vertex_data_size> static_vertex_data_bytes = {};
 
     public:
         template<typename LoadTextureFn>
         result<std::vector<std::span<const std::byte>>> make_inputs(LoadTextureFn&&) noexcept;
         constexpr void clear_inputs() noexcept { vertex_inputs.clear(); }
 
-        constexpr std::size_t instance_count() const noexcept { return this->input_renderables.size(); }
         constexpr std::size_t vertex_buffer_offset() const noexcept { return vertex_offset; }
 
         constexpr std::uint32_t vertex_count(std::size_t i) const noexcept { return vertex_counts[i]; }
         constexpr std::uint32_t first_vertex(std::size_t i) const noexcept { return vertex_firsts[i]; }
 
         constexpr std::size_t input_size() const noexcept { return input_data_size; }
-        consteval static VkBufferUsageFlags usage_flags() noexcept { return VK_BUFFER_USAGE_VERTEX_BUFFER_BIT; }
+        consteval static VkBufferUsageFlags input_usage_flags() noexcept { return VK_BUFFER_USAGE_VERTEX_BUFFER_BIT; }
     };
 }
 
 
 //Indices vs No Indices
 namespace d2d::vk::impl {
-    template<::d2d::impl::renderable_like T>
+    template<::d2d::impl::directly_renderable T>
     class renderable_index_data : public renderable_instance_data<T> {};
 
     //Non-instanced with indices
-    template<::d2d::impl::renderable_like T> requires (!renderable_constraints<T>::instanced && renderable_constraints<T>::has_indices)
+    template<::d2d::impl::directly_renderable T> requires (!renderable_constraints<T>::instanced && renderable_constraints<T>::has_indices)
     class renderable_index_data<T> : public renderable_instance_data<T> {
         using index_input_type = decltype(std::declval<T>().indices());
     private:
@@ -170,7 +232,7 @@ namespace d2d::vk::impl {
         constexpr std::uint32_t index_count(std::size_t i) const noexcept { return index_counts[i]; }
         constexpr std::uint32_t first_index(std::size_t i) const noexcept { return index_firsts[i]; }
 
-        consteval static VkBufferUsageFlags usage_flags() noexcept { 
+        consteval static VkBufferUsageFlags input_usage_flags() noexcept { 
             return VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT; 
         }
     };
@@ -181,13 +243,13 @@ namespace d2d::vk::impl {
 //Textures vs No Textures
 namespace d2d::vk::impl {
     //No Textures
-    template<::d2d::impl::renderable_like T>
+    template<::d2d::impl::directly_renderable T>
     class renderable_texture_data : public renderable_index_data<T> {};
 
     //Textures
-    template<::d2d::impl::renderable_like T> requires (renderable_constraints<T>::has_textures)
+    template<::d2d::impl::directly_renderable T> requires (renderable_constraints<T>::has_textures)
     class renderable_texture_data<T> : public renderable_index_data<T> {
-        using texture_idx_input_type = std::array<texture_idx_t, T::max_texture_count>;
+        using texture_idx_input_type = std::array<texture_idx_t, renderable_traits<T>::max_texture_count>;
     private:
         std::vector<texture_idx_input_type> texture_idx_inputs;
     protected:
@@ -213,7 +275,7 @@ namespace d2d::vk::impl {
 
 //Descriptors vs No Descriptors
 namespace d2d::vk::impl {
-    template<::d2d::impl::renderable_like T, std::size_t FiF>
+    template<::d2d::impl::directly_renderable T, std::size_t FiF>
     class renderable_descriptor_data : public renderable_texture_data<T> {
     protected:
         pipeline_layout<T> pl_layout;
@@ -227,7 +289,7 @@ namespace d2d::vk::impl {
     };
 
 
-    template<::d2d::impl::renderable_like T, std::size_t FiF> requires (renderable_constraints<T>::has_uniform || renderable_constraints<T>::has_textures)
+    template<::d2d::impl::directly_renderable T, std::size_t FiF> requires (renderable_constraints<T>::has_uniform || renderable_constraints<T>::has_textures)
     class renderable_descriptor_data<T, FiF> : public renderable_texture_data<T> {
     private:
         constexpr static std::size_t set_binding_count = renderable_constraints<T>::has_uniform + renderable_constraints<T>::has_textures;
@@ -247,7 +309,7 @@ namespace d2d::vk::impl {
         descriptor_pool pool;
         pipeline_layout<T> pl_layout;
     public:
-        constexpr static std::size_t uniform_data_size = FiF * sizeof(typename T::uniform_type);
+        constexpr static std::size_t uniform_data_size = FiF * sizeof(typename renderable_traits<T>::uniform_type);
 
     public:
         result<void> create_uniform_descriptors(buffer& uniform_buff, std::size_t uniform_buff_offset) noexcept;
@@ -257,16 +319,15 @@ namespace d2d::vk::impl {
 }
 
 namespace d2d::vk {
-    template<::d2d::impl::renderable_like T, std::size_t FiF>
+    template<::d2d::impl::directly_renderable T, std::size_t FiF>
     class renderable_data : public impl::renderable_descriptor_data<T, FiF> {
     private:
-        bool outdated = false;
         pipeline<T> pl;
     
     public:
         result<void> create_pipeline(std::shared_ptr<logical_device> logi_device, render_pass& window_render_pass) noexcept;
 
-        template<std::size_t FramesInFlight, ::d2d::impl::renderable_like... Ts>
+        template<std::size_t, typename>
         friend struct renderable_tuple;
     };
 }
