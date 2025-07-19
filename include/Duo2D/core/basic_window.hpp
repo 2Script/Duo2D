@@ -7,6 +7,7 @@
 #include <type_traits>
 #include <utility>
 #include <vulkan/vulkan_core.h>
+#include "Duo2D/graphics/core/font_data.hpp"
 #include "Duo2D/traits/generic_functor.hpp"
 #include "Duo2D/traits/directly_renderable.hpp"
 #include "Duo2D/vulkan/core/command_buffer.hpp"
@@ -50,7 +51,7 @@ namespace d2d {
         static result<basic_window> create(std::string_view title, std::size_t width, std::size_t height, std::shared_ptr<vk::instance> i) noexcept;
 
         basic_window() noexcept : basic_window(nullptr) {}
-        result<void> initialize(std::shared_ptr<vk::logical_device> logi_device, std::shared_ptr<vk::physical_device> phys_device) noexcept;
+        result<void> initialize(std::shared_ptr<vk::logical_device> logi_device, std::shared_ptr<vk::physical_device> phys_device, std::shared_ptr<impl::font_data_map> font_data_map) noexcept;
     
         template<typename T>
         result<void> apply_changes() noexcept;
@@ -65,14 +66,15 @@ namespace d2d {
 
 
     public:    
-        constexpr vk::logical_device  const& logical_device()  const noexcept { return *logi_device_ptr; }
-        constexpr vk::physical_device const& physical_device() const noexcept { return *phys_device_ptr; }
+        constexpr vk::logical_device  const& logical_device()  const noexcept { return *this->logi_device_ptr; }
+        constexpr vk::physical_device const& physical_device() const noexcept { return *this->phys_device_ptr; }
 
-        constexpr vk::surface         const& surface()         const noexcept { return _surface; }
-        constexpr vk::swap_chain      const& swap_chain()      const noexcept { return _swap_chain; }
-        constexpr vk::render_pass     const& render_pass()     const noexcept { return _render_pass; }
-        constexpr vk::texture_map     const& texture_map()     const noexcept { return this->textures; }
-        constexpr std::size_t                frame_index()     const noexcept { return frame_idx; }
+        constexpr vk::surface                 const& surface()       const noexcept { return _surface; }
+        constexpr vk::swap_chain              const& swap_chain()    const noexcept { return _swap_chain; }
+        constexpr vk::render_pass             const& render_pass()   const noexcept { return _render_pass; }
+        constexpr vk::texture_map             const& texture_map()   const noexcept { return this->textures; }
+        constexpr std::size_t                        frame_index()   const noexcept { return frame_idx; }
+        inline    std::weak_ptr<impl::font_data_map> font_data_map() const noexcept { return this->font_data_map_ptr; }
 
  
     public:
@@ -133,7 +135,7 @@ namespace d2d {
 
     private:
         basic_window(GLFWwindow* w) noexcept : base_type(),
-            handle(w, {}), logi_device_ptr(), phys_device_ptr(), command_pool_ptr(),
+            handle(w, {}),
             _surface(), _swap_chain(), _render_pass(),
             frame_idx(0), command_buffers{}, render_fences{}, frame_semaphores{}, submit_semaphores() {}
         friend vk::physical_device;
@@ -146,9 +148,8 @@ namespace d2d {
         typename vk::renderable_data_traits<Ts...>::container_data_tuple_type renderable_container_datas;
 
         std::unique_ptr<GLFWwindow, generic_functor<glfwDestroyWindow>> handle;
-        std::shared_ptr<vk::logical_device> logi_device_ptr;
-        std::shared_ptr<vk::physical_device> phys_device_ptr;
         std::shared_ptr<vk::command_pool> command_pool_ptr;
+
         //Decleration order matters: swap_chain MUST be destroyed before surface
         vk::surface _surface;
         vk::swap_chain _swap_chain;

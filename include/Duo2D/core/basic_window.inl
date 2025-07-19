@@ -38,12 +38,9 @@ namespace d2d {
 
 namespace d2d {
     template<typename... Ts>
-    result<void> basic_window<Ts...>::initialize(std::shared_ptr<vk::logical_device> logi_device, std::shared_ptr<vk::physical_device> phys_device) noexcept {
+    result<void> basic_window<Ts...>::initialize(std::shared_ptr<vk::logical_device> logi_device, std::shared_ptr<vk::physical_device> phys_device, std::shared_ptr<impl::font_data_map> font_data_map) noexcept {
         if(_swap_chain) 
             return {}; //return error::window_already_initialized;
-
-        logi_device_ptr = logi_device;
-        phys_device_ptr = phys_device;
 
         //Create command pool
         vk::command_pool c;
@@ -72,7 +69,7 @@ namespace d2d {
             submit_semaphores.push_back(*std::move(submit_semaphore));
         }
 
-        RESULT_TRY_MOVE((*static_cast<base_type*>(this)), (make<base_type>(logi_device, phys_device, _render_pass)));
+        RESULT_TRY_MOVE((*static_cast<base_type*>(this)), (make<base_type>(logi_device, phys_device, font_data_map, _render_pass)));
 
         //update uniform buffer
         (Ts::on_swap_chain_update(*this, this->template uniform_map<Ts>()), ...);
@@ -127,7 +124,7 @@ namespace d2d {
         RESULT_VERIFY(render_fences[frame_idx].wait());
 
         uint32_t image_index;
-        VkResult nir = vkAcquireNextImageKHR(*logi_device_ptr, _swap_chain, UINT64_MAX, frame_semaphores[semaphore_type::image_available][frame_idx], VK_NULL_HANDLE, &image_index);
+        VkResult nir = vkAcquireNextImageKHR(*this->logi_device_ptr, _swap_chain, UINT64_MAX, frame_semaphores[semaphore_type::image_available][frame_idx], VK_NULL_HANDLE, &image_index);
         
         //Re-create swap chain if needed 
         switch(nir) {
@@ -135,7 +132,7 @@ namespace d2d {
             break;
         case VK_ERROR_OUT_OF_DATE_KHR:
         case VK_SUBOPTIMAL_KHR: {
-            RESULT_TRY_MOVE(_swap_chain, make<vk::swap_chain>(logi_device_ptr, phys_device_ptr, _render_pass, _surface, *this));
+            RESULT_TRY_MOVE(_swap_chain, make<vk::swap_chain>(this->logi_device_ptr, this->phys_device_ptr, _render_pass, _surface, *this));
             (Ts::on_swap_chain_update(*this, this->template uniform_map<Ts>()), ...);
             return {};
         }
@@ -175,7 +172,7 @@ namespace d2d {
             .signalSemaphoreCount = 1,
             .pSignalSemaphores = &submit_semaphores[image_index],
         };
-        __D2D_VULKAN_VERIFY(vkQueueSubmit(logi_device_ptr->queues[vk::queue_family::graphics], 1, &submit_info, render_fences[frame_idx]));
+        __D2D_VULKAN_VERIFY(vkQueueSubmit(this->logi_device_ptr->queues[vk::queue_family::graphics], 1, &submit_info, render_fences[frame_idx]));
 
         VkPresentInfoKHR present_info{
             .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
@@ -185,7 +182,7 @@ namespace d2d {
             .pSwapchains = &_swap_chain,
             .pImageIndices = &image_index,
         };
-        __D2D_VULKAN_VERIFY(vkQueuePresentKHR(logi_device_ptr->queues[vk::queue_family::present], &present_info));
+        __D2D_VULKAN_VERIFY(vkQueuePresentKHR(this->logi_device_ptr->queues[vk::queue_family::present], &present_info));
 
         frame_idx = (frame_idx + 1) % impl::frames_in_flight;
         return {};

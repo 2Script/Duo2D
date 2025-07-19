@@ -15,18 +15,19 @@
 #include <string_view>
 #include <tuple>
 #include <llfio.hpp>
+#include <harfbuzz/hb.h>
 #include <DuoDecode/decoder.hpp>
 #include <type_traits>
 #include <vulkan/vulkan_core.h>
 #include "Duo2D/arith/vector.hpp"
+#include "Duo2D/graphics/core/font_data.hpp"
 #include "Duo2D/vulkan/display/texture.hpp"
 #include "Duo2D/vulkan/display/pixel_format_mapping.hpp"
 #include "Duo2D/vulkan/memory/renderable_allocator.hpp"
 #include "Duo2D/core/make.hpp"
-#include FT_OUTLINE_H
 
 namespace d2d::vk {
-    result<texture_idx_t> texture_map::load(std::string_view path, std::shared_ptr<logical_device> logi_device, std::shared_ptr<physical_device> phys_device, std::shared_ptr<command_pool> copy_cmd_pool, device_memory<std::dynamic_extent>& texture_mem) noexcept {
+    result<texture_idx_t> texture_map::load(std::string_view path, std::shared_ptr<logical_device> logi_device, std::shared_ptr<physical_device> phys_device, std::shared_ptr<::d2d::impl::font_data_map>, std::shared_ptr<command_pool> copy_cmd_pool, device_memory<std::dynamic_extent>& texture_mem) noexcept {
         std::pair<iterator, bool> emplace_result = emplace(std::piecewise_construct, std::forward_as_tuple(path), std::forward_as_tuple());
         texture& tex = emplace_result.first->second;
         if(!emplace_result.second) return tex.index();
@@ -55,17 +56,10 @@ namespace d2d::vk {
     }
 
 
-    result<texture_idx_t> texture_map::load(const font& f, std::shared_ptr<logical_device> logi_device, std::shared_ptr<physical_device> phys_device, std::shared_ptr<command_pool> copy_cmd_pool, device_memory<std::dynamic_extent>& texture_mem) noexcept {
+    result<texture_idx_t> texture_map::load(const font& f, std::shared_ptr<logical_device> logi_device, std::shared_ptr<physical_device> phys_device, std::shared_ptr<::d2d::impl::font_data_map> font_map, std::shared_ptr<command_pool> copy_cmd_pool, device_memory<std::dynamic_extent>& texture_mem) noexcept {
         std::pair<iterator, bool> emplace_result = emplace(std::piecewise_construct, std::forward_as_tuple(f.key()), std::forward_as_tuple());
         texture& tex = emplace_result.first->second;
         if(!emplace_result.second) return tex.index();
-
-
-        constexpr static std::size_t printable_ascii_count = 0x7F - 0x20;
-        constexpr static std::size_t bitmap_pixel_length = 32;
-        constexpr static double bitmap_em_scale = 0.125;
-        constexpr static std::size_t bitmap_channels = 4;
-        constexpr static std::size_t bitmap_size = bitmap_pixel_length * bitmap_pixel_length * bitmap_channels;
         
 
         //TODO (HIGH PRIO): custom font creation (msdfgen has no customization whatsoever and a terrible interface)
@@ -79,128 +73,104 @@ namespace d2d::vk {
         if(extent.has_error())
             return static_cast<errc>(extent.assume_error().value());
         std::size_t length = extent.assume_value();
+        const std::span<const std::byte> font_bytes{reinterpret_cast<std::byte const*>(mh.address()), length};
 
-        font ret{};
-        RESULT_VERIFY(freetype_init.initialize(impl::texture_map_count(), []() noexcept -> result<FT_Library> {
-            FT_Library library;
-            __D2D_FT_VERIFY(FT_Init_FreeType(&library));
-            return library;
-        }));
 
-        FT_Open_Args font_open_args {
-            .flags = FT_OPEN_MEMORY,
-            .memory_base = reinterpret_cast<FT_Byte*>(mh.address()),
-            .memory_size = static_cast<FT_Long>(length)
+        auto font_data_iter = font_map->try_emplace(emplace_result.first->first, font_bytes);
+        ::d2d::impl::font_data& font_data = font_data_iter.first->second;
+
+        if(auto close = mh.close(); close.has_error())
+            return static_cast<errc>(close.assume_error().value());
+
+
+        const unsigned int units_per_em = hb_face_get_upem(font_data.face_ptr.get());
+        const double scale = 1./units_per_em;
+        impl::glyph_context glyph_ctx{
+            .pos = {},
+            .scale = scale,
         };
 
-        FT_Face face_ptr;
-        __D2D_FT_VERIFY(FT_Open_Face(decltype(freetype_init)::data, &font_open_args, 0, &face_ptr));
-        std::unique_ptr<std::remove_pointer_t<FT_Face>, generic_functor<FT_Done_Face>> face(face_ptr, {});
+        hb_draw_funcs_t* draw_funcs = hb_draw_funcs_create();
+        hb_draw_funcs_set_move_to_func     (draw_funcs, impl::draw_op::move_to,  &glyph_ctx, nullptr);
+        hb_draw_funcs_set_line_to_func     (draw_funcs, impl::draw_op::line_to,  &glyph_ctx, nullptr);
+        hb_draw_funcs_set_quadratic_to_func(draw_funcs, impl::draw_op::quad_to,  &glyph_ctx, nullptr);
+        hb_draw_funcs_set_cubic_to_func    (draw_funcs, impl::draw_op::cubic_to, &glyph_ctx, nullptr);
 
 
-        constexpr auto move_to_fn = [](FT_Vector const* target, void* ctx) noexcept -> FT_Error {
-            freetype_context* ft_ctx = static_cast<freetype_context*>(ctx);
-            if(ft_ctx->shape.contours.empty() || !ft_ctx->shape.contours.back().edges.empty())
-                ft_ctx->shape.contours.emplace_back();
-            ft_ctx->pos = pt2<FT_Pos>{target->x, target->y} * ft_ctx->scale;
-            return FT_Err_Ok;
-        };
-        
-        constexpr auto line_to_fn = [](FT_Vector const* target, void* ctx) noexcept -> FT_Error {
-            freetype_context* ft_ctx = static_cast<freetype_context*>(ctx);
-            const pt2d old_val = std::exchange(ft_ctx->pos, pt2<FT_Pos>{target->x, target->y} * ft_ctx->scale);
-            if (old_val != ft_ctx->pos)
-                ft_ctx->shape.contours.back().edges.emplace_back(std::bit_cast<msdfgen::Point2>(old_val), std::bit_cast<msdfgen::Point2>(ft_ctx->pos));
-            return FT_Err_Ok;
-        };
-        
-        constexpr auto conic_to_fn = [](FT_Vector const* control, FT_Vector const* target, void* ctx) noexcept -> FT_Error {
-            freetype_context* ft_ctx = static_cast<freetype_context*>(ctx);
-            const pt2d old_val = std::exchange(ft_ctx->pos, pt2<FT_Pos>{target->x, target->y} * ft_ctx->scale);
-            if (old_val != ft_ctx->pos) {
-                const pt2d control_val = pt2<FT_Pos>{control->x, control->y} * ft_ctx->scale;
-                ft_ctx->shape.contours.back().edges.emplace_back(std::bit_cast<msdfgen::Point2>(old_val), std::bit_cast<msdfgen::Point2>(control_val), std::bit_cast<msdfgen::Point2>(ft_ctx->pos));
-            }
-            return FT_Err_Ok;
-        };
-        
-        constexpr auto cubic_to_fn = [](FT_Vector const* first_control, FT_Vector const* second_control, FT_Vector const* target, void* ctx) noexcept -> FT_Error {
-            freetype_context* ft_ctx = static_cast<freetype_context*>(ctx);
-            const pt2d old_val = std::exchange(ft_ctx->pos, pt2<FT_Pos>{target->x, target->y} * ft_ctx->scale);
-            const pt2d first_control_val = pt2<FT_Pos>{first_control->x, first_control->y} * ft_ctx->scale;
-            const pt2d second_control_val = pt2<FT_Pos>{second_control->x, second_control->y} * ft_ctx->scale;
-            if (old_val != ft_ctx->pos || d2d::cross(first_control_val, second_control_val) != 0.) {
-                ft_ctx->shape.contours.back().edges.emplace_back(
-                    std::bit_cast<msdfgen::Point2>(old_val), 
-                    std::bit_cast<msdfgen::Point2>(first_control_val), 
-                    std::bit_cast<msdfgen::Point2>(second_control_val), 
-                    std::bit_cast<msdfgen::Point2>(ft_ctx->pos)
-                );
-            }
-            return FT_Err_Ok;
-        };
+        const unsigned int glyph_count = hb_face_get_glyph_count(font_data.face_ptr.get());
+        hb_font_t* font_ptr = font_data.font_ptr.get();
+        std::vector<std::array<std::byte, font_texture_size_bytes>> glyphs(glyph_count);
+        ::d2d::impl::glyph_bounds_vector glyph_bounds(glyph_count);
+        std::vector<pt2f> glyph_padding(glyph_count);
+        errc ret = errc::unknown;
 
-        FT_Outline_Funcs outline_funcs {
-            .move_to = move_to_fn,
-            .line_to = line_to_fn,
-            .conic_to = conic_to_fn,
-            .cubic_to = cubic_to_fn,
-            .shift = 0,
-            .delta = 0
-        };
-
-        std::array<std::array<std::byte, bitmap_size>, printable_ascii_count> glyphs{};
-        for(char c = ' '; c < '\x7f'; ++c){
+        //#pragma omp taskloop 
+        for(unsigned int glyph_id = 0; glyph_id < glyph_count; ++glyph_id){
             msdfgen::Shape shape;
-            
-            __D2D_FT_VERIFY(FT_Load_Glyph(face.get(), FT_Get_Char_Index(face.get(), c), FT_LOAD_NO_SCALE));
-            freetype_context ft_ctx {
-                .pos = {},
-                .scale = 1./(face->units_per_EM ? face->units_per_EM : 1),
-                .shape = shape
-            };
-            
-            __D2D_FT_VERIFY(FT_Outline_Decompose(&(face->glyph->outline), &outline_funcs, &ft_ctx));
+            if(!hb_font_draw_glyph_or_fail(font_ptr, glyph_id, draw_funcs, &shape)) [[unlikely]] {
+                //#pragma omp atomic write
+                ret = errc::bad_font_file_format;
+                break;
+                //#pragma omp cancel taskgroup
+            }
+            //#pragma omp cancellation point taskgroup
+
             if (!shape.contours.empty() && shape.contours.back().edges.empty())
                 shape.contours.pop_back();
             shape.inverseYAxis = true;
             shape.normalize();
             msdfgen::edgeColoringSimple(shape, 3.0);
+            msdfgen::Shape::Bounds b = shape.getBounds();
+            constexpr static double font_texture_length_em = font_texture_length_pixels / 16.0;
+            pt2f top_left{
+                static_cast<float>(std::clamp(b.l, -font_texture_length_em, font_texture_length_em)), 
+                static_cast<float>(std::clamp(b.t, -font_texture_length_em, font_texture_length_em))
+            };
+            pt2f bottom_right{
+                static_cast<float>(std::clamp(b.r, -font_texture_length_em, font_texture_length_em)),
+                static_cast<float>(std::clamp(b.b, -font_texture_length_em, font_texture_length_em)),
+            };
+            glyph_bounds[glyph_id] = {
+                top_left.x(), top_left.y(), 
+                bottom_right.x() - top_left.x(), bottom_right.y() - top_left.y()
+            };
 
-            msdfgen::ShapeDistanceFinder<msdfgen::OverlappingContourCombiner<msdfgen::MultiAndTrueDistanceSelector>> distanceFinder(shape);
-            bool rtl = false;
-            std::array<std::byte, bitmap_size>& bytes = glyphs[c - ' '];
-            std::array<float, bitmap_size> bitmap;
+            std::array<float, font_texture_size_bytes> bitmap;
 
-            msdfgen::DistanceMapping mapping((msdfgen::Range(bitmap_em_scale)));
-            //TODO simd and parallelism
-            for (std::size_t y = 0; y < bitmap_pixel_length; ++y) {
-                std::size_t row = bitmap_pixel_length - y - 1;
-                for (std::size_t col = 0; col < bitmap_pixel_length; ++col) {
-                    std::size_t x = rtl ? bitmap_pixel_length - col - 1 : col;
-                    pt2d p = pt2d{x + .5, y + .5} / bitmap_pixel_length - bitmap_em_scale;
-                    std::array<double, bitmap_channels> distance = std::bit_cast<std::array<double, bitmap_channels>>(distanceFinder.distance(std::bit_cast<msdfgen::Point2>(p)));
-                    float* const bitmap_begin = &bitmap[bitmap_channels * (bitmap_pixel_length * row + x)];
-                    for(std::size_t channel = 0; channel < bitmap_channels; ++channel)
-                        bitmap_begin[channel] = static_cast<float>(distance[channel] / bitmap_em_scale + .5);
+            //msdfgen::DistanceMapping mapping((msdfgen::Range(font_texture_distance_range)));
+            //TODO: true SIMD
+            glyph_padding[glyph_id] = static_cast<float>(font_texture_padding_em) - pt2f{top_left.x(), bottom_right.y()};
+            pt2f msdf_padding = glyph_padding[glyph_id];//font_texture_padding_em - pt2d{top_left.x(), bottom_right.y()};
+            #pragma omp parallel for collapse(2)
+            for (std::size_t y = 0; y < font_texture_length_pixels; ++y) {
+                for (std::size_t col = 0; col < font_texture_length_pixels; ++col) {
+                    std::size_t x = (y % 2) ? font_texture_length_pixels - col - 1 : col;
+                    pt2d p = pt2d{x + .5, y + .5} / font_texture_glyph_scale - msdf_padding;//pt2d{bitmap_padding_em, ((bitmap_pixel_length)/ static_cast<double>(glyph_scale)) - (b.t - b.b) - bitmap_padding_em};
+                    msdfgen::ShapeDistanceFinder<msdfgen::OverlappingContourCombiner<msdfgen::MultiAndTrueDistanceSelector>> distanceFinder(shape);
+                    std::array<double, font_texture_channels> distance = std::bit_cast<std::array<double, font_texture_channels>>(distanceFinder.distance(std::bit_cast<msdfgen::Point2>(p)));
+                    float* const bitmap_begin = &bitmap[font_texture_channels * (font_texture_length_pixels * (font_texture_length_pixels - y - 1) + x)];
+                    for(std::size_t channel = 0; channel < font_texture_channels; ++channel)
+                        bitmap_begin[channel] = static_cast<float>(distance[channel] / font_texture_distance_range + .5);
                 }
-                rtl = !rtl;
             }
 
-            msdfErrorCorrection(msdfgen::BitmapRef<float, 4>{bitmap.data(), bitmap_pixel_length, bitmap_pixel_length}, shape, msdfgen::Projection(bitmap_pixel_length, msdfgen::Vector2(bitmap_em_scale, bitmap_em_scale)), msdfgen::Range(bitmap_em_scale));
-            for(std::size_t i = 0; i < bitmap_size; ++i)
-                bytes[i] = static_cast<std::byte>(msdfgen::pixelFloatToByte(bitmap[i])); //TODO Why not just multiply by 255?
+            msdfErrorCorrection(msdfgen::BitmapRef<float, 4>{bitmap.data(), font_texture_length_pixels, font_texture_length_pixels}, shape, msdfgen::Projection(font_texture_glyph_scale, msdfgen::Vector2(msdf_padding.x(), msdf_padding.y())), msdfgen::Range(font_texture_distance_range));
 
+            for(std::size_t i = 0; i < font_texture_size_bytes; ++i)
+                glyphs[glyph_id][i] = static_cast<std::byte>(msdfgen::pixelFloatToByte(bitmap[i]));
         }
+        if(ret != errc::unknown) return ret;
 
-        faces.emplace(emplace_result.first->first, std::move(face));
 
-        std::array<std::span<const std::byte>, printable_ascii_count> glyph_spans{};
-        for(std::size_t i = 0; i < printable_ascii_count; ++i)
+        font_data.glyph_bounds = std::move(glyph_bounds);
+        font_data.glyph_padding = std::move(glyph_padding);
+        std::vector<std::span<const std::byte>> glyph_spans(glyphs.size());
+        for(std::size_t i = 0; i < glyphs.size(); ++i)
             glyph_spans[i] = std::span{reinterpret_cast<std::byte const*>(glyphs[i].data()), glyphs[i].size()};
 
+
         return create_texture(
-            emplace_result.first, std::span{glyph_spans}, {bitmap_pixel_length, bitmap_pixel_length}, VK_FORMAT_R8G8B8A8_UNORM,
+            emplace_result.first, std::span{glyph_spans}, {font_texture_length_pixels, font_texture_length_pixels}, VK_FORMAT_R8G8B8A8_UNORM,
             logi_device, phys_device, copy_cmd_pool, texture_mem
         );
     }
@@ -268,8 +238,3 @@ namespace d2d::vk {
         return tex.index();
     }
 }
-
-
-// namespace d2d::vk {
-//     impl::instance_tracker<msdfgen::FreetypeHandle*, msdfgen::deinitializeFreetype> texture_map::freetype_init{};
-// }

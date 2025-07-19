@@ -131,8 +131,12 @@ namespace d2d {
 
     
     public:
-        result<void> resize(std::size_t count) noexcept {
-            base_type::resize(count, make_hybrid_for_overwrite<ChildT>());
+        template<typename... ChildArgs>
+        result<void> resize(std::size_t count, ChildArgs&&... child_args) noexcept {
+            if constexpr(sizeof...(ChildArgs) == 0)
+                base_type::resize(count, make_hybrid_for_overwrite<ChildT>());
+            else
+                base_type::resize(count, make_hybrid<ChildT>(std::forward<ChildArgs>(child_args)...));
         
             if(!inserted()) return {};
             erase_children_from_last_window();
@@ -142,7 +146,6 @@ namespace d2d {
             RESULT_VERIFY(apply_changes_to_last_window());
             return {};
         }
-
 
     protected:
         template<typename U = T, typename... Ts>

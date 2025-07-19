@@ -5,7 +5,7 @@ layout(binding = 0) uniform UBO {
 } ubo;
 
 //per-instance attributes
-layout(location = 0) in uint char;
+layout(location = 0) in uint glyph_idx_in;
 layout(location = 1) in uint size_in;
 layout(location = 2) in vec2 pos_in;
 layout(location = 3) in uvec4 color_in;
@@ -20,7 +20,7 @@ layout(location = 3) out uint size_out;
 
 void main() {
     font_texture_idx_out = font_texture_idx_in;
-    if(char == 0) {
+    if(glyph_idx_in == 0) {
         gl_Position = vec4(0.0, 0.0, 0.0, 1.0);
         uv_out = vec3(0, 0, 0);
         return;
@@ -31,7 +31,7 @@ void main() {
     const vec2 pos = pos_in + (size_in * uv);
 
     gl_Position = vec4(((pos * 2)/ubo.swap_chain_extent) - 1, 0.0, 1.0);
-    uv_out = vec3(uv, char - 32);
+    uv_out = vec3(uv, glyph_idx_in);
     size_out = size_in;
     color_out = color_in/255.0;
 }

@@ -63,6 +63,8 @@ namespace d2d {
             m[0][0] = c; m[0][1] = -s;
             m[1][0] = s; m[1][1] = c;
             break;
+        default: 
+            break;
         }
         return m;
     }

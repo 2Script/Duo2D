@@ -37,7 +37,7 @@ namespace d2d::vk {
     
     public:
         //could benefit from SIMD? (just a target_clones)
-        static result<renderable_tuple> create(std::shared_ptr<logical_device> logi_device, std::shared_ptr<physical_device> phys_device, render_pass& window_render_pass) noexcept;
+        static result<renderable_tuple> create(std::shared_ptr<logical_device> logi_device, std::shared_ptr<physical_device> phys_device, std::shared_ptr<::d2d::impl::font_data_map> font_data_map, render_pass& window_render_pass) noexcept;
     
     protected:
         template<typename T>
@@ -152,9 +152,10 @@ namespace d2d::vk {
         buffer uniform_buff;
         void* uniform_buffer_map;
 
-        std::shared_ptr<logical_device>  logi_device_ptr;
-        std::shared_ptr<physical_device> phys_device_ptr;
-        std::shared_ptr<command_pool>    copy_cmd_pool_ptr;
+        std::shared_ptr<logical_device>             logi_device_ptr;
+        std::shared_ptr<physical_device>            phys_device_ptr;
+        std::shared_ptr<::d2d::impl::font_data_map> font_data_map_ptr;
+        std::shared_ptr<command_pool>               copy_cmd_pool_ptr;
     };
 }
 

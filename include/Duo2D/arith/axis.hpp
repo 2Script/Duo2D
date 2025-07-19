@@ -2,7 +2,7 @@
 
 namespace d2d {
     enum class axis { 
-        x, y, z, 
+        x, y, z, w,
         pitch = x, yaw = y, roll = z 
     };
 }

@@ -28,8 +28,9 @@ namespace d2d::vk {
         constexpr std::size_t memory_offset() const noexcept { return offset; }
 
         constexpr VkFormat format() const noexcept { return image_format; }
-        constexpr VkImageLayout layout() const noexcept { return image_layout; }
-        constexpr VkImageLayout& layout() noexcept { return image_layout; }
+        constexpr VkImageLayout const& layout() const noexcept { return image_layout; }
+        constexpr VkImageLayout      & layout()       noexcept { return image_layout; }
+        constexpr std::uint32_t count() const noexcept { return image_count; }
 
     protected:
         extent2 extent = {};

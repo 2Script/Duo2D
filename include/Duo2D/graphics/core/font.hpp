@@ -1,6 +1,8 @@
 #pragma once
+#include <cstdint>
 #include <filesystem>
 #include <format>
+#include <limits>
 #include <string>
 #include <utility>
 
@@ -21,5 +23,11 @@ namespace d2d {
 
     public:
         constexpr std::string key() const noexcept { return std::format("font::{}", first); }
+    
+    public:
+        constexpr static unsigned char nonprintable_ascii_count = 0x1F + 1;
+        constexpr static unsigned char total_ascii_count = std::numeric_limits<char>::max() + 1;
+        constexpr static unsigned char printable_ascii_count = total_ascii_count - nonprintable_ascii_count;
+        constexpr static std::uint_fast32_t unicode_count = 0x1FFFFF + 1;
     };
 }

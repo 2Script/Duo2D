@@ -93,28 +93,29 @@ namespace d2d::vk {
     void command_buffer::copy_alike(image& dest, image& src, extent2 size) const noexcept {
         VkImageLayout original_dest_layout = dest.layout();
         VkImageLayout original_src_layout = src.layout();
+        const std::uint32_t layer_count = std::min(dest.count(), src.count());
 
         VkImageCopy copy_region{
-            .srcSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1},
+            .srcSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, layer_count},
             .srcOffset = {0, 0, 0},
-            .dstSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1},
+            .dstSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, layer_count},
             .dstOffset = {0, 0, 0},
             .extent = {size.width(), size.height(), 1}
         };
-        transition_image(src,  VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, original_src_layout );
-        transition_image(dest, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, original_dest_layout);
+        transition_image(src,  VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, original_src_layout , src.count());
+        transition_image(dest, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, original_dest_layout, dest.count());
         vkCmdCopyImage(handle, src, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, dest, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copy_region);
-        //transition_image(src,  original_src_layout,  VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-        transition_image(dest, original_src_layout, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+        //transition_image(src,  original_src_layout,  VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, src.count());
+        transition_image(dest, original_src_layout, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, dest.count());
     }
 
-    void command_buffer::copy_buffer_to_image(image& dest, const buffer& src, extent2 image_size, std::size_t buffer_offset, std::uint32_t array_idx) const noexcept {
+    void command_buffer::copy_buffer_to_image(image& dest, const buffer& src, extent2 image_size, std::size_t buffer_offset, std::uint32_t array_idx, std::uint32_t array_count) const noexcept {
         VkBufferImageCopy copy_region{
             .bufferOffset = buffer_offset,
             .bufferRowLength = 0,
             .bufferImageHeight = 0,
 
-            .imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, array_idx, 1},
+            .imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, array_idx, array_count},
             .imageOffset = {0, 0, 0},
             .imageExtent = {image_size.width(), image_size.height(), 1},
         };

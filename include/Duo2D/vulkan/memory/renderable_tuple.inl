@@ -19,10 +19,11 @@
 
 namespace d2d::vk {
     template<std::size_t FiF, ::d2d::impl::directly_renderable... Ts> //requires (sizeof...(Ts) > 0)
-    result<renderable_tuple<FiF, std::tuple<Ts...>>> renderable_tuple<FiF, std::tuple<Ts...>>::create(std::shared_ptr<logical_device> logi_device, std::shared_ptr<physical_device> phys_device, render_pass& window_render_pass) noexcept {
+    result<renderable_tuple<FiF, std::tuple<Ts...>>> renderable_tuple<FiF, std::tuple<Ts...>>::create(std::shared_ptr<logical_device> logi_device, std::shared_ptr<physical_device> phys_device, std::shared_ptr<::d2d::impl::font_data_map> font_data_map, render_pass& window_render_pass) noexcept {
         renderable_tuple ret{};
         ret.logi_device_ptr = logi_device;
         ret.phys_device_ptr = phys_device;
+        ret.font_data_map_ptr = font_data_map;
         
         //Create command pool for copy commands
         vk::command_pool c;
@@ -105,7 +106,7 @@ namespace d2d::vk {
         
         renderable_allocator allocator(logi_device_ptr, phys_device_ptr, copy_cmd_pool_ptr);
         auto load_texture = [this]<typename K>(K&& key) noexcept -> auto {
-            return textures.load(std::forward<K>(key), logi_device_ptr, phys_device_ptr, copy_cmd_pool_ptr, texture_mem);
+            return textures.load(std::forward<K>(key), logi_device_ptr, phys_device_ptr, font_data_map_ptr, copy_cmd_pool_ptr, texture_mem);
         };
         
         //Get the input data bytes, stage them, then move them to device local memory

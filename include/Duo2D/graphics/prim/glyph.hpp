@@ -20,7 +20,7 @@ namespace d2d {
             extent2 swap_chain_extent;
         };
         using push_constant_types = std::tuple<extent2&>;
-        using attribute_types = vk::make_attribute_types_t<std::uint16_t, std::uint16_t, pt2<float>, true_color>;
+        using attribute_types = vk::make_attribute_types_t<glyph_idx_t, std::uint_least16_t, pt2<float>, true_color>;
         using texture_type = font;
         using index_type = std::uint16_t;
 
@@ -35,8 +35,8 @@ namespace d2d {
 
 namespace d2d {
     struct glyph : renderable<glyph> {
-        vk::attribute<std::uint16_t> glyph_idx;
-        vk::attribute<std::uint16_t> size;
+        vk::attribute<glyph_idx_t> glyph_idx;
+        vk::attribute<std::uint_least16_t> size;
         vk::attribute<pt2<float>> pos;
         vk::attribute<true_color> color = {};
 

@@ -48,6 +48,7 @@ namespace d2d {
 
         ret.phys_device_ptr = std::make_shared_for_overwrite<vk::physical_device>();
         ret.logi_device_ptr = std::make_shared_for_overwrite<vk::logical_device>();
+        ret.font_data_map_ptr = std::make_shared_for_overwrite<impl::font_data_map>();
         ret.name = name;
 
         return ret;
@@ -67,7 +68,7 @@ namespace d2d {
         __D2D_VULKAN_VERIFY(vkEnumeratePhysicalDevices(*instance_ptr, &device_count, devices.data()));
 
         //Create dummy window
-        RESULT_TRY_MOVE_UNSCOPED(window dummy, make<window>("dummy", 1280, 720, instance_ptr), win);
+        RESULT_TRY_MOVE_UNSCOPED(window dummy, make<window>("dummy", 1600, 900, instance_ptr), win);
 
 
         std::set<vk::physical_device> ret{};
@@ -98,9 +99,9 @@ namespace d2d {
             return error::device_not_initialized;
 
         
-        result<window> w = make<window>(title, 1280, 720, instance_ptr);
+        result<window> w = make<window>(title, 1600, 900, instance_ptr);
         if(!w.has_value()) return w.error();
-        RESULT_VERIFY(w->initialize(logi_device_ptr, phys_device_ptr));
+        RESULT_VERIFY(w->initialize(logi_device_ptr, phys_device_ptr, font_data_map_ptr));
         auto new_window = windows.emplace(title, *std::move(w));
         if(!new_window.second) 
             return error::window_already_exists;

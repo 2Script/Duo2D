@@ -51,18 +51,19 @@ add_custom_target(${PROJECT_NAME}_shaders ALL DEPENDS ${SHADER_OUTPUT_FILES} SOU
 add_dependencies(${PROJECT_NAME} ${PROJECT_NAME}_shaders)
 
 ## custom includes
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(FT freetype2)
-target_include_directories(${PROJECT_NAME} PUBLIC ${FT_INCLUDE_DIRS})
+#find_package(PkgConfig REQUIRED)
+#pkg_check_modules(FT freetype2)
+#target_include_directories(${PROJECT_NAME} PUBLIC ${FT_INCLUDE_DIRS})
 
 
 ## compiler args
-list(APPEND CLANG_ARGS "-Wall" "-Wextra" "-fno-exceptions" "-fno-rtti")
+list(APPEND CLANG_ARGS "-Wall" "-Wextra" "-fno-exceptions" "-fno-rtti" "-fopenmp")
 
 target_compile_options(${PROJECT_NAME} PUBLIC ${CLANG_ARGS})
 target_compile_options(${PROJECT_NAME} PUBLIC "$<$<CONFIG:RELEASE>:-Werror>")
 target_compile_options(${PROJECT_NAME} PUBLIC "$<$<CONFIG:DEBUG>:-O0>")
 target_compile_options(${PROJECT_NAME} PUBLIC "$<$<CONFIG:DEBUG>:-g>")
+target_link_options(${PROJECT_NAME} PUBLIC "-fopenmp")
 #target_compile_options(${PROJECT_NAME} PUBLIC "$<$<CONFIG:RELEASE>:-O3>")
 #target_compile_options(${PROJECT_NAME} PUBLIC "$<$<CONFIG:RELEASE>:-ffast-math>")
 #target_compile_options(${PROJECT_NAME} PUBLIC "$<$<CONFIG:RELEASE>:-march=native>")

@@ -2,12 +2,15 @@
 #include <GLFW/glfw3.h>
 #include <atomic>
 #include <map>
+#include <memory>
 #include <string_view>
 #include <set>
+#include <unordered_map>
 #include <vulkan/vulkan.h>
 #include <vulkan/vulkan_core.h>
 
 #include "Duo2D/core/error.hpp"
+#include "Duo2D/graphics/core/font_data.hpp"
 #include "Duo2D/vulkan/core/instance.hpp"
 #include "Duo2D/traits/instance_tracker.hpp"
 #include "Duo2D/vulkan/device/logical_device.hpp"
@@ -49,6 +52,7 @@ namespace d2d {
         std::shared_ptr<vk::instance>        instance_ptr;
         std::shared_ptr<vk::physical_device> phys_device_ptr;
         std::shared_ptr<vk::logical_device>  logi_device_ptr;
+        std::shared_ptr<impl::font_data_map> font_data_map_ptr;
         std::string name;
 
         //ORDER MATTERS: glfw must be terminated after all windows have been destroyed

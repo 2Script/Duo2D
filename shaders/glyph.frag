@@ -33,6 +33,7 @@ void main() {
     const float screen_px_dist = min(texture_ratio.x, texture_ratio.y) * px_range * (sd - 0.5);
     const float opacity = clamp(screen_px_dist + 0.5, 0.0, 1.0);
     const vec4 white = vec4(1.0, 1.0, 1.0, 1.0);
-    color_out = vec4(white.rgb * opacity, 1.0);
-    //color_out = mix(color_in, white, opacity);
+    const vec4 transparent = vec4(0.0, 0.0, 0.0, 1.0);
+    color_out = vec4(white.rgb, opacity);
+    //color_out = mix(transparent, white, opacity);
 }
