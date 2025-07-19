@@ -83,7 +83,7 @@ namespace d2d::vk::impl {
         static_assert(std::accumulate(attribute_sizes.cbegin(), attribute_sizes.cend(), 0) == attribute_data_size);
 
         [this]<std::size_t... I>(std::index_sequence<I...>) {
-            (emplace_single_attribute<I>(attribute_offsets), ...);
+            (this->emplace_single_attribute<I>(attribute_offsets), ...);
         }(std::make_index_sequence<num_attributes>{});
 
         return old_offset;
@@ -107,7 +107,7 @@ namespace d2d::vk::impl {
     template<::d2d::impl::directly_renderable T> requires renderable_constraints<T>::has_attributes
     void renderable_attribute_data<T>::unbind_attributes() noexcept {
         [this]<std::size_t... I>(std::index_sequence<I...>) {
-            (unbind_single_attribute<I>(), ...);
+            (this->unbind_single_attribute<I>(), ...);
         }(std::make_index_sequence<num_attributes>{});
     }
 }

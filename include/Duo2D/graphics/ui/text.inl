@@ -6,6 +6,7 @@
 #include <cstdlib>
 #include <harfbuzz/hb.h>
 #include <memory>
+#include <result.hpp>
 #include <string_view>
 
 namespace d2d {
@@ -114,7 +115,7 @@ namespace d2d {
 namespace d2d {
     template<typename... Ts>
     constexpr result<void> text::after_changes_applied(basic_window<Ts...> const& win) noexcept {
-        dynamic_renderable_container<text, glyph>::after_changes_applied(win);
+        RESULT_VERIFY((dynamic_renderable_container<text, glyph>::after_changes_applied(win)));
         //TODO move to on_window_insert after fonts have been separated from glyphs
         bool changes_queued = font_data_map_ptr.expired();
         font_data_map_ptr = win.font_data_map();

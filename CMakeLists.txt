@@ -153,7 +153,11 @@ foreach(OUTPUT_HPP ${SHADER_OUTPUT_FILES})
 endforeach()
 
 
+### test executables ###
+add_subdirectory(test)
+
 ### install ###
+##TODO: install debug and release
 install(TARGETS ${PROJECT_NAME})
 install(DIRECTORY include/ DESTINATION include)
 install(DIRECTORY src/ DESTINATION src)
