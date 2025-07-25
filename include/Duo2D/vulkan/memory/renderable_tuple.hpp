@@ -1,14 +1,15 @@
 #pragma once
-#include <concepts>
 #include <cstddef>
 #include <cstdio>
 #include <cstdlib>
-#include <type_traits>
-#include <utility>
 #include <tuple>
+
 #include <vulkan/vulkan.h>
 #include <zstring.hpp>
+
+#include "Duo2D/graphics/core/font.hpp"
 #include "Duo2D/vulkan/core/command_buffer.hpp"
+#include "Duo2D/vulkan/memory/renderable_data_tuple_wrapper.hpp"
 #include "Duo2D/vulkan/traits/buffer_traits.hpp"
 #include "Duo2D/vulkan/core/command_pool.hpp"
 #include "Duo2D/vulkan/display/render_pass.hpp"
@@ -26,12 +27,15 @@
 
 
 namespace d2d::vk {
-    template<std::size_t FramesInFlight, typename> struct renderable_tuple {};
+    template<std::size_t FramesInFlight, typename> class renderable_tuple {};
+}
 
+
+namespace d2d::vk {
     template<std::size_t FramesInFlight, ::d2d::impl::directly_renderable... Ts> //requires (sizeof...(Ts) > 0)
-    struct renderable_tuple<FramesInFlight, std::tuple<Ts...>> {
+    class renderable_tuple<FramesInFlight, std::tuple<Ts...>> : public renderable_data_tuple_wrapper<FramesInFlight, Ts...> {
         static_assert(sizeof...(Ts) > 0, "renderable_tuple needs at least 1 renderable type");
-
+    public:
         template<typename T> using renderable_data_type = renderable_data<T, FramesInFlight>;
         using renderable_data_tuple_type = std::tuple<renderable_data_type<Ts>...>;
     
@@ -42,84 +46,44 @@ namespace d2d::vk {
     protected:
         template<typename T>
         result<void> apply_changes(render_pass& window_render_pass) noexcept;
-        template<typename T>
-        constexpr bool const& has_changes() const noexcept;
-        template<typename T>
-        constexpr bool      & has_changes()       noexcept;
 
-    public:
-        template<typename T> using key_type       = typename renderable_data_type<T>::key_type;
-        template<typename T> using mapped_type    = typename renderable_data_type<T>::mapped_type;
-        template<typename T> using value_type     = typename renderable_data_type<T>::value_type;
-        template<typename T> using iterator       = typename renderable_data_type<T>::iterator;
-        template<typename T> using const_iterator = typename renderable_data_type<T>::const_iterator;
-
-
-        template<typename T>
-        iterator<T> end() noexcept;
-        template<typename T>
-        const_iterator<T> end() const noexcept;
-        template<typename T>
-        const_iterator<T> cend() const noexcept;
-
-        template<typename T>
-        iterator<T> begin() noexcept;
-        template<typename T>
-        const_iterator<T> begin() const noexcept;
-        template<typename T>
-        const_iterator<T> cbegin() const noexcept;
-
-        template<typename T>
-        bool empty() const noexcept;
-        template<typename T>
-        std::size_t size() const noexcept;
+    protected:
+        //TODO (HIGH PRIO): Split this into (multithreaded) loading/decoding the file | allocating multiple files into image buffers
+        result<texture_idx_t> load(std::string_view path) noexcept;
+        result<texture_idx_t> load(font_view f, std::string_view path = "") noexcept;
+    private:
+        result<texture_idx_t> create_texture(typename texture_map::iterator tex_iter, std::span<std::span<const std::byte>> textures_as_bytes, extent2 texture_size, VkFormat format) noexcept;
 
 
     private:
-        template<typename T> constexpr const buffer& index_buffer()       const noexcept requires renderable_constraints<T>::has_indices;
-        template<typename T> constexpr const buffer& uniform_buffer()     const noexcept requires renderable_constraints<T>::has_uniform;
-        template<typename T> constexpr const buffer& vertex_buffer()      const noexcept requires renderable_constraints<T>::has_vertices;
-        template<typename T> constexpr const buffer& instance_buffer()    const noexcept requires renderable_constraints<T>::has_instance_data;
-        template<typename T> constexpr const buffer& attribute_buffer()   const noexcept requires renderable_constraints<T>::has_attributes;
+        template<typename T> constexpr const buffer&       index_buffer() const noexcept requires renderable_constraints<T>::has_indices;
+        template<typename T> constexpr const buffer&     uniform_buffer() const noexcept requires renderable_constraints<T>::has_uniform;
+        template<typename T> constexpr const buffer&      vertex_buffer() const noexcept requires renderable_constraints<T>::has_vertices;
+        template<typename T> constexpr const buffer&    instance_buffer() const noexcept requires renderable_constraints<T>::has_instance_data;
+        template<typename T> constexpr const buffer&   attribute_buffer() const noexcept requires renderable_constraints<T>::has_attributes;
         template<typename T> constexpr const buffer& texture_idx_buffer() const noexcept requires renderable_constraints<T>::has_textures;
 
 
-        template<typename T> constexpr std::uint32_t index_count(std::size_t i)  const noexcept requires (!renderable_constraints<T>::has_fixed_indices && renderable_constraints<T>::has_indices);
+        template<typename T> constexpr std::uint32_t index_count(std::size_t i)  const noexcept requires (!renderable_constraints<T>::has_fixed_indices  && renderable_constraints<T>::has_indices);
         template<typename T> constexpr std::uint32_t vertex_count(std::size_t i) const noexcept requires (!renderable_constraints<T>::has_fixed_vertices && renderable_constraints<T>::has_vertices);
         template<typename T> constexpr std::size_t   instance_count()            const noexcept;
 
-        template<typename T> constexpr std::uint32_t first_index(std::size_t i)  const noexcept requires (!renderable_constraints<T>::has_fixed_indices && renderable_constraints<T>::has_indices); 
+        template<typename T> constexpr std::uint32_t first_index (std::size_t i) const noexcept requires (!renderable_constraints<T>::has_fixed_indices  && renderable_constraints<T>::has_indices); 
         template<typename T> constexpr std::uint32_t first_vertex(std::size_t i) const noexcept requires (!renderable_constraints<T>::has_fixed_vertices && renderable_constraints<T>::has_vertices); 
 
-        template<typename T> constexpr std::size_t vertex_buffer_offset()      const noexcept requires (renderable_constraints<T>::has_vertices); 
-        template<typename T> constexpr std::size_t index_buffer_offset()       const noexcept requires (renderable_constraints<T>::has_indices); 
+        template<typename T> constexpr std::size_t      vertex_buffer_offset() const noexcept requires (renderable_constraints<T>::has_vertices); 
+        template<typename T> constexpr std::size_t       index_buffer_offset() const noexcept requires (renderable_constraints<T>::has_indices); 
         template<typename T> constexpr std::size_t texture_idx_buffer_offset() const noexcept requires (renderable_constraints<T>::has_textures); 
         template<typename T> consteval static buffer_bytes_t static_offsets() noexcept;
 
-
-        template<typename T> constexpr const pipeline<T>&                                 associated_pipeline()        const noexcept;
-        template<typename T> constexpr const pipeline_layout<T>&                          associated_pipeline_layout() const noexcept;
-        template<typename T> constexpr const std::array<VkDescriptorSet, FramesInFlight>& desc_set()                   const noexcept;
-
         friend struct command_buffer;
 
-    public:
+    protected:
         //template<typename T> constexpr const attribute_types<T>& attributes() const noexcept;
         template<typename T> constexpr std::span<typename renderable_properties<T>::uniform_type, FramesInFlight> uniform_map() const noexcept requires (renderable_constraints<T>::has_uniform);
         template<typename T> constexpr std::span<std::byte                                      , 0             > uniform_map() const noexcept requires (!renderable_constraints<T>::has_uniform);
         template<typename T> constexpr typename renderable_properties<T>::push_constant_types push_constants() const noexcept requires renderable_constraints<T>::has_push_constants;
 
-    protected:
-        template<typename T>
-        constexpr renderable_data<T, FramesInFlight>      & renderable_data_of()       noexcept {
-            return std::get<renderable_data<T, FramesInFlight>>(renderable_datas);
-        }
-        template<typename T>
-        constexpr renderable_data<T, FramesInFlight> const& renderable_data_of() const noexcept {
-            return std::get<renderable_data<T, FramesInFlight>>(renderable_datas);
-        }
-
-        friend struct renderable_event_callbacks;
 
     protected:
         renderable_data_tuple_type renderable_datas;

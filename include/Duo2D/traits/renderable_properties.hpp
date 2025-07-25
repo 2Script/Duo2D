@@ -1,4 +1,5 @@
 #pragma once
+#include "Duo2D/graphics/core/font.hpp"
 #include "Duo2D/vulkan/display/texture.hpp"
 #include "Duo2D/traits/aggregate_traits.hpp"
 #include "Duo2D/traits/renderable_constraints.hpp"
@@ -109,4 +110,7 @@ namespace d2d {
 namespace d2d {
     template<impl::renderable_container_like T>
     struct renderable_properties<T> {};
+
+    template<>
+    struct renderable_properties<font> {};
 }

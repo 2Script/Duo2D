@@ -1,4 +1,10 @@
 #pragma once
+#include <cstddef>
+#include <cstdint>
+#include <tuple>
+
+#include <vulkan/vulkan.h>
+
 #include "Duo2D/arith/point.hpp"
 #include "Duo2D/graphics/core/color.hpp"
 #include "Duo2D/graphics/core/renderable.hpp"
@@ -6,12 +12,11 @@
 #include "Duo2D/arith/size.hpp"
 #include "Duo2D/vulkan/memory/attribute.hpp"
 #include "Duo2D/shaders/glyph.hpp"
-#include <cstddef>
-#include <tuple>
-#include <type_traits>
-#include <vulkan/vulkan_core.h>
+
 
 namespace d2d {
+    using glyph_idx_t = std::uint_least16_t;
+
     struct glyph;
     template<> struct renderable_traits<glyph> {
         using shader_type = glyph;

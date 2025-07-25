@@ -77,6 +77,7 @@ namespace d2d::vk::impl {
         template<std::size_t I>
         void unbind_single_attribute() noexcept;
     public:
+        [[gnu::nonnull]]
         std::size_t emplace_attributes(std::size_t& buff_offset, void* mem_map, VkDeviceSize mem_align) noexcept;
         void unbind_attributes() noexcept;
 
@@ -328,7 +329,9 @@ namespace d2d::vk {
         result<void> create_pipeline(std::shared_ptr<logical_device> logi_device, render_pass& window_render_pass) noexcept;
 
         template<std::size_t, typename>
-        friend struct renderable_tuple;
+        friend class renderable_tuple;
+        template<std::size_t FramesInFlight, ::d2d::impl::directly_renderable... Ts>
+        friend class renderable_data_tuple_wrapper;
     };
 }
 

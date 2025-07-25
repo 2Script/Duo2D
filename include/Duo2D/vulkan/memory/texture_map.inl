@@ -1,8 +1,13 @@
 #pragma once
 #include "Duo2D/vulkan/memory/texture_map.hpp"
 
+#include <msdfgen.h>
+#include <bit>
+
+
 namespace d2d::vk::impl::draw_op {
     constexpr void move_to(hb_draw_funcs_t*, void* shape_ctx, hb_draw_state_t*, float target_x, float target_y, void* glyph_ctx) noexcept {
+        //TODO: use hb_draw_state instead of glyph_context->pos
         glyph_context* glyph_data_ptr = static_cast<glyph_context*>(glyph_ctx);
         msdfgen::Shape* shape_ptr = static_cast<msdfgen::Shape*>(shape_ctx);
         if(shape_ptr->contours.empty() || !shape_ptr->contours.back().edges.empty())

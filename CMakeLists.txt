@@ -26,7 +26,6 @@ set(CPP_FILES
     
     vulkan/memory/buffer.cpp
     vulkan/memory/image.cpp
-    vulkan/memory/texture_map.cpp
 
     vulkan/sync/semaphore.cpp
     vulkan/sync/fence.cpp

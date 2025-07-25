@@ -45,7 +45,8 @@ namespace d2d::vk {
         std::shared_ptr<command_pool> copy_cmd_pool_ptr;
         command_buffer copy_cmd_buffer;
     public:
-        friend class texture_map;
+        template<std::size_t FramesInFlight, typename> 
+        friend class renderable_tuple;
     };
 }
 

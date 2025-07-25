@@ -25,8 +25,8 @@ namespace d2d::impl {
     };
     template<has_texture_type<font> T>
     struct renderable_textures<T> {
-        std::array<font, renderable_traits<T>::max_texture_count> _fonts{};
+        std::array<font_view, renderable_traits<T>::max_texture_count> _fonts{};
 
-        constexpr std::array<font, renderable_traits<T>::max_texture_count> const& texture_keys() const noexcept { return _fonts; }
+        constexpr std::array<font_view, renderable_traits<T>::max_texture_count> const& texture_keys() const noexcept { return _fonts; }
     };
 }

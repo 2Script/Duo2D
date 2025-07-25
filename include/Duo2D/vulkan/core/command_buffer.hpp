@@ -14,7 +14,7 @@
 
 __D2D_DECLARE_VK_TRAITS_DEVICE_AUX(VkCommandBuffer, command_pool);
 
-namespace d2d::vk { template<std::size_t FramesInFlight, typename> struct renderable_tuple; }
+namespace d2d::vk { template<std::size_t FramesInFlight, typename> class renderable_tuple; }
 
 
 namespace d2d::vk {

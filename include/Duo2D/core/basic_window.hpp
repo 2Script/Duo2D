@@ -7,9 +7,12 @@
 #include <type_traits>
 #include <utility>
 #include <vulkan/vulkan_core.h>
-#include "Duo2D/graphics/core/font_data.hpp"
+#include "Duo2D/graphics/core/font.hpp"
+#include "Duo2D/traits/different_from.hpp"
 #include "Duo2D/traits/generic_functor.hpp"
 #include "Duo2D/traits/directly_renderable.hpp"
+#include "Duo2D/traits/renderable_container_like.hpp"
+#include "Duo2D/traits/same_as.hpp"
 #include "Duo2D/vulkan/core/command_buffer.hpp"
 #include "Duo2D/vulkan/display/surface.hpp"
 #include "Duo2D/vulkan/memory/renderable_data.hpp"
@@ -43,6 +46,7 @@ namespace d2d::impl {
     concept not_convertible_to_iters = (!std::is_convertible_v<K&&, Iters<T>> && ...);
 }
 
+
 namespace d2d {
     template<typename... Ts>
     struct basic_window : public vk::renderable_tuple<impl::frames_in_flight, typename vk::renderable_data_traits<Ts...>::data_tuple_type> {
@@ -55,10 +59,15 @@ namespace d2d {
     
         template<typename T>
         result<void> apply_changes() noexcept;
-        template<typename T>
-        constexpr bool const& has_changes() const noexcept;
-        template<typename T>
-        constexpr bool      & has_changes()       noexcept;
+        template<impl::when_decayed_same_as<font> T>
+        result<void> apply_changes() noexcept;
+
+        template<impl::directly_renderable        T> constexpr bool const& has_changes() const noexcept;
+        template<impl::directly_renderable        T> constexpr bool      & has_changes()       noexcept;
+        template<impl::renderable_container_like  T> constexpr bool const& has_changes() const noexcept;
+        template<impl::renderable_container_like  T> constexpr bool      & has_changes()       noexcept;
+        template<impl::when_decayed_same_as<font> T> constexpr bool const& has_changes() const noexcept;
+        template<impl::when_decayed_same_as<font> T> constexpr bool      & has_changes()       noexcept;
 
 
     public:
@@ -101,6 +110,9 @@ namespace d2d {
         std::pair<iterator<T>, bool> emplace(Args&&... args) noexcept;
         template<typename T, typename S, typename... Args> 
         std::pair<iterator<T>, bool> try_emplace(S&& str, Args&&... args) noexcept requires impl::not_convertible_to_iters<S, T, iterator, const_iterator>;
+    private:
+        template<typename T>
+        std::pair<iterator<T>, bool> apply_insertion(std::pair<iterator<T>, bool> const& insert_result) noexcept;
     public:
         template<typename T>
         iterator<T> erase(iterator<T> pos) noexcept;
@@ -121,10 +133,12 @@ namespace d2d {
     private:
         using base_type = vk::renderable_tuple<frames_in_flight, typename vk::renderable_data_traits<Ts...>::data_tuple_type>;
 
-        template<impl::directly_renderable       T> constexpr vk::renderable_data<T, frames_in_flight>      & renderable_data_of()       noexcept;
-        template<impl::directly_renderable       T> constexpr vk::renderable_data<T, frames_in_flight> const& renderable_data_of() const noexcept;
-        template<impl::renderable_container_like T> constexpr vk::impl::renderable_input_map<T>             & renderable_data_of()       noexcept;
-        template<impl::renderable_container_like T> constexpr vk::impl::renderable_input_map<T>        const& renderable_data_of() const noexcept;
+        template<impl::directly_renderable        T> constexpr vk::renderable_data<T, frames_in_flight>      & renderable_data_of()       noexcept;
+        template<impl::directly_renderable        T> constexpr vk::renderable_data<T, frames_in_flight> const& renderable_data_of() const noexcept;
+        template<impl::renderable_container_like  T> constexpr vk::impl::renderable_input_map<T>             & renderable_data_of()       noexcept;
+        template<impl::renderable_container_like  T> constexpr vk::impl::renderable_input_map<T>        const& renderable_data_of() const noexcept;
+        template<impl::when_decayed_same_as<font> T> constexpr impl::font_path_map                           & renderable_data_of()       noexcept;
+        template<impl::when_decayed_same_as<font> T> constexpr impl::font_path_map                      const& renderable_data_of() const noexcept;
 
 
         template<impl::directly_renderable       T> constexpr bool insert_children(iterator<T>     ) noexcept { return false; }
@@ -135,7 +149,8 @@ namespace d2d {
 
     private:
         basic_window(GLFWwindow* w) noexcept : base_type(),
-            handle(w, {}),
+            renderable_container_datas(), font_paths(), font_paths_outdated(false),
+            handle(w, {}), command_pool_ptr(),
             _surface(), _swap_chain(), _render_pass(),
             frame_idx(0), command_buffers{}, render_fences{}, frame_semaphores{}, submit_semaphores() {}
         friend vk::physical_device;
@@ -146,6 +161,8 @@ namespace d2d {
 
     private:
         typename vk::renderable_data_traits<Ts...>::container_data_tuple_type renderable_container_datas;
+        impl::font_path_map font_paths;
+        bool font_paths_outdated;
 
         std::unique_ptr<GLFWwindow, generic_functor<glfwDestroyWindow>> handle;
         std::shared_ptr<vk::command_pool> command_pool_ptr;
@@ -162,8 +179,6 @@ namespace d2d {
         std::array<std::array<vk::semaphore, frames_in_flight>, semaphore_type::num_semaphore_types> frame_semaphores;
         std::vector<vk::semaphore> submit_semaphores;
 
-        //constexpr static std::size_t x = decltype(data)::template static_offsets<clone_rect>()[buffer_data_type::index];
-        //constexpr static std::size_t y = renderable_data<clone_rect, 2>::static_index_data_bytes.size();
         constexpr static std::string_view container_child_format_key = "__d2d_renderable_container_{}__object_{}";
     };
 }

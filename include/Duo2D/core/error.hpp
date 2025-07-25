@@ -83,6 +83,7 @@ namespace d2d::error {
         buffer_needs_changes_applied,
         invalid_image_initialization,
         descriptors_not_initialized,
+        font_not_found,
 
         d2d_custom_end = 0xFFF,
 
@@ -268,7 +269,7 @@ namespace d2d::error {
 
         //Number of codes (cannot be used externally as a size)
         num_duplicate_codes = 1,
-        num_unique_codes = 69,
+        num_unique_codes = 76,
         num_codes = num_unique_codes + num_duplicate_codes
     };
 }
@@ -289,6 +290,14 @@ namespace d2d::error {
         {device_lacks_necessary_queue_base + static_cast<code_int_t>(vk::queue_family::graphics), "The given device lacks a (required) graphics queue"},
         {device_lacks_necessary_queue_base + static_cast<code_int_t>(vk::queue_family::present),  "The given device lacks a (required) present queue"},
         
+        {window_not_found,                   "The requested window was not found."},
+        {window_already_exists,              "A window with the requested name already exists"},
+        {element_not_found,                  "The requested element was not found."},
+        {buffer_needs_changes_applied,       "Buffer is outdated and needs to have changes applied before being used again. Did you forget to call `apply_changes()`?"},
+        {invalid_image_initialization,       "Invalid arguments passed when initializing the given image"},
+        {descriptors_not_initialized,        "The given descriptors have not been initialized yet"},
+        {font_not_found,                     "The requested font was not found. Did you forget to insert it into the window?"},
+
 
         {window_system_not_initialized,      "Window system (GLFW) needs to be initialized first"},
         {invalid_window_enum_argument,       "Invalid enum argument passed to window system function"},
@@ -301,7 +310,6 @@ namespace d2d::error {
         {missing_window_feature,             "The requested window feature is not supported by the platform"},
         {window_feature_not_yet_implemented, "The requested window feature has not been implemented in the window system yet"},
         {missing_window_platform,            "The requested window platform was not found, or, if none was specifically requested, no supported platforms were found"},
-
 
         // {cannot_open_font,                 "Cannot open specified font file"},
         // {unknown_font_file_format,         "Unknown font file format"},
@@ -476,6 +484,14 @@ namespace d2d::error {
         {device_lacks_necessary_queue_base + static_cast<code_int_t>(vk::queue_family::graphics), no_such_device_or_address},
         {device_lacks_necessary_queue_base + static_cast<code_int_t>(vk::queue_family::present),  no_such_device_or_address},
         
+        {window_not_found,                   no_such_device_or_address},
+        {window_already_exists,              invalid_argument},
+        {element_not_found,                  no_such_device_or_address},
+        {buffer_needs_changes_applied,       stale_file_handle},
+        {invalid_image_initialization,       invalid_argument},
+        {descriptors_not_initialized,        bad_file_descriptor},
+        {font_not_found,                     no_such_device_or_address},
+
 
         {window_system_not_initialized,      bad_file_descriptor},
         {invalid_window_enum_argument,       invalid_argument},
@@ -488,112 +504,6 @@ namespace d2d::error {
         {missing_window_feature,             invalid_argument},
         {window_feature_not_yet_implemented, function_not_supported},
         {missing_window_platform,            operation_not_supported},
-
-
-        // {cannot_open_font,                 no_such_file_or_directory},
-        // {unknown_font_file_format,         bad_font_file_format},
-        // {invalid_font_file_format,         bad_font_file_format},
-        // {invalid_freetype_version,         invalid_argument},
-        // {font_module_outdated,             invalid_argument},
-        // {invalid_font_argument,            invalid_argument},
-        // {font_feature_not_yet_implemented, function_not_supported},
-        // {invalid_font_table,               bad_font_file_format},
-        // {invalid_font_table_offset,        bad_font_file_format},
-        // {font_array_allocation_too_large,  value_too_large},
-        // {missing_font_module,              invalid_argument},
-        // {missing_font_property,            invalid_argument},
-
-        // {invalid_glyph_index,        invalid_argument},
-        // {invalid_character_code,     invalid_argument},
-        // {invalid_glyph_format,       invalid_argument},
-        // {cannot_render_glyph_format, invalid_argument},
-        // {invalid_glyph_outline,      invalid_argument},
-        // {invalid_composite_glyph,    invalid_argument},
-        // {too_many_font_hints,        invalid_argument},
-        // {invalid_glyph_pixel_size,   invalid_argument},
-        // {invalid_svg_font,           invalid_argument},
-
-        // {invalid_font_object_handle,   invalid_argument},
-        // {invalid_font_library_handle,  invalid_argument},
-        // {invalid_font_driver_handle,   invalid_argument},
-        // {invalid_font_face_handle,     invalid_argument},
-        // {invalid_font_size_handle,     invalid_argument},
-        // {invalid_glpyh_slot_handle,    invalid_argument},
-        // {invalid_font_char_map_handle, invalid_argument},
-        // {invalid_font_cache_handle,    invalid_argument},
-        // {invalid_font_stream_handle,   invalid_argument},
-
-        // {too_many_font_modules,    argument_list_too_long},
-        // {too_many_font_extensions, argument_list_too_long},
-
-        // {out_of_memory_for_font, not_enough_memory},
-        // {unlisted_font_object,   bad_font_file_format},
-
-        // {cannot_open_font_stream,       no_such_device_or_address},
-        // {invalid_font_stream_seek,      io_error},
-        // {invalid_font_stream_skip,      io_error},
-        // {invalid_font_stream_read,      io_error},
-        // {invalid_font_stream_operation, io_error},
-        // {invalid_font_frame_operation,  io_error},
-        // {invalid_font_frame_access,     io_error},
-        // {invalid_font_frame_read,       io_error},
-
-        // {font_raster_uninitialized,   bad_font_file_format},
-        // {font_raster_corrupted,       bad_font_file_format},
-        // {font_raster_overflow,        bad_font_file_format},
-        // {font_raster_negative_height, bad_font_file_format},
-
-        // {too_many_font_caches, argument_list_too_long},
-
-        // {invalid_truetype_opcode,                   bad_font_file_format},
-        // {too_few_truetype_arguments,                bad_font_file_format},
-        // {truetype_stack_overflow,                   bad_font_file_format},
-        // {truetype_code_overflow,                    bad_font_file_format},
-        // {invalid_truetype_argument,                 bad_font_file_format},
-        // {truetype_division_by_zero,                 bad_font_file_format},
-        // {invalid_truetype_reference,                bad_font_file_format},
-        // {truetype_debug_opcode,                     bad_font_file_format},
-        // {found_endf_opcode_in_truetype_stream,      bad_font_file_format},
-        // {nested_truetype_defs,                      bad_font_file_format},
-        // {invalid_truetype_code_range,               bad_font_file_format},
-        // {truetype_excecution_too_long,              bad_font_file_format},
-        // {too_many_truetype_function_defs,           bad_font_file_format},
-        // {too_many_truetype_instruction_defs,        bad_font_file_format},
-        // {missing_sfnt_font_table,                   bad_font_file_format},
-        // {missing_truetype_horizontal_header_table,  bad_font_file_format},
-        // {missing_truetype_locations_table,          bad_font_file_format},
-        // {missing_truetype_name_table,               bad_font_file_format},
-        // {missing_truetype_char_map_table,           bad_font_file_format},
-        // {missing_truetype_horizontal_metrics_table, bad_font_file_format},
-        // {missing_truetype_post_script_table,        bad_font_file_format},
-        // {invalid_truetype_horizontal_metrics,       bad_font_file_format},
-        // {invalid_truetype_char_map_format,          bad_font_file_format},
-        // {invalid_truetype_ppem_value,               bad_font_file_format},
-        // {invalid_truetype_vertical_metrics,         bad_font_file_format},
-        // {missing_truetype_context,                  bad_font_file_format},
-        // {invalid_truetype_postscript_table_format,  bad_font_file_format},
-        // {invalid_truetype_postscript_table,         bad_font_file_format},
-        // {def_in_glyf_bytecode,                      bad_font_file_format},
-        // {missing_truetype_bitmap,                   bad_font_file_format},
-        // {missing_truetype_svg_hooks,                bad_font_file_format},
-
-        // {cff_syntax_error,              bad_font_file_format},
-        // {cff_argument_stack_underflow,  bad_font_file_format},
-        // {cff_ignore,                    bad_font_file_format},
-        // {cff_no_unicode_glyph_fount,    bad_font_file_format},
-        // {cff_glyph_too_big_for_hinting, bad_font_file_format},
-
-        // {missing_bdf_start_font_field,   bad_font_file_format},
-        // {missing_bdf_font_field,         bad_font_file_format},
-        // {missing_bdf_size_field,         bad_font_file_format},
-        // {missing_bdf_bounding_box_field, bad_font_file_format},
-        // {missing_bdf_chars_field,        bad_font_file_format},
-        // {missing_bdf_start_char_field,   bad_font_file_format},
-        // {missing_bdf_encoding_field,     bad_font_file_format},
-        // {missing_bdf_bbx_field,          bad_font_file_format},
-        // {bdf_bbx_too_big,                bad_font_file_format},
-        // {bdf_invalid_font_header,        bad_font_file_format},
-        // {bdf_invalid_font_glyphs,        bad_font_file_format},
 
 
         {fence_or_query_not_complete, operation_in_progress},

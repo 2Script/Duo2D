@@ -9,7 +9,10 @@
 #include <vulkan/vulkan_core.h>
 
 #include "Duo2D/core/error.hpp"
+#include "Duo2D/graphics/core/font.hpp"
 #include "Duo2D/traits/directly_renderable.hpp"
+#include "Duo2D/traits/renderable_container_like.hpp"
+#include "Duo2D/traits/same_as.hpp"
 #include "Duo2D/vulkan/core/command_buffer.hpp"
 #include "Duo2D/vulkan/device/logical_device.hpp"
 #include "Duo2D/vulkan/memory/renderable_tuple.hpp"
@@ -96,23 +99,48 @@ namespace d2d {
         return {};
     }
 
+    template<typename... Ts>
+    template<impl::when_decayed_same_as<font> T>
+    result<void> basic_window<Ts...>::apply_changes() noexcept {
+        for(auto const& font_path_pair : font_paths)
+            RESULT_VERIFY(this->load(font_path_pair.first, font_path_pair.second.generic_string()));
+        has_changes<T>() = false;
+        return {};
+    }
+
+
 
     template<typename... Ts>
-    template<typename T>
+    template<impl::directly_renderable T>
     constexpr bool const& basic_window<Ts...>::has_changes() const noexcept {
-        if constexpr(impl::directly_renderable<T>)
-            return base_type::template has_changes<T>();
-        else 
-            return has_changes<typename T::element_type>();
+        return base_type::template has_changes<T>();
+    }
+    template<typename... Ts>
+    template<impl::directly_renderable T>
+    constexpr bool& basic_window<Ts...>::has_changes() noexcept {
+        return base_type::template has_changes<T>();
     }
 
     template<typename... Ts>
-    template<typename T>
+    template<impl::renderable_container_like T>
+    constexpr bool const& basic_window<Ts...>::has_changes() const noexcept {
+        return has_changes<typename T::element_type>();
+    }
+    template<typename... Ts>
+    template<impl::renderable_container_like T>
     constexpr bool& basic_window<Ts...>::has_changes() noexcept {
-        if constexpr(impl::directly_renderable<T>)
-            return base_type::template has_changes<T>();
-        else 
-            return has_changes<typename T::element_type>();
+        return has_changes<typename T::element_type>();
+    }
+
+    template<typename... Ts>
+    template<impl::when_decayed_same_as<font> T>
+    constexpr bool const& basic_window<Ts...>::has_changes() const noexcept {
+        return font_paths_outdated;
+    }
+    template<typename... Ts>
+    template<impl::when_decayed_same_as<font> T>
+    constexpr bool& basic_window<Ts...>::has_changes() noexcept {
+        return font_paths_outdated;
     }
 }
 
@@ -196,11 +224,7 @@ namespace d2d {
     std::pair<typename basic_window<Ts...>::template iterator<R>, bool> basic_window<Ts...>::insert(const basic_window<Ts...>::value_type<R>& value) noexcept {
         using T = std::remove_cvref_t<R>;
         auto ins = renderable_data_of<T>().insert(value);
-        if(!ins.second) return ins;
-        this->template has_changes<T>() = true;
-        insert_children<T>(ins.first);
-        ins.first->second.template on_window_insert<T>(*this, ins.first);
-        return ins;
+        return apply_insertion<T>(ins);
     }
 
     template<typename... Ts>
@@ -208,11 +232,7 @@ namespace d2d {
     std::pair<typename basic_window<Ts...>::template iterator<R>, bool> basic_window<Ts...>::insert(basic_window<Ts...>::value_type<R>&& value) noexcept {
         using T = std::remove_cvref_t<R>;
         auto ins = renderable_data_of<T>().insert(std::move(value));
-        if(!ins.second) return ins;
-        this->template has_changes<T>() = true;
-        insert_children<T>(ins.first);
-        ins.first->second.template on_window_insert<T>(*this, ins.first);
-        return ins;
+        return apply_insertion<T>(ins);
     }
 
 
@@ -222,11 +242,7 @@ namespace d2d {
     std::pair<typename basic_window<Ts...>::template iterator<typename std::remove_cvref_t<P>::second_type>, bool>  basic_window<Ts...>::insert(P&& value) noexcept {
         using T = typename std::remove_cvref_t<P>::second_type;
         auto ins = renderable_data_of<T>().insert(std::forward<P>(value));
-        if(!ins.second) return ins;
-        this->template has_changes<T>() = true;
-        insert_children<T>(ins.first);
-        ins.first->second.template on_window_insert<T>(*this, ins.first);
-        return ins;
+        return apply_insertion<T>(ins);
     }
 }
 
@@ -235,11 +251,7 @@ namespace d2d {
     template<typename T, typename... Args>
     std::pair<typename basic_window<Ts...>::template iterator<T>, bool> basic_window<Ts...>::emplace(Args&&... args) noexcept {
         auto ins = renderable_data_of<T>().emplace(std::forward<Args>(args)...);
-        if(!ins.second) return ins;
-        this->template has_changes<T>() = true;
-        insert_children<T>(ins.first);
-        ins.first->second.template on_window_insert<T>(*this, ins.first);
-        return ins;
+        return apply_insertion<T>(ins);
     }
 
     template<typename... Ts>
@@ -247,11 +259,22 @@ namespace d2d {
     std::pair<typename basic_window<Ts...>::template iterator<T>, bool> basic_window<Ts...>::try_emplace(S&& str, Args&&... args) noexcept 
     requires impl::not_convertible_to_iters<S, T, basic_window<Ts...>::template iterator, basic_window<Ts...>::template const_iterator> {
         auto ins = renderable_data_of<T>().try_emplace(std::forward<S>(str), std::forward<Args>(args)...);
-        if(!ins.second) return ins;
+        return apply_insertion<T>(ins);
+    }
+}
+
+namespace d2d {
+    template<typename... Ts>
+    template<typename T>
+    std::pair<typename basic_window<Ts...>::template iterator<T>, bool> basic_window<Ts...>::apply_insertion(std::pair<typename basic_window<Ts...>::template iterator<T>, bool> const& insert_result) noexcept {;
+        if(!insert_result.second) return insert_result;
         this->template has_changes<T>() = true;
-        insert_children<T>(ins.first);
-        ins.first->second.template on_window_insert<T>(*this, ins.first);
-        return ins;
+
+        if constexpr(!impl::when_decayed_same_as<T, font>){
+            insert_children<T>(insert_result.first);
+            insert_result.first->second.template on_window_insert<T>(*this, insert_result.first);
+        }
+        return insert_result;
     }
 }
 
@@ -316,6 +339,17 @@ namespace d2d {
     template<impl::renderable_container_like T>
     constexpr vk::impl::renderable_input_map<T> const& basic_window<Ts...>::renderable_data_of() const noexcept {
         return std::get<vk::impl::renderable_input_map<T>>(renderable_container_datas);
+    }
+
+    template<typename... Ts>
+    template<impl::when_decayed_same_as<font> T>
+    constexpr impl::font_path_map& basic_window<Ts...>::renderable_data_of() noexcept {
+        return font_paths;
+    }
+    template<typename... Ts>
+    template<impl::when_decayed_same_as<font> T>
+    constexpr impl::font_path_map const& basic_window<Ts...>::renderable_data_of() const noexcept {
+        return font_paths;
     }
 
 

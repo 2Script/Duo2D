@@ -10,7 +10,7 @@
 #include <vulkan/vulkan_core.h>
 
 #include "Duo2D/core/error.hpp"
-#include "Duo2D/graphics/core/font_data.hpp"
+#include "Duo2D/graphics/core/font.hpp"
 #include "Duo2D/vulkan/core/instance.hpp"
 #include "Duo2D/traits/instance_tracker.hpp"
 #include "Duo2D/vulkan/device/logical_device.hpp"

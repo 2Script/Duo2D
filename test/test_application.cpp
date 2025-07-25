@@ -104,20 +104,23 @@ int main(){
     win->erase<d2d::debug_rect>("junk");
     RESULT_VERIFY(win->apply_changes<d2d::debug_rect>());
 
-    d2d::font test_font{std::pair<std::string, std::filesystem::path>{"Test", assets_path / "test_font.ttf"}};
-    d2d::font test_font2{std::pair<std::string, std::filesystem::path>{"Test2", assets_path / "test_font2.ttf"}};
+    d2d::font test_font("Test");
+    d2d::font test_font2("Test2");
+    if(!win->try_emplace<d2d::font>(test_font, assets_path / "test_font.ttf").second) return -69;
+    if(!win->emplace<d2d::font>(std::make_pair(test_font2, assets_path / "test_font2.ttf")).second) return -69;
+    RESULT_VERIFY(win->apply_changes<d2d::font>()); 
 
-    auto emplace_text = win->try_emplace<d2d::text>("sample_text", 8);
+    d2d::text sample_text("initial", {10,10}, test_font, 32, 0x0, 0);
+    auto emplace_text = win->emplace<d2d::text>("sample_text", std::move(sample_text));
     if(!emplace_text.second) return -69;
     d2d::text& text_ref = emplace_text.first->second;
-    //text_ref.emplace("before", test_font, 64, 0xFFFFFFFF, 11 - 7); //realloc but no apply
-    //if(text_ref.try_emplace("long_sample_text", test_font, 64, 0xFFFFFFFF).second) return -69; //fails - needs size increase
-    if(!text_ref.try_emplace("after", {0,0}, test_font2, 64, 0xFFFFFFFF).second) return -69;
+    text_ref.emplace("before", {}, test_font2, 64, 0xFFFFFFFF, 11 - 7); //realloc but no apply
+    if(text_ref.try_emplace("long_sample_text", {}, test_font2, 64, 0xFFFFFFFF).second) return -69; //fails - needs size increase
     RESULT_VERIFY(win->apply_changes<d2d::text>()); //text is "before" here
-    //text_ref.emplace("long_after", test_font, 64, 0xFFFFFFFF); //no realloc or apply
-    //text_ref.emplace("longer_after", test_font, 64, 0xFFFFFFFF); //realloc + apply
-    //if(text_ref.try_emplace("very_long_after", test_font, 64, 0xFFFFFFFF).second) return -69; //fails - needs size increase
-    //if(!text_ref.try_emplace("after", test_font, 64, 0xFFFFFFFF).second) return -69; //succeeds - no realloc
+    text_ref.emplace("long_after", {}, test_font2, 64, 0xFFFFFFFF); //no realloc or apply
+    text_ref.emplace("longer_after", {}, test_font2, 64, 0xFFFFFFFF); //realloc + apply
+    if(text_ref.try_emplace("very_long_after", {}, test_font2, 64, 0xFFFFFFFF).second) return -69; //fails - needs size increase
+    if(!text_ref.try_emplace("after", {}, test_font2, 64, 0xFFFFFFFF).second) return -69; //succeeds - no realloc
 
     auto emplace_text_2 = win->try_emplace<d2d::text>("sample_text_2", 16);
     if(!emplace_text_2.second) return -69;
