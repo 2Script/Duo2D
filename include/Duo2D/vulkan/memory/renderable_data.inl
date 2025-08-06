@@ -69,10 +69,8 @@ namespace d2d::vk::impl {
     }
 
     template<::d2d::impl::directly_renderable T> requires renderable_constraints<T>::has_attributes
-    std::size_t renderable_attribute_data<T>::emplace_attributes(std::size_t& buff_offset, void* mem_map, VkDeviceSize mem_size) noexcept {
+    void renderable_attribute_data<T>::emplace_attributes(std::size_t buff_offset, void* mem_map) noexcept {
         attributes_span = std::span<std::byte>(static_cast<std::byte*>(mem_map) + buff_offset, attribute_buffer_size());
-        std::size_t old_offset = buff_offset;
-        buff_offset += mem_size;
 
         constexpr static std::array<std::size_t, num_attributes> attribute_sizes = impl::attribute_traits<typename renderable_traits<T>::attribute_types>::sizes;
         constexpr static std::array<std::size_t, num_attributes> attribute_offsets = []() {
@@ -85,8 +83,6 @@ namespace d2d::vk::impl {
         [this]<std::size_t... I>(std::index_sequence<I...>) {
             (this->emplace_single_attribute<I>(attribute_offsets), ...);
         }(std::make_index_sequence<num_attributes>{});
-
-        return old_offset;
     }
 }
 

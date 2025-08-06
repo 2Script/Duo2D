@@ -10,14 +10,22 @@
 
 namespace d2d {
     //Use variable_renderable_container
-    class text : public dynamic_renderable_container<text, glyph>{
+    class text : public dynamic_renderable_container<text, glyph> {
         using glyph_count_t = unsigned int;
     public:
+        using base_type = dynamic_renderable_container<text, glyph>;
         constexpr static std::size_t default_reserved_size = 0x40;
 
     public:
         inline text(std::size_t reserve = default_reserved_size) noexcept;
         inline text(std::string_view contents, pt2f pos, font const& f, font_size_t font_size = 24, true_color color = 0x00'00'00'FF, std::size_t extra_reserve = 0) noexcept;
+
+    public:
+        inline text(text&& other) noexcept;
+        inline text& operator=(text&& other) noexcept;
+        text(text const& other) noexcept = delete;
+        text& operator=(text const& other) noexcept = delete;
+        ~text() noexcept = default;
 
     public:
         inline text& emplace(std::string_view contents, pt2f pos, font const& f, font_size_t font_size = 24, true_color color = 0x00'00'00'FF, std::size_t extra_reserve = 0) noexcept;
@@ -31,9 +39,9 @@ namespace d2d {
 
 
     public:
-        template<typename U = text, typename... Ts>
-        constexpr void on_window_insert(basic_window<Ts...>& win, typename basic_window<Ts...>::template iterator<U> inserted_iter) noexcept;
-        
+        template<typename... Ts>
+        constexpr void on_window_insert(basic_window<Ts...>& win, std::string_view insertion_key) noexcept;
+
 
     private:
         std::weak_ptr<impl::font_data_map> font_data_map_ptr;

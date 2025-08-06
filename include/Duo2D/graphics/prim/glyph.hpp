@@ -43,7 +43,7 @@ namespace d2d {
         vk::attribute<glyph_idx_t> glyph_idx;
         vk::attribute<std::uint_least16_t> size;
         vk::attribute<pt2<float>> pos;
-        vk::attribute<true_color> color = {};
+        vk::attribute<true_color> color;
 
     public:
         consteval static std::array<index_type, index_count> indices() noexcept { return {0, 1, 2, 2, 1, 3}; }

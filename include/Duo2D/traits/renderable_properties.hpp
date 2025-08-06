@@ -14,7 +14,12 @@
 
 namespace d2d {
     template<typename T>
-    struct renderable_properties : public renderable_traits<T> {
+    struct renderable_properties {};
+}
+
+namespace d2d {
+    template<typename T> requires requires { sizeof(renderable_traits<T>); }
+    struct renderable_properties<T> : public renderable_traits<T> {
         using traits_type = renderable_traits<T>;
         using constraints_type = renderable_constraints<T>;
     private:
@@ -105,12 +110,4 @@ namespace d2d {
             return ret;
         }
     };
-}
-
-namespace d2d {
-    template<impl::renderable_container_like T>
-    struct renderable_properties<T> {};
-
-    template<>
-    struct renderable_properties<font> {};
 }

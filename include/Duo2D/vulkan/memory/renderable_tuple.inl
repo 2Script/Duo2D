@@ -106,7 +106,7 @@ namespace d2d::vk {
 namespace d2d::vk {
     template<std::size_t FiF, ::d2d::impl::directly_renderable... Ts> //requires (sizeof...(Ts) > 0)
     template<typename T>
-    result<void> renderable_tuple<FiF, std::tuple<Ts...>>::apply_changes(render_pass& window_render_pass) noexcept {
+    result<void> renderable_tuple<FiF, std::tuple<Ts...>>::apply_memory_changes(render_pass& window_render_pass) noexcept {
         constexpr static std::size_t I = renderable_index<T>;
         if(this->template renderable_data_of<T>().size() == 0) {
             data_buffs[I] = buffer{};
@@ -146,14 +146,11 @@ namespace d2d::vk {
             (this->template renderable_data_of<Ts>().clear_inputs(), ...);
             if(error_code != error::unknown) return error_code;
         }
-        
-        if constexpr (!renderable_constraints<T>::has_attributes) {
-            this->template renderable_data_of<T>().has_changes() = false;
-            return {};
-        }
+
+
+        if constexpr (!renderable_constraints<T>::has_attributes) return {};
 
         constexpr static std::size_t I_a = renderable_index_with_attrib<T>;
-        (this->template renderable_data_of<Ts>().unbind_attributes(), ...);
 
         if(this->template renderable_data_of<T>().attribute_buffer_size() == 0) {
             attribute_buffs[I_a] = buffer{};
@@ -161,18 +158,30 @@ namespace d2d::vk {
         }
         
         if(this->template renderable_data_of<T>().attribute_buffer_size() > attribute_buffs[I_a].size()) {
+            (this->template renderable_data_of<Ts>().unbind_attributes(), ...);
+            renderable_allocator allocator(logi_device_ptr, phys_device_ptr, copy_cmd_pool_ptr);
             RESULT_VERIFY((allocator.template alloc_buffer<I_a, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT>(
                 std::span{attribute_buffs}, this->template renderable_data_of<T>().attribute_buffer_size(), shared_mem
             )));
         }
+        return {};
+    }
 
+
+    template<std::size_t FiF, ::d2d::impl::directly_renderable... Ts> //requires (sizeof...(Ts) > 0)
+    template<typename T>
+    result<void> renderable_tuple<FiF, std::tuple<Ts...>>::apply_attributes() noexcept {
         //Must recreate ALL attribute span maps
-        RESULT_TRY_COPY_UNSCOPED(void* shared_mem_map, shared_mem.map(logi_device_ptr, VK_WHOLE_SIZE), smm);
+        RESULT_TRY_COPY_UNSCOPED(void* shared_mem_map, shared_mem.map(logi_device_ptr, VK_WHOLE_SIZE), _smm);
+
         std::size_t buffer_offset = 0;
+        auto emplace_all_attributes = [&, this]<typename U>(std::size_t& buff_offset) noexcept -> void {
+            if constexpr (!renderable_constraints<U>::has_attributes) return;
+            this->template renderable_data_of<U>().emplace_attributes(buff_offset, shared_mem_map);
+            buff_offset += shared_mem.requirements()[renderable_index_with_attrib<U>].size;
+        };
+        (emplace_all_attributes.template operator()<Ts>(buffer_offset), ...);
 
-        (this->template renderable_data_of<Ts>().emplace_attributes(buffer_offset, shared_mem_map, shared_mem.requirements()[renderable_index_with_attrib<Ts>].size), ...);
-
-        this->template renderable_data_of<T>().has_changes() = false;
         return {};
     }
 }

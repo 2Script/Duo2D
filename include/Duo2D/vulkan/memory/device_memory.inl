@@ -20,8 +20,8 @@ namespace d2d::vk {
         __D2D_WEAK_PTR_TRY_LOCK(phys_device, phys_device_weak_ref);
 
         for(std::size_t i = 0; i < N; ++i) {
-            if(associated_buffers[i].empty()) continue;
-            vkGetBufferMemoryRequirements(*logi_device, static_cast<VkBuffer>(associated_buffers[i]), &ret.mem_reqs[i]);
+            if(associated_buffers[i].empty()) ret.mem_reqs[i] = {};
+            else vkGetBufferMemoryRequirements(*logi_device, static_cast<VkBuffer>(associated_buffers[i]), &ret.mem_reqs[i]);
         }
 
         std::optional<std::uint32_t> mem_type_idx = std::nullopt;

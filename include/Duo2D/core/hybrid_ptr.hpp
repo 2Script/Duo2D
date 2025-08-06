@@ -24,6 +24,7 @@ namespace d2d::impl {
         constexpr hybrid_ptr_base& operator=(const hybrid_ptr_base& other) noexcept {
             _ptr_value = other._ptr_value ? (other.holds_reference() ? other._ptr_value : std::bit_cast<std::uintptr_t>(new T(*std::bit_cast<pointer>(other._ptr_value)))) : std::uintptr_t{};
             _holds_ref = other.holds_reference();
+            return *this;
         }
 
         constexpr hybrid_ptr_base(hybrid_ptr_base&& other) noexcept : 
@@ -57,7 +58,7 @@ namespace d2d::impl {
 
         constexpr hybrid_ptr_base(const hybrid_ptr_base& other) noexcept : 
             _ptr_value(other._ptr_value ? (other.holds_reference() ? other._ptr_value : std::bit_cast<std::uintptr_t>(new T(*std::bit_cast<pointer>(other._ptr_value)))) : std::uintptr_t{}) {}
-        constexpr hybrid_ptr_base& operator=(const hybrid_ptr_base& other) {
+        constexpr hybrid_ptr_base& operator=(const hybrid_ptr_base& other) noexcept {
             _ptr_value = other._ptr_value ? (other.holds_reference() ? other._ptr_value : std::bit_cast<std::uintptr_t>(new T(*std::bit_cast<pointer>(other._ptr_value)))) : std::uintptr_t{};
             return *this;
         };

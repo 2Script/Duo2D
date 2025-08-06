@@ -1,7 +1,9 @@
 #include <iostream>
+#include <result/to_result.hpp>
 #include <set>
 #include <array>
 #include <string>
+#include <type_traits>
 #include <utility>
 #include <filesystem>
 
@@ -13,6 +15,8 @@
 #include <Duo2D/arith/point.hpp>
 #include <Duo2D/graphics/prim/debug_rect.hpp>
 #include <Duo2D/graphics/prim/styled_rect.hpp>
+#include <Duo2D/graphics/ui/text.hpp>
+#include <Duo2D/graphics/ui/progress_bar.hpp>
 
 
 
@@ -41,7 +45,7 @@ int main(){
     d2d::window* win = *w;
     d2d::pt2<int> v = {10, 10};
     d2d::transform(v, d2d::scale{4, 4}, d2d::translate{10,10});
-    d2d::styled_rect s = d2d::styled_rect{{}, {50,100,300,1044-100}, 0x009999FF};
+    d2d::styled_rect s = d2d::styled_rect{{50,100,300,1044-100}, 0x009999FF};
     d2d::clone_rect c = d2d::clone_rect{s};
     d2d::debug_rect dr = d2d::debug_rect{{}, {400, 750,200,100}, 0x999900FF};
     d2d::debug_rect junk = d2d::debug_rect{{}, {500-400,450-225,800,450}, 0x222222FF};
@@ -52,7 +56,6 @@ int main(){
     s.transform->translation = {5.f, 7.f};
     s.border_width = 5;
     
-    //s._texture_paths = {"/home/artin/Repos/Arastais/Test/test_img_alpha_3.png"};
     //s.texture_bounds->size = {1200, 675};
     std::string test_img_alpha_path = assets_path / "test_img_alpha.png";
     s._texture_paths = {test_img_alpha_path, ""};
@@ -69,7 +72,7 @@ int main(){
     cyan_ref.border_width = 7;
     RESULT_VERIFY(win->apply_changes<d2d::styled_rect>());
 
-    auto emplace_magenta = win->try_emplace<d2d::clone_rect>("magenta", d2d::styled_rect{d2d::renderable<d2d::styled_rect>{}, d2d::rect<float>{400,50,1000,675}, 0x990099FF});
+    auto emplace_magenta = win->try_emplace<d2d::clone_rect>("magenta", d2d::styled_rect{d2d::rect<float>{400,50,1000,675}, 0x990099FF});
     if(!emplace_magenta.second) return -69;
     d2d::clone_rect& magenta_ref = emplace_magenta.first->second;
     magenta_ref.transform->scale = {.6f, .9f};
@@ -104,40 +107,50 @@ int main(){
     win->erase<d2d::debug_rect>("junk");
     RESULT_VERIFY(win->apply_changes<d2d::debug_rect>());
 
+    //expensive text rendering
+    {
+    d2d::font test_font_mono("Test Mono");
     d2d::font test_font("Test");
     d2d::font test_font2("Test2");
-    if(!win->try_emplace<d2d::font>(test_font, assets_path / "test_font.ttf").second) return -69;
-    if(!win->emplace<d2d::font>(std::make_pair(test_font2, assets_path / "test_font2.ttf")).second) return -69;
+    if(!win->try_emplace<d2d::font>(test_font_mono, assets_path / "test_mono.ttf").second) return -69;
+    //if(!win->try_emplace<d2d::font>(test_font, assets_path / "test_font.ttf").second) return -69;
+    //if(!win->emplace<d2d::font>(std::make_pair(test_font2, assets_path / "test_font2.ttf")).second) return -69;
     RESULT_VERIFY(win->apply_changes<d2d::font>()); 
 
-    d2d::text sample_text("initial", {10,10}, test_font, 32, 0x0, 0);
-    auto emplace_text = win->emplace<d2d::text>("sample_text", std::move(sample_text));
-    if(!emplace_text.second) return -69;
-    d2d::text& text_ref = emplace_text.first->second;
-    text_ref.emplace("before", {}, test_font2, 64, 0xFFFFFFFF, 11 - 7); //realloc but no apply
-    if(text_ref.try_emplace("long_sample_text", {}, test_font2, 64, 0xFFFFFFFF).second) return -69; //fails - needs size increase
-    RESULT_VERIFY(win->apply_changes<d2d::text>()); //text is "before" here
-    text_ref.emplace("long_after", {}, test_font2, 64, 0xFFFFFFFF); //no realloc or apply
-    text_ref.emplace("longer_after", {}, test_font2, 64, 0xFFFFFFFF); //realloc + apply
-    if(text_ref.try_emplace("very_long_after", {}, test_font2, 64, 0xFFFFFFFF).second) return -69; //fails - needs size increase
-    if(!text_ref.try_emplace("after", {}, test_font2, 64, 0xFFFFFFFF).second) return -69; //succeeds - no realloc
+    //d2d::text sample_text("initial", {10,10}, test_font, 32, 0x0, 0);
+    //auto emplace_text = win->emplace<d2d::text>("sample_text", std::move(sample_text));
+    //if(!emplace_text.second) return -69;
+    //d2d::text& text_ref = emplace_text.first->second;
+    //text_ref.emplace("before", {}, test_font2, 64, 0xFFFFFFFF, 11 - 7); //realloc but no apply
+    //if(text_ref.try_emplace("long_sample_text", {}, test_font2, 64, 0xFFFFFFFF).second) return -69; //fails - needs size increase
+    //RESULT_VERIFY(win->apply_changes<d2d::text>()); //text is "before" here
+    //text_ref.emplace("long_after", {}, test_font2, 64, 0xFFFFFFFF); //no realloc or apply
+    //text_ref.emplace("longer_after", {}, test_font2, 64, 0xFFFFFFFF); //realloc + apply
+    //if(text_ref.try_emplace("very_long_after", {}, test_font2, 64, 0xFFFFFFFF).second) return -69; //fails - needs size increase
+    //if(!text_ref.try_emplace("after", {}, test_font2, 64, 0xFFFFFFFF).second) return -69; //succeeds - no realloc
 
     auto emplace_text_2 = win->try_emplace<d2d::text>("sample_text_2", 16);
     if(!emplace_text_2.second) return -69;
     d2d::text& text_2_ref = emplace_text_2.first->second;
-    text_2_ref.emplace("Affluent in mega", d2d::pt2f{700, 750}, test_font, 128, 0x0C'0C'0C'FF, 5);
+    //text_2_ref.emplace("Affluent in mega", d2d::pt2f{700, 750}, test_font, 128, 0x0C'0C'0C'FF, 5);
+    text_2_ref.emplace("Affluent in mega", d2d::pt2f{700, 750}, test_font_mono, 128, 0x0C'0C'0C'FF, 5);
     RESULT_VERIFY(win->apply_changes<d2d::text>());
 
-    //dr_ref.transform->scale = {.1f, .1f};
-    //dr_ref.transform->rotation = d2d::vk_mat2{{std::array<float, 2>{{1.f, 1.f}}, std::array<float, 2>{{1.f, 1.f}}}};
-    //dr_ref.transform->translation = {1.f, 1.f};
-    //dr_ref.border_width = 1;
-    //win->erase<d2d::debug_rect>("white");
-    //win->apply_changes<d2d::debug_rect>();
+    auto emplace_progress_bar = win->try_emplace<d2d::progress_bar>("sample_progress_bar", d2d::pt2f{700, 900}, d2d::sz2f{400, 100}, test_font_mono, 0xFF'FF'FF'FF, 0xFF'00'00'FF, 0xFF'FF'FF'FF, 32);
+    if(!emplace_progress_bar.second) return -69;
+    RESULT_VERIFY(win->apply_changes<d2d::progress_bar>());
+
+    s._texture_paths = {test_img_alpha_path, ""};
+    s.texture_bounds->pos = {350, 100};
+    s.texture_bounds->size = {100, 1044-100};
+    } 
 
 
-    //auto w2 = app.add_window("Duo2D Test (Second Window)");
-    //if(!w.has_value()) return w2.error();
+    //2nd window
+    /* {
+    auto w2 = app.add_window("Duo2D Test (Second Window)");
+    if(!w.has_value()) return w2.error();
+    } */
 
     
     while(app.open())

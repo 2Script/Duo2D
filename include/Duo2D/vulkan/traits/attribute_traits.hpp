@@ -1,6 +1,7 @@
 #pragma once
 #include <span>
 #include <tuple>
+#include <type_traits>
 #include <utility>
 #include "Duo2D/traits/renderable_constraints.hpp"
 #include "Duo2D/vulkan/memory/attribute.hpp"

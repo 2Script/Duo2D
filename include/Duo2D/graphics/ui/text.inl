@@ -1,5 +1,6 @@
 #pragma once
 #include "Duo2D/core/hybrid_ptr.hpp"
+#include "Duo2D/graphics/core/color.hpp"
 #include "Duo2D/graphics/core/font.hpp"
 #include "Duo2D/graphics/core/renderable.hpp"
 #include "Duo2D/graphics/ui/text.hpp"
@@ -11,11 +12,36 @@
 
 namespace d2d {
     inline text::text(std::size_t reserve) noexcept : 
-        dynamic_renderable_container<text, glyph>(reserve, make_hybrid_for_overwrite<glyph>()), font_data_map_ptr{}, content_buffer(hb_buffer_create()), content{}, font_key(), starting_pos{}, size_pixels{} {}
+        base_type{dynamic_renderable_container<text, glyph>(reserve, make_hybrid<glyph>(renderable<glyph>{}, 0, 0, pt2f{}, true_color{}))}, font_data_map_ptr{}, content_buffer(hb_buffer_create()), content{}, font_key(), starting_pos{}, size_pixels{} {}
 
     inline text::text(std::string_view contents, pt2f pos, font const& f, font_size_t font_size, true_color color, std::size_t extra_reserve) noexcept :
-        dynamic_renderable_container<text, glyph>(contents.size() + extra_reserve, make_hybrid_for_overwrite<glyph>()), font_data_map_ptr{}, content_buffer(hb_buffer_create()), content{}, font_key(), starting_pos{}, size_pixels{} {
+        base_type{dynamic_renderable_container<text, glyph>(contents.size() + extra_reserve, make_hybrid_for_overwrite<glyph>())}, font_data_map_ptr{}, content_buffer(hb_buffer_create()), content{}, font_key(), starting_pos{}, size_pixels{} {
         emplace(contents, pos, f, font_size, color, extra_reserve);
+    }
+}
+
+namespace d2d {
+    inline text::text(text&& other) noexcept :
+        base_type(std::move(other)), 
+        content_buffer(std::move(other.content_buffer)),
+        content(std::move(other.content)), 
+        font_key(std::move(other.font_key)),
+        starting_pos(other.starting_pos), 
+        size_pixels(other.size_pixels) {        
+        for(std::size_t i = 0; i < size(); ++i)
+            (*this)[i]->_fonts = {static_cast<font_view>(font_key)};
+    } 
+
+    inline text& text::operator=(text&& other) noexcept {
+        base_type::operator=(std::move(other));
+        content_buffer = std::move(other.content_buffer);
+        content = std::move(other.content);
+        font_key = std::move(other.font_key);
+        starting_pos = other.starting_pos;
+        size_pixels = other.size_pixels;
+        for(std::size_t i = 0; i < size(); ++i)
+            (*this)[i]->_fonts = {static_cast<font_view>(font_key)};
+        return *this;
     }
 }
 
@@ -23,8 +49,8 @@ namespace d2d {
     inline text& text::emplace(std::string_view contents, pt2f pos, font const& f, font_size_t font_size, true_color color, std::size_t extra_reserve) noexcept {
         set_content(contents, pos, f, font_size, color);
         auto [glyph_count, font_data_ptr] = shape_glyphs();
-        if(glyph_count > size())
-            if(auto r = this->resize(glyph_count + extra_reserve, renderable<glyph>{{}, {f}, {}}, 0, font_size, pt2f{}, color); !r.has_value()) [[unlikely]]
+        if(glyph_count + extra_reserve > size())
+            if(auto r = resize(glyph_count + extra_reserve, renderable<glyph>{{}, {f}, {}}, 0, font_size, pt2f{}, color); !r.has_value()) [[unlikely]]
                 std::abort(); //TODO?: maybe change return type to a result and return the error code instead? (this function's signature will be inconsistent with std emplace functions in that case however)
         update_glyph_positions(glyph_count, font_data_ptr);
         return *this;
@@ -53,7 +79,7 @@ namespace d2d {
             (*this)[i]->glyph_idx = 0;
             (*this)[i]->size = font_size;
             (*this)[i]->color = color;
-            (*this)[i]->_fonts = {font_view(font_key)};
+            (*this)[i]->_fonts = {static_cast<font_view>(font_key)};
         }
     }
 
@@ -106,9 +132,9 @@ namespace d2d {
 
 
 namespace d2d {
-    template<typename U, typename... Ts>
-    constexpr void text::on_window_insert(basic_window<Ts...>& win, typename basic_window<Ts...>::template iterator<U> inserted_iter) noexcept {
-        dynamic_renderable_container<text, glyph>::on_window_insert(win, inserted_iter);
+    template<typename... Ts>
+    constexpr void text::on_window_insert(basic_window<Ts...>& win, std::string_view insertion_key) noexcept {
+        base_type::on_window_insert(win, insertion_key);
 
         bool changes_queued = font_data_map_ptr.expired();
         font_data_map_ptr = win.font_data_map();

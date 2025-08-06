@@ -1,14 +1,16 @@
 #pragma once
-#include <GLFW/glfw3.h>
 #include <concepts>
 #include <cstddef>
 #include <memory>
 #include <string_view>
 #include <type_traits>
 #include <utility>
-#include <vulkan/vulkan_core.h>
+
+#include <GLFW/glfw3.h>
+#include <vulkan/vulkan.h>
+#include <result.hpp>
+
 #include "Duo2D/graphics/core/font.hpp"
-#include "Duo2D/traits/different_from.hpp"
 #include "Duo2D/traits/generic_functor.hpp"
 #include "Duo2D/traits/directly_renderable.hpp"
 #include "Duo2D/traits/renderable_container_like.hpp"
@@ -57,21 +59,34 @@ namespace d2d {
         basic_window() noexcept : basic_window(nullptr) {}
         result<void> initialize(std::shared_ptr<vk::logical_device> logi_device, std::shared_ptr<vk::physical_device> phys_device, std::shared_ptr<impl::font_data_map> font_data_map) noexcept;
     
+        //TODO check that T is within container_data_tuple_type
         template<typename T>
         result<void> apply_changes() noexcept;
         template<impl::when_decayed_same_as<font> T>
         result<void> apply_changes() noexcept;
+    private:
+        template<typename T>
+        result<void> apply_memory_changes() noexcept;
+        template<typename T>
+        result<void> apply_attributes() noexcept;
 
-        template<impl::directly_renderable        T> constexpr bool const& has_changes() const noexcept;
-        template<impl::directly_renderable        T> constexpr bool      & has_changes()       noexcept;
-        template<impl::renderable_container_like  T> constexpr bool const& has_changes() const noexcept;
-        template<impl::renderable_container_like  T> constexpr bool      & has_changes()       noexcept;
-        template<impl::when_decayed_same_as<font> T> constexpr bool const& has_changes() const noexcept;
-        template<impl::when_decayed_same_as<font> T> constexpr bool      & has_changes()       noexcept;
+    public:
+        template<impl::directly_renderable             T> constexpr bool has_changes() const noexcept;
+        template<impl::renderable_container_like       T> constexpr bool has_changes() const noexcept;
+        template<impl::renderable_container_tuple_like T> constexpr bool has_changes() const noexcept;
+        template<impl::when_decayed_same_as<font>      T> constexpr bool has_changes() const noexcept;
+    private:
+        template<impl::directly_renderable             T> constexpr bool has_changes(bool value) noexcept;
+        template<impl::renderable_container_like       T> constexpr bool has_changes(bool value) noexcept;
+        template<impl::renderable_container_tuple_like T> constexpr bool has_changes(bool value) noexcept;
+        template<impl::when_decayed_same_as<font>      T> constexpr bool has_changes(bool value) noexcept;
 
 
     public:
         result<void> render() noexcept;
+    private:
+        template<typename T>
+        result<void> draw() const noexcept;
 
 
     public:    
@@ -105,6 +120,11 @@ namespace d2d {
 
         template<impl::constructible_from_second_type_of P>
         std::pair<iterator<typename std::remove_cvref_t<P>::second_type>, bool> insert(P&& value) noexcept;
+
+        template<typename T, typename V>
+        std::pair<iterator<T>, bool> insert_or_assign(const key_type<T>& key, V&& value) noexcept;
+        template<typename T, typename V>
+        std::pair<iterator<T>, bool> insert_or_assign(key_type<T>&& key, V&& value) noexcept;
             
         template<typename T, typename... Args>
         std::pair<iterator<T>, bool> emplace(Args&&... args) noexcept;
@@ -112,7 +132,7 @@ namespace d2d {
         std::pair<iterator<T>, bool> try_emplace(S&& str, Args&&... args) noexcept requires impl::not_convertible_to_iters<S, T, iterator, const_iterator>;
     private:
         template<typename T>
-        std::pair<iterator<T>, bool> apply_insertion(std::pair<iterator<T>, bool> const& insert_result) noexcept;
+        void apply_insertion(std::string_view name, T& inserted_value) noexcept;
     public:
         template<typename T>
         iterator<T> erase(iterator<T> pos) noexcept;
@@ -133,16 +153,19 @@ namespace d2d {
     private:
         using base_type = vk::renderable_tuple<frames_in_flight, typename vk::renderable_data_traits<Ts...>::data_tuple_type>;
 
-        template<impl::directly_renderable        T> constexpr vk::renderable_data<T, frames_in_flight>      & renderable_data_of()       noexcept;
-        template<impl::directly_renderable        T> constexpr vk::renderable_data<T, frames_in_flight> const& renderable_data_of() const noexcept;
-        template<impl::renderable_container_like  T> constexpr vk::impl::renderable_input_map<T>             & renderable_data_of()       noexcept;
-        template<impl::renderable_container_like  T> constexpr vk::impl::renderable_input_map<T>        const& renderable_data_of() const noexcept;
-        template<impl::when_decayed_same_as<font> T> constexpr impl::font_path_map                           & renderable_data_of()       noexcept;
-        template<impl::when_decayed_same_as<font> T> constexpr impl::font_path_map                      const& renderable_data_of() const noexcept;
+        template<impl::directly_renderable             T> constexpr vk::renderable_data<T, frames_in_flight>      & renderable_data_of()       noexcept;
+        template<impl::directly_renderable             T> constexpr vk::renderable_data<T, frames_in_flight> const& renderable_data_of() const noexcept;
+        template<impl::renderable_container_like       T> constexpr vk::impl::renderable_input_map<T>             & renderable_data_of()       noexcept;
+        template<impl::renderable_container_like       T> constexpr vk::impl::renderable_input_map<T>        const& renderable_data_of() const noexcept;
+        template<impl::renderable_container_tuple_like T> constexpr vk::impl::renderable_input_map<T>             & renderable_data_of()       noexcept;
+        template<impl::renderable_container_tuple_like T> constexpr vk::impl::renderable_input_map<T>        const& renderable_data_of() const noexcept;
+        template<impl::when_decayed_same_as<font>      T> constexpr impl::font_path_map                           & renderable_data_of()       noexcept;
+        template<impl::when_decayed_same_as<font>      T> constexpr impl::font_path_map                      const& renderable_data_of() const noexcept;
 
 
-        template<impl::directly_renderable       T> constexpr bool insert_children(iterator<T>     ) noexcept { return false; }
-        template<impl::renderable_container_like T> constexpr bool insert_children(iterator<T> iter) noexcept;
+        template<typename                              T> constexpr bool insert_children(std::string_view    , T&          ) noexcept { return false; }
+        template<impl::renderable_container_like       T> constexpr bool insert_children(std::string_view key, T& container) noexcept;
+        template<impl::renderable_container_tuple_like T> constexpr bool insert_children(std::string_view key, T& tuple    ) noexcept;
 
 
 
@@ -156,11 +179,11 @@ namespace d2d {
         friend vk::physical_device;
         
     private:
-        template<typename, impl::directly_renderable, template<typename...> typename>
+        template<typename, typename, template<typename...> typename>
         friend class dynamic_renderable_container;
 
     private:
-        typename vk::renderable_data_traits<Ts...>::container_data_tuple_type renderable_container_datas;
+        typename vk::renderable_data_traits<Ts...>::container_data_map_tuple_type renderable_container_datas;
         impl::font_path_map font_paths;
         bool font_paths_outdated;
 
@@ -179,7 +202,9 @@ namespace d2d {
         std::array<std::array<vk::semaphore, frames_in_flight>, semaphore_type::num_semaphore_types> frame_semaphores;
         std::vector<vk::semaphore> submit_semaphores;
 
-        constexpr static std::string_view container_child_format_key = "__d2d_renderable_container_{}__object_{}";
+        constexpr static std::string_view container_child_prefix           = "__d2d_renderable_container";
+        constexpr static std::string_view container_child_format_key       = "__d2d_renderable_container_{}__object{}";
+        constexpr static std::string_view container_tuple_child_format_key = "__d2d_renderable_container_tuple_{}__object{}";
     };
 }
 

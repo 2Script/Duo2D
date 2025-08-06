@@ -25,8 +25,12 @@ namespace d2d::vk {
         result<void> render_end() const noexcept;
         result<void> reset() const noexcept;
 
-        template<::d2d::impl::directly_renderable T, std::size_t FiF, ::d2d::impl::directly_renderable... Rs> 
-        result<void> draw(const renderable_tuple<FiF, std::tuple<Rs...>>& renderables) const noexcept; 
+
+        template<::d2d::impl::directly_renderable T, std::size_t FiF, typename TupleT> 
+        result<void> draw(renderable_tuple<FiF, TupleT> const& renderables) const noexcept; 
+        //TODO once command_buffer it split up
+        //template<typename T, std::size_t FiF, typename TupleT> requires (!::d2d::impl::directly_renderable<T>)
+        //result<void> draw(renderable_tuple<FiF, TupleT> const&) const noexcept { return {}; }
         
         result<void> generic_begin() const noexcept;
         void copy_alike(buffer& dest, const buffer& src, std::size_t size, std::size_t offset = 0) const noexcept;

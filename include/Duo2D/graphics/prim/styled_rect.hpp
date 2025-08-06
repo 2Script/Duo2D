@@ -47,13 +47,19 @@ namespace d2d {
 
 namespace d2d {
     struct styled_rect : renderable<styled_rect> {
+        constexpr styled_rect() noexcept :
+            bounds(rect<float>{}), color(true_color{}), transform(transform2{}), border_width(0), texture_bounds(rect<std::uint32_t>{}) {}
+        constexpr styled_rect(rect<float> _bounds, true_color _color, transform2 _xfrm = {}, std::uint32_t _border_width = 0, rect<std::uint32_t> _tex_bounds = {}) noexcept :
+            bounds(_bounds), color(_color), transform(_xfrm), border_width(_border_width), texture_bounds(_tex_bounds) {};
+
+    public:
         rect<float> bounds;
 
         //TODO (TEMP): replace with style
-        vk::attribute<true_color> color = {};
-        vk::attribute<transform2> transform = {};
-        vk::attribute<std::uint32_t> border_width = {};
-        vk::attribute<rect<std::uint32_t>> texture_bounds = {};
+        vk::attribute<true_color> color;
+        vk::attribute<transform2> transform;
+        vk::attribute<std::uint32_t> border_width;
+        vk::attribute<rect<std::uint32_t>> texture_bounds;
 
     public:
         consteval static std::array<index_type, index_count> indices() noexcept { return {0, 1, 2, 2, 1, 3}; }

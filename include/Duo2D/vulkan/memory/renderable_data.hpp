@@ -57,7 +57,7 @@ namespace d2d::vk::impl {
         constexpr static std::size_t num_attributes = 0;
 
     public:
-        std::size_t emplace_attributes(std::size_t& buff_offset, void*, VkDeviceSize) noexcept { return buff_offset; }
+        void emplace_attributes(std::size_t, void*) noexcept {}
         void unbind_attributes() noexcept {};
 
         constexpr std::size_t attribute_buffer_size() const noexcept { return 0; }
@@ -78,7 +78,7 @@ namespace d2d::vk::impl {
         void unbind_single_attribute() noexcept;
     public:
         [[gnu::nonnull]]
-        std::size_t emplace_attributes(std::size_t& buff_offset, void* mem_map, VkDeviceSize mem_align) noexcept;
+        void emplace_attributes(std::size_t buff_offset, void* mem_map) noexcept;
         void unbind_attributes() noexcept;
 
         constexpr std::size_t attribute_buffer_size() const noexcept { return attribute_data_size * this->size(); }

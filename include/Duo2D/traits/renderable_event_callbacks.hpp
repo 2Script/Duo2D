@@ -11,10 +11,8 @@ namespace d2d::impl {
         constexpr static void on_swap_chain_update(basic_window<Ts...> const&, std::span<UniformT, N>) noexcept {}
 
     public:
-        template<typename T, typename... Ts>
-        constexpr void on_window_insert(basic_window<Ts...>&, typename basic_window<Ts...>::template iterator<T>) noexcept {}
-        template<typename T, typename... Ts>
-        constexpr void on_window_insert_child(basic_window<Ts...>&, typename basic_window<Ts...>::template iterator<T>, std::size_t) noexcept {}
+        template<typename... Ts>
+        constexpr void on_window_insert(basic_window<Ts...>&, std::string_view) noexcept {}
 
     public:
         template<typename... Ts>

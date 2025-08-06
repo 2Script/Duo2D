@@ -11,8 +11,8 @@
 #include <vulkan/vulkan_core.h>
 
 namespace d2d::vk {
-    template<::d2d::impl::directly_renderable T, std::size_t FiF, ::d2d::impl::directly_renderable... Rs>
-    result<void> command_buffer::draw(const renderable_tuple<FiF, std::tuple<Rs...>>& renderables) const noexcept {
+    template<::d2d::impl::directly_renderable T, std::size_t FiF, typename TupleT>
+    result<void> command_buffer::draw(const renderable_tuple<FiF, TupleT>& renderables) const noexcept {
         if(renderables.template empty<T>())
             return {};
 
@@ -32,7 +32,7 @@ namespace d2d::vk {
         //Bind instance buffer
         if constexpr (renderable_constraints<T>::has_instance_data) {
             const VkBuffer vk_instance_buffer = static_cast<VkBuffer>(renderables.template instance_buffer<T>());
-            constexpr static std::size_t instance_offset = renderable_tuple<FiF, std::tuple<Rs...>>::template static_offsets<T>()[buffer_data_type::instance];
+            constexpr static std::size_t instance_offset = renderable_tuple<FiF, TupleT>::template static_offsets<T>()[buffer_data_type::instance];
             vkCmdBindVertexBuffers(handle, renderable_properties<T>::instance_binding(), 1, &vk_instance_buffer, &instance_offset);
         } 
 

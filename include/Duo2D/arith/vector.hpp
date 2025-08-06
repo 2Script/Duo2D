@@ -84,6 +84,7 @@ namespace d2d {
         template<impl::non_vector T> constexpr vector& operator*=(const T& rhs) noexcept { for(std::size_t i = 0; i < Dims; ++i) (*this)[i] *= rhs; return *this; }
         template<impl::non_vector T> constexpr vector& operator/=(const T& rhs) noexcept { for(std::size_t i = 0; i < Dims; ++i) (*this)[i] /= rhs; return *this; }
 
+        //TODO expression templates
         template<impl::non_vector T> friend constexpr l_result_vector<T, std::plus<>      > operator+(vector lhs, const T& rhs) noexcept { l_result_vector<T, std::plus<>      > ret; for(std::size_t i = 0; i < Dims; ++i) ret[i] = (lhs[i] + rhs   ); return ret;  }
         template<impl::non_vector T> friend constexpr l_result_vector<T, std::minus<>     > operator-(vector lhs, const T& rhs) noexcept { l_result_vector<T, std::minus<>     > ret; for(std::size_t i = 0; i < Dims; ++i) ret[i] = (lhs[i] - rhs   ); return ret;  }
         template<impl::non_vector T> friend constexpr l_result_vector<T, std::multiplies<>> operator*(vector lhs, const T& rhs) noexcept { l_result_vector<T, std::multiplies<>> ret; for(std::size_t i = 0; i < Dims; ++i) ret[i] = (lhs[i] * rhs   ); return ret;  }

@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.15)
 
 set(TARGETS arithmetic_types arithmetic_ops application)
-set(SANITIZERS undefined)
+set(SANITIZERS undefined address)
 
 list(TRANSFORM TARGETS PREPEND "test_" OUTPUT_VARIABLE TARGET_LIST)
 foreach(TEST_TARGET IN LISTS TARGET_LIST)

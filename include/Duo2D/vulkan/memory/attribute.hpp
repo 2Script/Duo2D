@@ -9,10 +9,17 @@
 namespace d2d::vk {
     template<typename T> requires std::is_standard_layout_v<T>
     struct attribute {
-        inline attribute() noexcept : val(new T) {}
-        template<typename U> requires (std::is_constructible_v<T, U> && !std::is_same_v<T*, std::remove_cvref_t<U>>)
-        inline attribute(U&& value) noexcept : val(new T(std::forward<U>(value))) {}
+        constexpr attribute() noexcept : val(new T) {}
+        template<::d2d::impl::when_decayed_different_from<attribute> U> requires (std::is_constructible_v<T, U&&> && !std::is_same_v<T*, std::remove_cvref_t<U>>)
+        constexpr attribute(U&& value) noexcept : val(new T(std::forward<U>(value))) {}
         constexpr attribute(T* value) noexcept : val(std::ref(*value)) {}
+
+    public:
+        constexpr attribute(attribute const& value) = default;
+        constexpr attribute(attribute&& value) = default;
+        constexpr attribute& operator=(attribute const& value) = default;
+        constexpr attribute& operator=(attribute&& value) = default;
+        
         
     public:
         template<::d2d::impl::when_decayed_different_from<attribute> U>
