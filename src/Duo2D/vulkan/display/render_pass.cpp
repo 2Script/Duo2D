@@ -20,7 +20,7 @@ namespace d2d::vk {
 
         //Create subpasses (TEMP: create one subpass to be used as a color buffer)
         VkAttachmentReference attachment_ref{
-            .attachment = 0, //output location 0 in shader
+            .attachment = 0,
             .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
         };
         VkSubpassDescription subpass{
@@ -29,15 +29,17 @@ namespace d2d::vk {
             .pColorAttachments = &attachment_ref,
         };
 
-        //Create subpass dependency
-        VkSubpassDependency dependency{
+        //Create subpass dependencies
+        std::array<VkSubpassDependency, 1> dependencies{{
+        {
             .srcSubpass = VK_SUBPASS_EXTERNAL,
             .dstSubpass = 0,
             .srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
             .dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
             .srcAccessMask = 0,
             .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-        };
+        },
+        }};
 
         //Create the render pass itself
         VkRenderPassCreateInfo render_pass_info{
@@ -46,8 +48,8 @@ namespace d2d::vk {
             .pAttachments = &attachment,
             .subpassCount = 1,
             .pSubpasses = &subpass,
-            .dependencyCount = 1,
-            .pDependencies = &dependency,
+            .dependencyCount = dependencies.size(),
+            .pDependencies = dependencies.data(),
         };
 
         __D2D_VULKAN_VERIFY(vkCreateRenderPass(*logi_device, &render_pass_info, nullptr, &ret.handle));

@@ -28,15 +28,21 @@ namespace d2d::vk {
         }
 
         //Set desired features
-        VkPhysicalDeviceFeatures desired_base_feaures {
-            .samplerAnisotropy = VK_TRUE,
+        VkPhysicalDeviceVulkan13Features desired_1_3_features{
+            .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES,
+            .synchronization2 = VK_TRUE,
         };
-        VkPhysicalDeviceVulkan12Features desired_features{
+        VkPhysicalDeviceVulkan12Features desired_1_2_features{
             .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
+            .pNext = &desired_1_3_features,
             .descriptorIndexing = VK_TRUE,
             .shaderUniformBufferArrayNonUniformIndexing = VK_TRUE,
             .shaderSampledImageArrayNonUniformIndexing = VK_TRUE,
             .runtimeDescriptorArray = VK_TRUE,
+            .timelineSemaphore = VK_TRUE,
+        };
+        VkPhysicalDeviceFeatures desired_base_features {
+            .samplerAnisotropy = VK_TRUE,
         };
 
         //Set extensions
@@ -49,13 +55,13 @@ namespace d2d::vk {
         //Create logical device
         VkDeviceCreateInfo device_create_info{
             .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
-            .pNext = &desired_features,
+            .pNext = &desired_1_2_features,
             .queueCreateInfoCount = queue_create_infos.size(),
             .pQueueCreateInfos = queue_create_infos.data(),
             .enabledLayerCount = 0,
             .enabledExtensionCount = static_cast<std::uint32_t>(enabled_extensions.size()),
             .ppEnabledExtensionNames = enabled_extensions.data(),
-            .pEnabledFeatures = &desired_base_feaures,
+            .pEnabledFeatures = &desired_base_features,
         };
 
         logical_device ret{};

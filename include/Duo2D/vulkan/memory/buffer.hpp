@@ -24,7 +24,8 @@ namespace d2d::vk {
     public:
         constexpr std::size_t size() const noexcept { return bytes; }
         constexpr std::size_t size_bytes() const noexcept { return bytes; }
-        constexpr bool empty() const noexcept { return bytes == 0; } 
+        constexpr bool empty() const noexcept { return bytes == 0; }
+        constexpr VkBufferUsageFlags usage_flags() const noexcept { return flags; }
         
         constexpr std::size_t memory_offset() const noexcept { return offset; }
 

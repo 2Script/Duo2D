@@ -19,8 +19,8 @@ namespace d2d {
             name.data(),              //App Name
             VK_MAKE_VERSION(1, 0, 0), //App Version (temp)
             "Duo2D",                  //Engine Name
-            VK_MAKE_VERSION(1, 0, 0), //Engine Version (temp)
-            VK_API_VERSION_1_2        //API Version
+            VK_MAKE_VERSION(0, 0, 1), //Engine Version
+            VK_API_VERSION_1_3        //API Version
         };
         
         // Initialize GLFW

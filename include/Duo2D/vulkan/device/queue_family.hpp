@@ -6,7 +6,7 @@
 
 namespace d2d::vk {
     namespace queue_family {
-    enum { 
+    enum id { 
         graphics,
         
         

@@ -13,6 +13,7 @@
 #include <msdfgen/core/DistanceMapping.h>
 #include <msdfgen/core/ShapeDistanceFinder.h>
 #include <msdfgen/core/edge-selectors.h>
+#include <vulkan/vulkan_core.h>
 
 #include "Duo2D/core/error.hpp"
 #include "Duo2D/vulkan/display/texture.hpp"
@@ -82,6 +83,19 @@ namespace d2d::vk {
         )));
 
         RESULT_TRY_COPY(ret.uniform_buffer_map, ret.host_mem.map(logi_device, uniform_buffer_size));
+        ret.uniform_buff_barrier = {
+            .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2,
+            .pNext = nullptr,
+            .srcStageMask = VK_PIPELINE_STAGE_2_HOST_BIT,
+            .srcAccessMask = VK_ACCESS_2_HOST_WRITE_BIT,
+            .dstStageMask = VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT,
+            .dstAccessMask = VK_ACCESS_2_UNIFORM_READ_BIT,
+            .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .buffer = ret.uniform_buff,
+            .offset = 0,
+            .size = uniform_buffer_size,
+        };
         goto create_descriptors;
 
     create_descriptors:
@@ -160,7 +174,7 @@ namespace d2d::vk {
         if(this->template renderable_data_of<T>().attribute_buffer_size() > attribute_buffs[I_a].size()) {
             (this->template renderable_data_of<Ts>().unbind_attributes(), ...);
             renderable_allocator allocator(logi_device_ptr, phys_device_ptr, copy_cmd_pool_ptr);
-            RESULT_VERIFY((allocator.template alloc_buffer<I_a, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT>(
+            RESULT_VERIFY((allocator.template alloc_buffer<I_a, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT>(
                 std::span{attribute_buffs}, this->template renderable_data_of<T>().attribute_buffer_size(), shared_mem
             )));
         }
@@ -387,9 +401,7 @@ namespace d2d::vk {
 
         //Create copy command buffer
         RESULT_VERIFY(allocator.gpu_alloc_begin());
-        allocator.copy_command_buffer().transition_image(tex, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_UNDEFINED, textures_as_bytes.size());
-        allocator.copy_command_buffer().copy_buffer_to_image(tex, staging_buffer, std::span{copy_regions});
-        allocator.copy_command_buffer().transition_image(tex, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, textures_as_bytes.size());
+        allocator.copy_command_buffer().copy_buffer_to_image(tex, staging_buffer, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, std::span{copy_regions});
         //Clear copy command buffer
         RESULT_VERIFY(allocator.gpu_alloc_end());
 

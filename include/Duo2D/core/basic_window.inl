@@ -1,6 +1,7 @@
 #pragma once
 #include "Duo2D/core/basic_window.hpp"
 
+#include <cstdint>
 #include <cstring>
 #include <format>
 #include <memory>
@@ -8,6 +9,7 @@
 #include <string_view>
 #include <type_traits>
 #include <utility>
+#include <vulkan/vulkan_core.h>
 
 #include "Duo2D/core/error.hpp"
 #include "Duo2D/graphics/core/font.hpp"
@@ -35,7 +37,7 @@ namespace d2d {
         //Create surface
         RESULT_TRY_MOVE(ret._surface, make<vk::surface>(ret, i));
 
-        return ret;
+        return std::move(ret);
     }
 }
 
@@ -62,20 +64,22 @@ namespace d2d {
 
             //Create fences & sempahores
             RESULT_TRY_MOVE(render_fences[i], make<vk::fence>(logi_device));
-            RESULT_TRY_MOVE(frame_semaphores[semaphore_type::image_available][i], make<vk::semaphore>(logi_device));
+            RESULT_TRY_MOVE(frame_operation_semaphores[frame_operation::image_acquired][i], make<vk::semaphore>(logi_device));
         }
         
         //Create submit sempahores
-        submit_semaphores.reserve(_swap_chain.image_count());
+        rendering_complete_semaphores.reserve(_swap_chain.image_count());
         for(std::size_t i = 0; i < _swap_chain.image_count(); ++i) {
             RESULT_VERIFY_UNSCOPED(make<vk::semaphore>(logi_device), submit_semaphore);
-            submit_semaphores.push_back(*std::move(submit_semaphore));
+            rendering_complete_semaphores.push_back(*std::move(submit_semaphore));
         }
 
         RESULT_TRY_MOVE((*static_cast<base_type*>(this)), (make<base_type>(logi_device, phys_device, font_data_map, _render_pass)));
 
         //update uniform buffer
         (Ts::on_swap_chain_update(*this, this->template uniform_map<Ts>()), ...);
+
+        RESULT_TRY_MOVE(timeline_semaphore, make<vk::semaphore>(logi_device, VK_SEMAPHORE_TYPE_TIMELINE));
 
         return {};
     }
@@ -206,13 +210,26 @@ namespace d2d {
 namespace d2d {
     template<typename... Ts>
     result<void> basic_window<Ts...>::render() noexcept {
+        std::size_t frame_idx = frame_count.value.load() % frames_in_flight;
         //wait for rendering to finish last frame
         RESULT_VERIFY(render_fences[frame_idx].wait());
 
+        //std::size_t wait_value = update_count.value.load();
+        //VkSemaphoreWaitInfo wait_info {
+        //    .sType = VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO,
+        //    .pNext = nullptr,
+        //    .flags = 0,
+        //    .semaphoreCount = 1,
+        //    .pSemaphores = &test_semaphore,
+        //    .pValues = &wait_value,
+        //};
+        //vkWaitSemaphores(logical_device(), &wait_info, UINT64_MAX);
+
         uint32_t image_index;
-        VkResult nir = vkAcquireNextImageKHR(*this->logi_device_ptr, _swap_chain, UINT64_MAX, frame_semaphores[semaphore_type::image_available][frame_idx], VK_NULL_HANDLE, &image_index);
+        VkResult nir = vkAcquireNextImageKHR(*this->logi_device_ptr, _swap_chain, UINT64_MAX, frame_operation_semaphores[frame_operation::image_acquired][frame_idx], VK_NULL_HANDLE, &image_index);
         
-        //Re-create swap chain if needed 
+        //Re-create swap chain if needed
+        bool swap_chain_updated = false;
         switch(nir) {
         case VK_SUCCESS:
             break;
@@ -220,6 +237,7 @@ namespace d2d {
         case VK_SUBOPTIMAL_KHR: {
             RESULT_TRY_MOVE(_swap_chain, make<vk::swap_chain>(this->logi_device_ptr, this->phys_device_ptr, _render_pass, _surface, *this));
             (Ts::on_swap_chain_update(*this, this->template uniform_map<Ts>()), ...);
+            swap_chain_updated = true;
             return {};
         }
         default: 
@@ -231,48 +249,58 @@ namespace d2d {
 
 
         RESULT_VERIFY(render_fences[frame_idx].reset());
-
         RESULT_VERIFY(command_buffers[frame_idx].reset());
-        RESULT_VERIFY(command_buffers[frame_idx].render_begin(_swap_chain, _render_pass, image_index));
+
+        RESULT_VERIFY(command_buffers[frame_idx].begin(false));
+        VkMemoryBarrier2 global_barrier {
+            .sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER_2,
+            .pNext = nullptr,
+            .srcStageMask = VK_PIPELINE_STAGE_2_HOST_BIT,
+            .srcAccessMask = VK_ACCESS_2_HOST_WRITE_BIT,
+            .dstStageMask = VK_PIPELINE_STAGE_2_VERTEX_INPUT_BIT,
+            .dstAccessMask = VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT,
+        };
+        command_buffers[frame_idx].pipeline_barrier(std::span<const VkMemoryBarrier2, 1>{&global_barrier, 1}, {swap_chain_updated ? &this->uniform_buff_barrier : nullptr, static_cast<std::size_t>(swap_chain_updated)}, {});
+        command_buffers[frame_idx].render_begin(_swap_chain, _render_pass, image_index);
 
         //TODO?: replace with functor (e.g. a generic_member_functor class)
-        //using data_tuple_type = typename vk::renderable_data_traits<Ts...>::data_tuple_type;
-        //RESULT_VERIFY(ol::to_result((std::bind(&vk::command_buffer::draw<Ts, frames_in_flight, data_tuple_type>, std::addressof(command_buffers[frame_idx]), std::cref(*this)) && ...)));
-        RESULT_VERIFY(ol::to_result((std::bind(&basic_window<Ts...>::draw<Ts>, this) && ...)));
+        RESULT_VERIFY(ol::to_result((std::bind(&basic_window<Ts...>::draw<Ts>, this, frame_idx) && ...)));
 
-        RESULT_VERIFY(command_buffers[frame_idx].render_end());
+        command_buffers[frame_idx].render_end();
+        RESULT_VERIFY(command_buffers[frame_idx].end());
 
-        constexpr static std::array<VkPipelineStageFlags, 1> wait_stages = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
-        VkSubmitInfo submit_info{
-            .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
-            .waitSemaphoreCount = 1,
-            .pWaitSemaphores = &frame_semaphores[semaphore_type::image_available][frame_idx],
-            .pWaitDstStageMask = wait_stages.data(),
-            .commandBufferCount = 1,
-            .pCommandBuffers = &command_buffers[frame_idx],
-            .signalSemaphoreCount = 1,
-            .pSignalSemaphores = &submit_semaphores[image_index],
-        };
-        __D2D_VULKAN_VERIFY(vkQueueSubmit(this->logi_device_ptr->queues[vk::queue_family::graphics], 1, &submit_info, render_fences[frame_idx]));
+        //only 1 sempahore for now becuase current use of timeline semaphores has a possible latency:
+        //TODO: semaphores need to be setup so that the current frame being rendered (and not the frame currently being submitted) needs to wait on the CPU operations
+        const std::array<vk::semaphore_submit_info, 1> wait_semaphore_infos = {{
+            {frame_operation_semaphores[frame_operation::image_acquired][frame_idx], VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT},
+            //{timeline_semaphore, VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT, update_count.value.load()}
+        }}; 
+        const std::array<vk::semaphore_submit_info, 1> submit_semaphore_infos = {{
+            {rendering_complete_semaphores[image_index], VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT},
+        }}; 
+        RESULT_VERIFY(command_buffers[frame_idx].submit(vk::queue_family::graphics, wait_semaphore_infos, submit_semaphore_infos, render_fences[frame_idx]));
 
+
+        
         VkPresentInfoKHR present_info{
             .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
             .waitSemaphoreCount = 1,
-            .pWaitSemaphores = &submit_semaphores[image_index],
+            .pWaitSemaphores = &rendering_complete_semaphores[image_index],
             .swapchainCount = 1,
             .pSwapchains = &_swap_chain,
             .pImageIndices = &image_index,
         };
         __D2D_VULKAN_VERIFY(vkQueuePresentKHR(this->logi_device_ptr->queues[vk::queue_family::present], &present_info));
 
-        frame_idx = (frame_idx + 1) % impl::frames_in_flight;
+        //frame_idx = (frame_idx + 1) % impl::frames_in_flight;
+        ++frame_count.value;
         return {};
     }
 
 
     template<typename... Ts>
     template<typename T>
-    result<void> basic_window<Ts...>::draw() const noexcept {
+    result<void> basic_window<Ts...>::draw(std::size_t frame_idx) const noexcept {
         if constexpr(impl::directly_renderable<T>)
             return command_buffers[frame_idx].draw<T>(*this);
         return {};

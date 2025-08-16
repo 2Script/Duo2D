@@ -1,3 +1,4 @@
+#include "Duo2D/vulkan/device/queue_family.hpp"
 #include <iostream>
 #include <result/to_result.hpp>
 #include <set>
@@ -17,6 +18,7 @@
 #include <Duo2D/graphics/prim/styled_rect.hpp>
 #include <Duo2D/graphics/ui/text.hpp>
 #include <Duo2D/graphics/ui/progress_bar.hpp>
+#include <vulkan/vulkan_core.h>
 
 
 
@@ -59,8 +61,8 @@ int main(){
     //s.texture_bounds->size = {1200, 675};
     std::string test_img_alpha_path = assets_path / "test_img_alpha.png";
     s._texture_paths = {test_img_alpha_path, ""};
-    s.texture_bounds->pos = {350, 100};
-    s.texture_bounds->size = {300, 1044-100};
+    //s.texture_bounds->pos = {350, 100};
+    //s.texture_bounds->size = {300, 1044-100};
     std::pair<const std::string, d2d::styled_rect> p = {"cyan", s};
     std::pair<const std::string, d2d::clone_rect> pc = {"cyan", c};
     std::pair<const std::string, d2d::debug_rect> pd = {"yellow", dr};
@@ -140,9 +142,9 @@ int main(){
     if(!emplace_progress_bar.second) return -69;
     RESULT_VERIFY(win->apply_changes<d2d::progress_bar>());
 
-    s._texture_paths = {test_img_alpha_path, ""};
-    s.texture_bounds->pos = {350, 100};
-    s.texture_bounds->size = {100, 1044-100};
+    //s._texture_paths = {test_img_alpha_path, ""};
+    //s.texture_bounds->pos = {350, 100};
+    //s.texture_bounds->size = {300, 1044-100};
     } 
 
 
@@ -152,11 +154,28 @@ int main(){
     if(!w.has_value()) return w2.error();
     } */
 
-    
+    std::thread edit_s([](d2d::styled_rect& sr){//, d2d::window& w){
+        sr.texture_bounds->pos = {1000, 1000};
+        std::this_thread::sleep_for(std::chrono::milliseconds(3000));
+        //std::size_t begin_count = ++w.update_count.value;
+        std::cout << "updating texture" << std::endl;
+        sr.texture_bounds->pos = {350, 100};
+        sr.texture_bounds->size = {300, 1044-100};
+        //if(w.update_count.value <= begin_count) {
+        //    VkSemaphoreSignalInfo signal_info {
+        //        .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SIGNAL_INFO,
+        //        .pNext = NULL,
+        //        .semaphore = w.test_semaphore,
+        //        .value = begin_count,
+        //    };
+        //    vkSignalSemaphore(w.logical_device(), &signal_info);
+        //}
+    }, std::ref(cyan_ref));//, std::ref(*win));
     while(app.open())
         if(auto r = app.render(); !r.has_value()) [[unlikely]]
             return r.error();
     
+    edit_s.join();
     RESULT_VERIFY(app.join());
     return 0;
 }

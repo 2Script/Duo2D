@@ -2,6 +2,7 @@
 #include "Duo2D/core/error.hpp"
 #include "Duo2D/vulkan/device/logical_device.hpp"
 #include "Duo2D/vulkan/device/physical_device.hpp"
+#include "Duo2D/vulkan/device/queue_family.hpp"
 #include "Duo2D/vulkan/memory/renderable_allocator.hpp"
 #include "Duo2D/core/make.hpp"
 #include <result/verify.h>
@@ -84,9 +85,7 @@ namespace d2d::vk {
         //Create copy command buffer
         RESULT_VERIFY(gpu_alloc_begin());
         //Copy from staging buffer to device local buffer
-        copy_cmd_buffer.transition_image(device_local_image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_UNDEFINED);
-        copy_cmd_buffer.copy_buffer_to_image(device_local_image, staging_buff, device_local_image.size());
-        copy_cmd_buffer.transition_image(device_local_image, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+        copy_cmd_buffer.copy_buffer_to_image(device_local_image, staging_buff, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, device_local_image.size()); 
         //Clear copy command buffer
         RESULT_VERIFY(gpu_alloc_end());
         return {};
@@ -99,13 +98,16 @@ namespace d2d::vk {
     result<void> renderable_allocator::gpu_alloc_begin() noexcept {
         //Create copy command buffer
         RESULT_TRY_MOVE(copy_cmd_buffer, make<command_buffer>(logi_device_ptr, copy_cmd_pool_ptr));
-        RESULT_VERIFY(copy_cmd_buffer.generic_begin());
+        RESULT_VERIFY(copy_cmd_buffer.begin());
         return {};
     }
 
     result<void> renderable_allocator::gpu_alloc_end() noexcept {
         //Clear copy command buffer
-        RESULT_VERIFY(copy_cmd_buffer.generic_end());
+        RESULT_VERIFY(copy_cmd_buffer.end());
+        RESULT_VERIFY(copy_cmd_buffer.submit(queue_family::graphics));
+        RESULT_VERIFY(copy_cmd_buffer.wait(queue_family::graphics));
+        copy_cmd_buffer.free();
         copy_cmd_buffer = {};
         return {};
     }

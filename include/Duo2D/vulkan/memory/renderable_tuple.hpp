@@ -5,6 +5,7 @@
 #include <tuple>
 
 #include <vulkan/vulkan.h>
+#include <vulkan/vulkan_core.h>
 #include <zstring.hpp>
 
 #include "Duo2D/graphics/core/font.hpp"
@@ -38,6 +39,9 @@ namespace d2d::vk {
     public:
         template<typename T> using renderable_data_type = renderable_data<T, FramesInFlight>;
         using renderable_data_tuple_type = std::tuple<renderable_data_type<Ts>...>;
+
+    private:
+        constexpr static std::size_t renderable_count_with_uniform = (static_cast<bool>(renderable_data<Ts, FramesInFlight>::uniform_data_size) + ...);
     
     public:
         //could benefit from SIMD? (just a target_clones)
@@ -117,6 +121,7 @@ namespace d2d::vk {
         std::array<buffer, renderable_count_with_attrib> attribute_buffs;
         buffer uniform_buff;
         void* uniform_buffer_map;
+        VkBufferMemoryBarrier2 uniform_buff_barrier;
 
         std::shared_ptr<logical_device>             logi_device_ptr;
         std::shared_ptr<physical_device>            phys_device_ptr;

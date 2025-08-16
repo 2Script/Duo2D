@@ -1,4 +1,5 @@
 #pragma once
+#include <atomic>
 #include <concepts>
 #include <cstddef>
 #include <memory>
@@ -86,7 +87,7 @@ namespace d2d {
         result<void> render() noexcept;
     private:
         template<typename T>
-        result<void> draw() const noexcept;
+        result<void> draw(std::size_t) const noexcept;
 
 
     public:    
@@ -97,10 +98,9 @@ namespace d2d {
         constexpr vk::swap_chain              const& swap_chain()    const noexcept { return _swap_chain; }
         constexpr vk::render_pass             const& render_pass()   const noexcept { return _render_pass; }
         constexpr vk::texture_map             const& texture_map()   const noexcept { return this->textures; }
-        constexpr std::size_t                        frame_index()   const noexcept { return frame_idx; }
+        constexpr std::size_t                        frame_index()   const noexcept { return frame_count.value.load() % impl::frames_in_flight; }
         inline    std::weak_ptr<impl::font_data_map> font_data_map() const noexcept { return this->font_data_map_ptr; }
 
- 
     public:
         __D2D_CONSTEXPR_UNIQUE_PTR operator GLFWwindow*() const noexcept { return handle.get(); }
         __D2D_CONSTEXPR_UNIQUE_PTR explicit operator bool() const noexcept { return static_cast<bool>(handle); }
@@ -175,12 +175,16 @@ namespace d2d {
             renderable_container_datas(), font_paths(), font_paths_outdated(false),
             handle(w, {}), command_pool_ptr(),
             _surface(), _swap_chain(), _render_pass(),
-            frame_idx(0), command_buffers{}, render_fences{}, frame_semaphores{}, submit_semaphores() {}
-        friend vk::physical_device;
+            command_buffers{}, render_fences{}, frame_operation_semaphores{}, rendering_complete_semaphores(),
+            frame_count{}, update_count() {}
         
     private:
+        friend vk::physical_device;
         template<typename, typename, template<typename...> typename>
         friend class dynamic_renderable_container;
+
+    private:
+        
 
     private:
         typename vk::renderable_data_traits<Ts...>::container_data_map_tuple_type renderable_container_datas;
@@ -195,12 +199,22 @@ namespace d2d {
         vk::swap_chain _swap_chain;
         vk::render_pass _render_pass;
 
-        std::size_t frame_idx;
+        //std::size_t frame_idx;
+
         std::array<vk::command_buffer, frames_in_flight> command_buffers;
         std::array<vk::fence, frames_in_flight> render_fences;
-        struct semaphore_type { enum { image_available, /*cmd_buffer_finished,*/ num_semaphore_types }; };
-        std::array<std::array<vk::semaphore, frames_in_flight>, semaphore_type::num_semaphore_types> frame_semaphores;
-        std::vector<vk::semaphore> submit_semaphores;
+        struct frame_operation { enum { image_acquired, /*cmd_buffer_finished,*/ num_semaphore_types }; };
+        std::array<std::array<vk::semaphore, frames_in_flight>, frame_operation::num_semaphore_types> frame_operation_semaphores;
+        std::vector<vk::semaphore> rendering_complete_semaphores;
+        vk::semaphore timeline_semaphore;
+        
+        //TEMP
+        struct counter {
+            counter() noexcept = default;
+            counter(counter&& other) : value(other.value.exchange(0)) {}
+            counter& operator=(counter&& other) { value = (other.value.exchange(0)); }
+            std::atomic_size_t value;
+        } frame_count, update_count;
 
         constexpr static std::string_view container_child_prefix           = "__d2d_renderable_container";
         constexpr static std::string_view container_child_format_key       = "__d2d_renderable_container_{}__object{}";
