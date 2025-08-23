@@ -5,14 +5,22 @@
 #include <cstring>
 #include <format>
 #include <memory>
+#include <optional>
 #include <result/verify.h>
 #include <string_view>
 #include <type_traits>
 #include <utility>
+#include <variant>
 #include <vulkan/vulkan_core.h>
 
 #include "Duo2D/core/error.hpp"
+#include "Duo2D/core/thread_pool.hpp"
 #include "Duo2D/graphics/core/font.hpp"
+#include "Duo2D/input/code.hpp"
+#include "Duo2D/input/codes_map.hpp"
+#include "Duo2D/input/combination.hpp"
+#include "Duo2D/input/event_function.hpp"
+#include "Duo2D/input/event_int.hpp"
 #include "Duo2D/traits/directly_renderable.hpp"
 #include "Duo2D/traits/renderable_container_like.hpp"
 #include "Duo2D/traits/same_as.hpp"
@@ -33,6 +41,13 @@ namespace d2d {
         glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE); //temporary
         basic_window ret{glfwCreateWindow(width, height, title.data(), nullptr, nullptr)};
         __D2D_GLFW_VERIFY(ret.handle);
+
+        //Set callbacks
+        glfwSetKeyCallback(ret.handle.get(), kb_key_input);
+        glfwSetCharCallback(ret.handle.get(), kb_text_input);
+        glfwSetCursorPosCallback(ret.handle.get(), mouse_move);
+        glfwSetMouseButtonCallback(ret.handle.get(), mouse_button_input);
+        glfwSetScrollCallback(ret.handle.get(), mouse_scroll);
 
         //Create surface
         RESULT_TRY_MOVE(ret._surface, make<vk::surface>(ret, i));
@@ -74,7 +89,7 @@ namespace d2d {
             rendering_complete_semaphores.push_back(*std::move(submit_semaphore));
         }
 
-        RESULT_TRY_MOVE((*static_cast<base_type*>(this)), (make<base_type>(logi_device, phys_device, font_data_map, _render_pass)));
+        RESULT_TRY_MOVE((*static_cast<base_tuple_type*>(this)), (make<base_tuple_type>(logi_device, phys_device, font_data_map, _render_pass)));
 
         //update uniform buffer
         (Ts::on_swap_chain_update(*this, this->template uniform_map<Ts>()), ...);
@@ -113,7 +128,7 @@ namespace d2d {
             RESULT_VERIFY(renderable_pair.second.before_changes_applied(*this));
 
         if constexpr(impl::directly_renderable<T>)
-            RESULT_VERIFY((base_type::template apply_memory_changes<T>(_render_pass)))
+            RESULT_VERIFY((base_tuple_type::template apply_memory_changes<T>(_render_pass)))
         else if constexpr(impl::renderable_container_like<T>)
             RESULT_VERIFY(apply_memory_changes<typename T::renderable_type>())
         else {
@@ -134,7 +149,7 @@ namespace d2d {
     template<typename T>
     result<void> basic_window<Ts...>::apply_attributes() noexcept {
         if constexpr(impl::directly_renderable<T>)
-            RESULT_VERIFY((base_type::template apply_attributes<T>()))
+            RESULT_VERIFY((base_tuple_type::template apply_attributes<T>()))
         else if constexpr(impl::renderable_container_like<T>)
             RESULT_VERIFY(apply_attributes<typename T::renderable_type>())
         else {
@@ -155,7 +170,7 @@ namespace d2d {
     template<typename... Ts>
     template<impl::directly_renderable T>
     constexpr bool basic_window<Ts...>::has_changes() const noexcept {
-        return base_type::template has_changes<T>();
+        return base_tuple_type::template has_changes<T>();
     }
 
     template<typename... Ts>
@@ -182,7 +197,7 @@ namespace d2d {
     template<typename... Ts>
     template<impl::directly_renderable T>
     constexpr bool basic_window<Ts...>::has_changes(bool value) noexcept {
-        return base_type::template has_changes<T>() = value;
+        return base_tuple_type::template has_changes<T>() = value;
     }
 
     template<typename... Ts>
@@ -210,7 +225,7 @@ namespace d2d {
 namespace d2d {
     template<typename... Ts>
     result<void> basic_window<Ts...>::render() noexcept {
-        std::size_t frame_idx = frame_count.value.load() % frames_in_flight;
+        std::size_t frame_idx = frame_count.load() % frames_in_flight;
         //wait for rendering to finish last frame
         RESULT_VERIFY(render_fences[frame_idx].wait());
 
@@ -293,7 +308,7 @@ namespace d2d {
         __D2D_VULKAN_VERIFY(vkQueuePresentKHR(this->logi_device_ptr->queues[vk::queue_family::present], &present_info));
 
         //frame_idx = (frame_idx + 1) % impl::frames_in_flight;
-        ++frame_count.value;
+        ++frame_count;
         return {};
     }
 
@@ -445,14 +460,117 @@ namespace d2d {
 
 namespace d2d {
     template<typename... Ts>
+    void basic_window<Ts...>::process_input(GLFWwindow* window_ptr, input::code_t code, bool pressed, input::mouse_aux_t mouse_aux_data) noexcept {
+        auto window_info_it = input::impl::glfw_window_map().find(window_ptr);
+        if(window_info_it == input::impl::glfw_window_map().end()) [[unlikely]] return;
+        basic_window<Ts...>* win_ptr = static_cast<basic_window<Ts...>*>(window_info_it->second.window_ptr);
+
+        std::unique_lock<std::mutex> current_combo_lock(window_info_it->second.combo_mutex);
+        window_info_it->second.current_combo.main_input() = code;
+        window_info_it->second.current_combo.set(code, false);
+        input::combination combo = (win_ptr->input_modifier_flags()[code] & input::modifier_flags::no_modifiers_allowed) ? input::combination{{}, code} : window_info_it->second.current_combo;
+        window_info_it->second.current_combo.set(code, pressed);
+        current_combo_lock.unlock();
+        
+        input::binding_map const& bind_map = pressed ? win_ptr->input_active_bindings() : win_ptr->input_inactive_bindings();
+        auto event_set_it = bind_map.find(combo);
+        if(event_set_it != bind_map.end()) goto invoke_event;
+
+        event_set_it = bind_map.find(input::combination{{d2d::input::generic_code::any}, code});
+        if(event_set_it != bind_map.end()) goto invoke_event;
+
+        combo.main_input() = d2d::input::generic_code::any;
+        event_set_it = bind_map.find(std::move(combo));
+        if(event_set_it != bind_map.end()) goto invoke_event;
+
+        event_set_it = bind_map.find(input::combination{{d2d::input::generic_code::any}, d2d::input::generic_code::any});
+        if(event_set_it != bind_map.end()) goto invoke_event;
+
+        return;
+        
+    invoke_event:
+        input::category_flags_t category_flags = win_ptr->current_input_categories() & event_set_it->second.applicable_categories;
+        //const unsigned long long category_flags = category_bitset.to_ullong();
+        while(category_flags.any()) {
+            input::category_id_t category_id = input::max_category_id - std::countl_zero(category_flags.to_ullong());
+            input::event_id_t event_id = event_set_it->second.event_ids[category_id];
+            auto event_fn_it = win_ptr->event_functions().find(input::event_t{event_id, category_id});
+            if(event_fn_it != win_ptr->event_functions().end()) {
+                std::invoke(event_fn_it->second, win_ptr, combo, pressed, input::event_t{event_id, category_id}, mouse_aux_data, glfwGetWindowUserPointer(window_ptr));
+                return;
+            }
+            category_flags.reset(category_id);
+        }
+    }
+
+
+    template<typename... Ts>
+    void basic_window<Ts...>::kb_key_input(GLFWwindow* window_ptr, int key, int, int action, int) noexcept {
+        if(key == GLFW_KEY_UNKNOWN) return;
+        switch(action) {
+        case GLFW_RELEASE:
+        case GLFW_PRESS:
+            break;
+        default:
+            return;
+        }
+
+        thread_pool().detach_task(std::bind(process_input, window_ptr, input::codes_map[key], static_cast<bool>(action), input::mouse_aux_t{}));
+        //return process_input(window_ptr, input::codes_map[key], static_cast<bool>(action), input::mouse_aux_t{});
+    }
+
+    template<typename... Ts>
+    void basic_window<Ts...>::kb_text_input(GLFWwindow* window_ptr, unsigned int codepoint) noexcept {
+        auto window_info_it = input::impl::glfw_window_map().find(window_ptr);
+        if(window_info_it == input::impl::glfw_window_map().end()) [[unlikely]] return;
+        basic_window<Ts...>* win_ptr = static_cast<basic_window<Ts...>*>(window_info_it->second.window_ptr);
+
+        std::function<input::text_event_function> const& text_input_fn = win_ptr->text_input_function();
+        if(!text_input_fn) return;
+        thread_pool().detach_task(std::bind(text_input_fn, win_ptr, codepoint));
+        //std::invoke(text_input_fn, win_ptr, codepoint);
+    }
+
+    template<typename... Ts>
+    void basic_window<Ts...>::mouse_move(GLFWwindow* window_ptr, double x, double y) noexcept {
+        thread_pool().detach_task(std::bind(process_input, window_ptr, input::mouse_code::move, true, pt2d{x, y}));
+        thread_pool().detach_task(std::bind(process_input, window_ptr, input::mouse_code::move, false, pt2d{x, y}));
+        //return process_input(window_ptr, input::mouse_code::move, std::nullopt, pt2d{x, y});
+    }
+
+    template<typename... Ts>
+    void basic_window<Ts...>::mouse_button_input(GLFWwindow* window_ptr, int button, int action, int) noexcept {
+        thread_pool().detach_task(std::bind(process_input, window_ptr, input::codes_map[button], static_cast<bool>(action), input::mouse_aux_t{}));
+        //return process_input(window_ptr, input::codes_map[button], static_cast<bool>(action), input::mouse_aux_t{});
+    }
+
+    template<typename... Ts>
+    void basic_window<Ts...>::mouse_scroll(GLFWwindow* window_ptr, double x, double y) noexcept {
+        if(x != 0) {
+            thread_pool().detach_task(std::bind(process_input, window_ptr, x > 0 ? input::mouse_code::scroll_left : input::mouse_code::scroll_right, true, x));
+            thread_pool().detach_task(std::bind(process_input, window_ptr, x > 0 ? input::mouse_code::scroll_left : input::mouse_code::scroll_right, false, x));
+            //process_input(window_ptr, x > 0 ? input::mouse_code::scroll_left : input::mouse_code::scroll_right, std::nullopt, x);
+        }
+        if(y != 0) {
+            thread_pool().detach_task(std::bind(process_input, window_ptr, y > 0 ? input::mouse_code::scroll_up : input::mouse_code::scroll_down, true, y));
+            thread_pool().detach_task(std::bind(process_input, window_ptr, y > 0 ? input::mouse_code::scroll_up : input::mouse_code::scroll_down, false, y));
+            //process_input(window_ptr, y > 0 ? input::mouse_code::scroll_up : input::mouse_code::scroll_down, std::nullopt, y);
+        }
+    }
+}
+
+
+
+namespace d2d {
+    template<typename... Ts>
     template<impl::directly_renderable T>
     constexpr vk::renderable_data<T, basic_window<Ts...>::frames_in_flight>& basic_window<Ts...>::renderable_data_of() noexcept {
-        return base_type::template renderable_data_of<T>();
+        return base_tuple_type::template renderable_data_of<T>();
     }
     template<typename... Ts>
     template<impl::directly_renderable T>
     constexpr vk::renderable_data<T, basic_window<Ts...>::frames_in_flight> const& basic_window<Ts...>::renderable_data_of() const noexcept {
-        return base_type::template renderable_data_of<T>();
+        return base_tuple_type::template renderable_data_of<T>();
     }
 
     template<typename... Ts>

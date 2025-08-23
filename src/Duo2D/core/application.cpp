@@ -1,14 +1,16 @@
 #include "Duo2D/core/application.hpp"
-#include "Duo2D/vulkan/device/logical_device.hpp"
-#include "Duo2D/vulkan/device/physical_device.hpp"
+#include <atomic>
 #include <memory>
-#include <vulkan/vulkan_core.h>
+#include <utility>
+
+#include <vulkan/vulkan.h>
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
-#include <utility>
 
 #include "Duo2D/core/error.hpp"
 #include "Duo2D/core/make.hpp"
+#include "Duo2D/vulkan/device/logical_device.hpp"
+#include "Duo2D/vulkan/device/physical_device.hpp"
 
 namespace d2d {
     result<application> application::create(std::string_view name) noexcept {
@@ -50,6 +52,8 @@ namespace d2d {
         ret.logi_device_ptr = std::make_shared_for_overwrite<vk::logical_device>();
         ret.font_data_map_ptr = std::make_shared_for_overwrite<impl::font_data_map>();
         ret.name = name;
+
+        ret.should_be_open.store(true, std::memory_order_relaxed);
 
         return ret;
     }
@@ -102,17 +106,21 @@ namespace d2d {
         result<window> w = make<window>(title, 1600, 900, instance_ptr);
         if(!w.has_value()) return w.error();
         RESULT_VERIFY(w->initialize(logi_device_ptr, phys_device_ptr, font_data_map_ptr));
+
         auto new_window = windows.emplace(title, *std::move(w));
+        window* new_window_ptr = &(new_window.first->second);
+        input::impl::glfw_window_map().try_emplace(static_cast<GLFWwindow*>(*new_window_ptr), input::combination{}, new_window_ptr);
+
         if(!new_window.second) 
             return error::window_already_exists;
-
-        return &(new_window.first->second);
+        return new_window_ptr;
     }
 
 
     result<void> application::remove_window(std::string_view title) noexcept {
         if (auto it = windows.find(std::string(title)); it != windows.end()) {
             windows.erase(it);
+            input::impl::glfw_window_map().erase(static_cast<GLFWwindow*>(it->second));
             return {};
         }
  
@@ -133,18 +141,21 @@ namespace d2d {
 
 namespace d2d {
     bool application::open() const noexcept {
+        return should_be_open.load(std::memory_order_relaxed);
+    }
+
+    void application::poll_events() noexcept {
+        glfwPollEvents();
         for (auto& w : windows)
             if(!glfwWindowShouldClose(w.second))
-                return true;
-        return false;
+                return;
+        should_be_open.store(false, std::memory_order_relaxed);
     }
 
     result<void> application::render() noexcept {
-        for (auto& w : windows) {
-            glfwPollEvents();
+        for (auto& w : windows) 
             if(auto r = w.second.render(); !r.has_value()) 
                 return r.error();
-        }
         return {};
     }
 

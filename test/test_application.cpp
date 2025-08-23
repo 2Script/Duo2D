@@ -1,4 +1,4 @@
-#include "Duo2D/vulkan/device/queue_family.hpp"
+
 #include <iostream>
 #include <result/to_result.hpp>
 #include <set>
@@ -14,12 +14,18 @@
 #include <Duo2D/core/window.hpp>
 #include <Duo2D/arith/matrix.hpp>
 #include <Duo2D/arith/point.hpp>
+#include "Duo2D/input/category.hpp"
+#include "Duo2D/input/code.hpp"
+#include "Duo2D/input/modifier_flags.hpp"
 #include <Duo2D/graphics/prim/debug_rect.hpp>
 #include <Duo2D/graphics/prim/styled_rect.hpp>
 #include <Duo2D/graphics/ui/text.hpp>
 #include <Duo2D/graphics/ui/progress_bar.hpp>
-#include <vulkan/vulkan_core.h>
 
+
+#if __has_feature(address_sanitizer) || defined(__SANITIZE_ADDRESS__)
+extern "C" const char* __asan_default_options() { return "detect_leaks=0"; }
+#endif
 
 
 int main(){
@@ -153,6 +159,70 @@ int main(){
     auto w2 = app.add_window("Duo2D Test (Second Window)");
     if(!w.has_value()) return w2.error();
     } */
+    d2d::input::event_set left_active{};
+    left_active.applicable_categories.set(d2d::input::category::system);
+    left_active.event_ids[d2d::input::category::system] = 0;
+    d2d::input::event_set left_inactive{};
+    left_inactive.applicable_categories.set(d2d::input::category::system);
+    left_inactive.event_ids[d2d::input::category::system] = 1;
+    win->event_functions().try_emplace(d2d::input::event_t{0, d2d::input::category::system}, [](void*, d2d::input::combination, bool pressed, d2d::input::event_t, d2d::input::mouse_aux_t, void*){
+        std::cout << "left active (by " << (pressed ? std::string_view("press") : std::string_view("release")) << ")" << std::endl;
+    });
+    win->event_functions().try_emplace(d2d::input::event_t{1, d2d::input::category::system}, [](void*, d2d::input::combination, bool pressed, d2d::input::event_t, d2d::input::mouse_aux_t, void*){
+        std::cout << "left inactive (by " << (pressed ? std::string_view("press") : std::string_view("release")) << ")" << std::endl;
+    });
+    //win->input_active_bindings().insert_or_assign(d2d::input::combination{{}, d2d::input::key_code::kb_a}, left_active);
+    //win->input_inactive_bindings().insert_or_assign(d2d::input::combination{{d2d::input::key_code::kb_a}, d2d::input::generic_code::any}, left_active);
+    //win->input_active_bindings().insert_or_assign(d2d::input::combination{{d2d::input::key_code::kb_a}, d2d::input::generic_code::any}, left_inactive);
+    //win->input_inactive_bindings().insert_or_assign(d2d::input::combination{{}, d2d::input::key_code::kb_a}, left_inactive);
+    win->input_active_bindings().insert_or_assign(d2d::input::combination{{d2d::input::generic_code::any}, d2d::input::key_code::kb_a}, left_active);
+    win->input_inactive_bindings().insert_or_assign(d2d::input::combination{{d2d::input::generic_code::any}, d2d::input::key_code::kb_a}, left_inactive);
+
+
+    d2d::input::event_set& ctrl_a_g = win->input_active_bindings()[d2d::input::combination{{d2d::input::key_code::kb_left_ctrl, d2d::input::key_code::kb_a}, d2d::input::key_code::kb_g}];
+    ctrl_a_g.applicable_categories.set(d2d::input::category::system);
+    ctrl_a_g.event_ids[d2d::input::category::system] = 2;
+    d2d::input::event_set& ctrl_g_a = win->input_active_bindings()[d2d::input::combination{{d2d::input::key_code::kb_left_ctrl, d2d::input::key_code::kb_g}, d2d::input::key_code::kb_a}];
+    ctrl_g_a.applicable_categories.set(d2d::input::category::system);
+    ctrl_g_a.event_ids[d2d::input::category::system] = 2;
+    win->event_functions().try_emplace(d2d::input::event_t{2, d2d::input::category::system}, [](void*, d2d::input::combination, bool, d2d::input::event_t, d2d::input::mouse_aux_t, void*){
+        std::cout << "advanced key event called" << std::endl;
+    }); 
+
+    win->current_input_categories().set(1);
+    //win->current_input_categories().set(2);
+
+    d2d::input::event_set& inactive_mouse_move = win->input_inactive_bindings()[d2d::input::combination{{d2d::input::generic_code::any}, d2d::input::mouse_code::move}];
+    inactive_mouse_move.applicable_categories.set(2);
+    inactive_mouse_move.event_ids[2] = 0;
+    win->event_functions().try_emplace(d2d::input::event_t{0, 2}, [](void*, d2d::input::combination, bool, d2d::input::event_t, d2d::input::mouse_aux_t, void*){
+        std::cout << "mouse move (inactive)" << std::endl;
+    }); 
+
+    d2d::input::event_set& shift_mouse_move = win->input_active_bindings()[d2d::input::combination{{d2d::input::key_code::kb_left_shift}, d2d::input::mouse_code::move}];
+    shift_mouse_move.applicable_categories.set(1);
+    shift_mouse_move.event_ids[1] = 0;
+    win->event_functions().try_emplace(d2d::input::event_t{0, 1}, [](void*, d2d::input::combination, bool, d2d::input::event_t, d2d::input::mouse_aux_t, void*){
+        std::cout << "shift mouse move" << std::endl;
+    }); 
+
+    d2d::input::event_set& shift_scroll_up = win->input_active_bindings()[d2d::input::combination{{d2d::input::key_code::kb_left_shift}, d2d::input::mouse_code::scroll_up}];
+    shift_scroll_up.applicable_categories.set(1);
+    shift_scroll_up.event_ids[1] = 1;
+    win->event_functions().try_emplace(d2d::input::event_t{1, 1}, [](void*, d2d::input::combination, bool, d2d::input::event_t, d2d::input::mouse_aux_t, void*){
+        std::cout << "shift scroll" << std::endl;
+    }); 
+
+
+    d2d::input::event_set& left_mouse_btn = win->input_active_bindings()[d2d::input::combination{{}, d2d::input::mouse_code::button_1}];
+    left_mouse_btn.applicable_categories.set(1);
+    left_mouse_btn.event_ids[1] = 2;
+    win->input_modifier_flags()[d2d::input::mouse_code::button_1] |= d2d::input::modifier_flags::no_modifiers_allowed;
+    win->event_functions().try_emplace(d2d::input::event_t{2, 1}, [](void*, d2d::input::combination, bool, d2d::input::event_t, d2d::input::mouse_aux_t, void*){
+        std::cout << "left mouse button" << std::endl;
+    }); 
+
+
 
     std::thread edit_s([](d2d::styled_rect& sr){//, d2d::window& w){
         sr.texture_bounds->pos = {1000, 1000};
@@ -171,11 +241,24 @@ int main(){
         //    vkSignalSemaphore(w.logical_device(), &signal_info);
         //}
     }, std::ref(cyan_ref));//, std::ref(*win));
-    while(app.open())
-        if(auto r = app.render(); !r.has_value()) [[unlikely]]
-            return r.error();
+
+
+    std::thread render_thread([](d2d::application& a) -> d2d::result<void> {
+        while(a.open())
+            if(auto r = a.render(); !r.has_value()) [[unlikely]]
+                return r.error();
+        return {};
+    }, std::ref(app));
+
+
+    while(app.open()) {
+        app.poll_events();
+        //if(auto r = app.render(); !r.has_value()) [[unlikely]]
+        //    return r.error();
+    }
     
     edit_s.join();
+    render_thread.join();
     RESULT_VERIFY(app.join());
     return 0;
 }

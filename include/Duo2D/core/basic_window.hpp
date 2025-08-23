@@ -2,16 +2,26 @@
 #include <atomic>
 #include <concepts>
 #include <cstddef>
+#include <functional>
 #include <memory>
 #include <string_view>
 #include <type_traits>
+#include <unordered_map>
 #include <utility>
 
 #include <GLFW/glfw3.h>
 #include <vulkan/vulkan.h>
 #include <result.hpp>
 
+#include "Duo2D/core/moveable_atomic.hpp"
 #include "Duo2D/graphics/core/font.hpp"
+#include "Duo2D/input/category.hpp"
+#include "Duo2D/input/code.hpp"
+#include "Duo2D/input/event_function.hpp"
+#include "Duo2D/input/event_int.hpp"
+#include "Duo2D/input/map_types.hpp"
+#include "Duo2D/input/modifier_flags.hpp"
+#include "Duo2D/input/window_info.hpp"
 #include "Duo2D/traits/generic_functor.hpp"
 #include "Duo2D/traits/directly_renderable.hpp"
 #include "Duo2D/traits/renderable_container_like.hpp"
@@ -98,7 +108,7 @@ namespace d2d {
         constexpr vk::swap_chain              const& swap_chain()    const noexcept { return _swap_chain; }
         constexpr vk::render_pass             const& render_pass()   const noexcept { return _render_pass; }
         constexpr vk::texture_map             const& texture_map()   const noexcept { return this->textures; }
-        constexpr std::size_t                        frame_index()   const noexcept { return frame_count.value.load() % impl::frames_in_flight; }
+        constexpr std::size_t                        frame_index()   const noexcept { return frame_count.load() % impl::frames_in_flight; }
         inline    std::weak_ptr<impl::font_data_map> font_data_map() const noexcept { return this->font_data_map_ptr; }
 
     public:
@@ -106,6 +116,7 @@ namespace d2d {
         __D2D_CONSTEXPR_UNIQUE_PTR explicit operator bool() const noexcept { return static_cast<bool>(handle); }
 
 
+        
     public:
         template<typename T> using key_type       = typename vk::renderable_data_traits<Ts...>::template key_type      <T, frames_in_flight>;
         template<typename T> using mapped_type    = typename vk::renderable_data_traits<Ts...>::template mapped_type   <T, frames_in_flight>;
@@ -150,8 +161,38 @@ namespace d2d {
         std::size_t size() const noexcept;
 
 
+
+    public:
+        constexpr input::category_flags_t const& current_input_categories() const noexcept { return category_flags; }
+        constexpr input::category_flags_t      & current_input_categories()       noexcept { return category_flags; }
+    public:
+        constexpr input::binding_map const& input_active_bindings() const noexcept { return active_bindings; }
+        constexpr input::binding_map      & input_active_bindings()       noexcept { return active_bindings; }
+        constexpr input::binding_map const& input_inactive_bindings() const noexcept { return inactive_bindings; }
+        constexpr input::binding_map      & input_inactive_bindings()       noexcept { return inactive_bindings; }
+    public:
+        constexpr input::event_fns_map const& event_functions() const noexcept { return event_fns; }
+        constexpr input::event_fns_map      & event_functions()       noexcept { return event_fns; }
+        constexpr std::function<input::text_event_function> const& text_input_function() const noexcept { return text_input_fn; }
+        constexpr std::function<input::text_event_function>      & text_input_function()       noexcept { return text_input_fn; }
+    public:
+        constexpr std::array<input::modifier_flags_t, input::num_codes> const& input_modifier_flags() const noexcept { return modifier_flags; }
+        constexpr std::array<input::modifier_flags_t, input::num_codes>      & input_modifier_flags()       noexcept { return modifier_flags; }
+
     private:
-        using base_type = vk::renderable_tuple<frames_in_flight, typename vk::renderable_data_traits<Ts...>::data_tuple_type>;
+        static void process_input(GLFWwindow* window_ptr, input::code_t code, bool pressed, input::mouse_aux_t mouse_aux_data) noexcept;
+    private:
+        static void kb_key_input(GLFWwindow* window_ptr, int key, int scancode, int action, int mods) noexcept;
+        static void kb_text_input(GLFWwindow* window_ptr, unsigned int codepoint) noexcept; //not tied to a category
+        static void mouse_move(GLFWwindow* window_ptr, double x, double y) noexcept; //can't be a modifier (no release either)
+        static void mouse_button_input(GLFWwindow* window_ptr, int button, int action, int mods) noexcept;
+        static void mouse_scroll(GLFWwindow* window_ptr, double x, double y) noexcept; //can't be a modifier (no release either)
+
+
+
+    private:
+        //using base_input_type = input::window_config;
+        using base_tuple_type = vk::renderable_tuple<frames_in_flight, typename vk::renderable_data_traits<Ts...>::data_tuple_type>;
 
         template<impl::directly_renderable             T> constexpr vk::renderable_data<T, frames_in_flight>      & renderable_data_of()       noexcept;
         template<impl::directly_renderable             T> constexpr vk::renderable_data<T, frames_in_flight> const& renderable_data_of() const noexcept;
@@ -171,7 +212,9 @@ namespace d2d {
 
 
     private:
-        basic_window(GLFWwindow* w) noexcept : base_type(),
+        basic_window(GLFWwindow* w) noexcept : base_tuple_type(), 
+            category_flags(static_cast<input::category_flags_t>(0b1) << input::category::system),
+            active_bindings(), inactive_bindings(), event_fns(), text_input_fn(), modifier_flags{},
             renderable_container_datas(), font_paths(), font_paths_outdated(false),
             handle(w, {}), command_pool_ptr(),
             _surface(), _swap_chain(), _render_pass(),
@@ -183,8 +226,15 @@ namespace d2d {
         template<typename, typename, template<typename...> typename>
         friend class dynamic_renderable_container;
 
+
     private:
-        
+        //TODO: replace with lockable map so it can be thread-safe
+        input::category_flags_t category_flags;
+        input::binding_map active_bindings;
+        input::binding_map inactive_bindings;
+        input::event_fns_map event_fns;
+        std::function<input::text_event_function> text_input_fn;
+        std::array<input::modifier_flags_t, input::num_codes> modifier_flags;
 
     private:
         typename vk::renderable_data_traits<Ts...>::container_data_map_tuple_type renderable_container_datas;
@@ -209,12 +259,7 @@ namespace d2d {
         vk::semaphore timeline_semaphore;
         
         //TEMP
-        struct counter {
-            counter() noexcept = default;
-            counter(counter&& other) : value(other.value.exchange(0)) {}
-            counter& operator=(counter&& other) { value = (other.value.exchange(0)); }
-            std::atomic_size_t value;
-        } frame_count, update_count;
+        moveable_atomic<std::size_t> frame_count, update_count;
 
         constexpr static std::string_view container_child_prefix           = "__d2d_renderable_container";
         constexpr static std::string_view container_child_format_key       = "__d2d_renderable_container_{}__object{}";

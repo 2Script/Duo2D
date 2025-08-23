@@ -32,12 +32,14 @@ namespace d2d::vk {
         };
 
         //Specify viewport and scissor state
-        constexpr static std::array<VkDynamicState, 2> dynamic_states = {VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR};
         VkPipelineViewportStateCreateInfo viewport_info{
             .sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
             .viewportCount = 1,
             .scissorCount = 1,
         };
+
+        //Specify dynamic states
+        constexpr static std::array<VkDynamicState, 2> dynamic_states = {VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR};//, VK_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY};
         VkPipelineDynamicStateCreateInfo dynamic_state_info{
             .sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
             .dynamicStateCount = dynamic_states.size(),
@@ -66,7 +68,7 @@ namespace d2d::vk {
             .sampleShadingEnable = VK_FALSE,
         };
 
-        //Specify No color blend
+        //Specify basic color blend
         VkPipelineColorBlendAttachmentState color_blend_attach_info{
             .blendEnable = VK_TRUE,
             .srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA,

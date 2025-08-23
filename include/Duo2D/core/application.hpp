@@ -10,6 +10,7 @@
 #include <vulkan/vulkan_core.h>
 
 #include "Duo2D/core/error.hpp"
+#include "Duo2D/core/moveable_atomic.hpp"
 #include "Duo2D/graphics/core/font.hpp"
 #include "Duo2D/vulkan/core/instance.hpp"
 #include "Duo2D/traits/instance_tracker.hpp"
@@ -44,6 +45,7 @@ namespace d2d {
 
     public:
         bool open() const noexcept;
+        void poll_events() noexcept;
         result<void> render() noexcept;
         result<void> join() noexcept;
 
@@ -58,6 +60,8 @@ namespace d2d {
         //ORDER MATTERS: glfw must be terminated after all windows have been destroyed
         impl::instance_tracker<void, glfwTerminate> glfw_init;
         std::map<std::string, window> windows;
+
+        moveable_atomic<bool> should_be_open;
     private:
         //inline static std::atomic_int64_t instance_count;
     };
