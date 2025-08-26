@@ -184,7 +184,7 @@ namespace d2d::vk {
 
     template<std::size_t FiF, ::d2d::impl::directly_renderable... Ts> //requires (sizeof...(Ts) > 0)
     template<typename T>
-    result<void> renderable_tuple<FiF, std::tuple<Ts...>>::apply_attributes() noexcept {
+    result<void> renderable_tuple<FiF, std::tuple<Ts...>>::apply_attributes() noexcept requires (renderable_constraints<T>::has_attributes) {
         //Must recreate ALL attribute span maps
         RESULT_TRY_COPY_UNSCOPED(void* shared_mem_map, shared_mem.map(logi_device_ptr, VK_WHOLE_SIZE), _smm);
 
@@ -196,6 +196,12 @@ namespace d2d::vk {
         };
         (emplace_all_attributes.template operator()<Ts>(buffer_offset), ...);
 
+        return {};
+    }
+    
+    template<std::size_t FiF, ::d2d::impl::directly_renderable... Ts> //requires (sizeof...(Ts) > 0)
+    template<typename T>
+    result<void> renderable_tuple<FiF, std::tuple<Ts...>>::apply_attributes() noexcept requires (!renderable_constraints<T>::has_attributes) {
         return {};
     }
 }

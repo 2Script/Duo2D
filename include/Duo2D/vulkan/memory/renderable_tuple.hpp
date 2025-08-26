@@ -51,7 +51,9 @@ namespace d2d::vk {
         template<typename T>
         result<void> apply_memory_changes(render_pass& window_render_pass) noexcept;
         template<typename T>
-        result<void> apply_attributes() noexcept;
+        result<void> apply_attributes() noexcept requires (renderable_constraints<T>::has_attributes);
+        template<typename T>
+        result<void> apply_attributes() noexcept requires (!renderable_constraints<T>::has_attributes);
 
     protected:
         //TODO (HIGH PRIO): Split this into (multithreaded) loading/decoding the file | allocating multiple files into image buffers
