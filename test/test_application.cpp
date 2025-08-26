@@ -29,9 +29,9 @@ extern "C" const char* __asan_default_options() { return "detect_leaks=0"; }
 
 
 int main(){
-    auto a = d2d::make<d2d::application>("Duo2D Test");
+    auto a = d2d::make<d2d::application<>>("Duo2D Test");
     if(!a.has_value()) return a.error();
-    d2d::application app = *std::move(a);
+    d2d::application<> app = *std::move(a);
 
 
     auto d = app.devices();
@@ -42,6 +42,7 @@ int main(){
     std::set<d2d::vk::physical_device> device_list = *d;
     if(device_list.empty()) return d2d::error::no_vulkan_devices;
 
+    //std::cout << std::filesystem::current_path() << std::endl;
     const std::filesystem::path assets_path = std::filesystem::canonical(std::filesystem::path("../../test/assets"));
 
     app.selected_device() = *device_list.begin();
@@ -243,7 +244,7 @@ int main(){
     }, std::ref(cyan_ref));//, std::ref(*win));
 
 
-    std::thread render_thread([](d2d::application& a) -> d2d::result<void> {
+    std::thread render_thread([](d2d::application<>& a) -> d2d::result<void> {
         while(a.open())
             if(auto r = a.render(); !r.has_value()) [[unlikely]]
                 return r.error();

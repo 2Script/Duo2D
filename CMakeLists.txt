@@ -7,8 +7,6 @@ option(BUILD_SHARED_LIBS "Build using shared libraries" ON)
 set(CMAKE_VERBOSE_MAKEFILE ON CACHE BOOL "ON")
 
 set(CPP_FILES
-    core/application.cpp
-
     vulkan/core/command_buffer.cpp
     vulkan/core/command_pool.cpp
     vulkan/core/instance.cpp

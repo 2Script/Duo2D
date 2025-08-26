@@ -1,13 +1,12 @@
 #pragma once
-#include <GLFW/glfw3.h>
 #include <atomic>
 #include <map>
 #include <memory>
 #include <string_view>
 #include <set>
-#include <unordered_map>
+
+#include <GLFW/glfw3.h>
 #include <vulkan/vulkan.h>
-#include <vulkan/vulkan_core.h>
 
 #include "Duo2D/core/error.hpp"
 #include "Duo2D/core/moveable_atomic.hpp"
@@ -20,6 +19,7 @@
 
 
 namespace d2d {
+    template<typename WindowT = window>
     class application {
     public:
         application() noexcept = default;
@@ -37,10 +37,10 @@ namespace d2d {
 
     public:
         //TODO return reference to window instead of pointer
-        result<window*> add_window(std::string_view title) noexcept;
+        result<WindowT*> add_window(std::string_view title) noexcept;
         result<void> remove_window(std::string_view title) noexcept;
 
-        result<window*> add_window() noexcept;
+        result<WindowT*> add_window() noexcept;
         result<void> remove_window() noexcept;
 
     public:
@@ -59,7 +59,7 @@ namespace d2d {
 
         //ORDER MATTERS: glfw must be terminated after all windows have been destroyed
         impl::instance_tracker<void, glfwTerminate> glfw_init;
-        std::map<std::string, window> windows;
+        std::map<std::string, WindowT> windows;
 
         moveable_atomic<bool> should_be_open;
     private:
@@ -67,9 +67,13 @@ namespace d2d {
     };
 }
 
+
 namespace d2d::impl {
     inline std::atomic_int64_t& application_count() {
         static std::atomic_int64_t count{};
         return count;
     }
 }
+
+
+#include "Duo2D/core/application.inl"

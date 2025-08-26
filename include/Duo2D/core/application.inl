@@ -1,4 +1,6 @@
+#pragma once
 #include "Duo2D/core/application.hpp"
+
 #include <atomic>
 #include <memory>
 #include <utility>
@@ -13,7 +15,8 @@
 #include "Duo2D/vulkan/device/physical_device.hpp"
 
 namespace d2d {
-    result<application> application::create(std::string_view name) noexcept {
+    template<typename WindowT>
+    result<application<WindowT>> application<WindowT>::create(std::string_view name) noexcept {
         // Set application info
         VkApplicationInfo app_info{
             VK_STRUCTURE_TYPE_APPLICATION_INFO, //sType
@@ -61,7 +64,8 @@ namespace d2d {
 
 
 namespace d2d {
-    result<std::set<vk::physical_device>> application::devices() const noexcept {
+    template<typename WindowT>
+    result<std::set<vk::physical_device>> application<WindowT>::devices() const noexcept {
         std::uint32_t device_count = 0;
         vkEnumeratePhysicalDevices(*instance_ptr, &device_count, nullptr);
 
@@ -86,7 +90,8 @@ namespace d2d {
     }
 
 
-    result<void> application::initialize_device() noexcept {
+    template<typename WindowT>
+    result<void> application<WindowT>::initialize_device() noexcept {
         //Create logical device
         vk::logical_device l;
         RESULT_TRY_MOVE(l, make<vk::logical_device>(phys_device_ptr));
@@ -98,17 +103,18 @@ namespace d2d {
 
 
 namespace d2d {
-    result<window*> application::add_window(std::string_view title) noexcept {
+    template<typename WindowT>
+    result<WindowT*> application<WindowT>::add_window(std::string_view title) noexcept {
         if(!logi_device_ptr)
             return error::device_not_initialized;
 
         
-        result<window> w = make<window>(title, 1600, 900, instance_ptr);
+        result<WindowT> w = make<WindowT>(title, 1600, 900, instance_ptr);
         if(!w.has_value()) return w.error();
         RESULT_VERIFY(w->initialize(logi_device_ptr, phys_device_ptr, font_data_map_ptr));
 
         auto new_window = windows.emplace(title, *std::move(w));
-        window* new_window_ptr = &(new_window.first->second);
+        WindowT* new_window_ptr = &(new_window.first->second);
         input::impl::glfw_window_map().try_emplace(static_cast<GLFWwindow*>(*new_window_ptr), input::combination{}, new_window_ptr);
 
         if(!new_window.second) 
@@ -117,7 +123,8 @@ namespace d2d {
     }
 
 
-    result<void> application::remove_window(std::string_view title) noexcept {
+    template<typename WindowT>
+    result<void> application<WindowT>::remove_window(std::string_view title) noexcept {
         if (auto it = windows.find(std::string(title)); it != windows.end()) {
             windows.erase(it);
             input::impl::glfw_window_map().erase(static_cast<GLFWwindow*>(it->second));
@@ -129,22 +136,26 @@ namespace d2d {
 }
 
 namespace d2d {
-    result<window*> application::add_window() noexcept {
+    template<typename WindowT>
+    result<WindowT*> application<WindowT>::add_window() noexcept {
         return add_window(name);
     }
 
-    result<void> application::remove_window() noexcept {
+    template<typename WindowT>
+    result<void> application<WindowT>::remove_window() noexcept {
         return remove_window(name);
     }
 }
 
 
 namespace d2d {
-    bool application::open() const noexcept {
+    template<typename WindowT>
+    bool application<WindowT>::open() const noexcept {
         return should_be_open.load(std::memory_order_relaxed);
     }
 
-    void application::poll_events() noexcept {
+    template<typename WindowT>
+    void application<WindowT>::poll_events() noexcept {
         glfwPollEvents();
         for (auto& w : windows)
             if(!glfwWindowShouldClose(w.second))
@@ -152,19 +163,22 @@ namespace d2d {
         should_be_open.store(false, std::memory_order_relaxed);
     }
 
-    result<void> application::render() noexcept {
+    template<typename WindowT>
+    result<void> application<WindowT>::render() noexcept {
         for (auto& w : windows) 
             if(auto r = w.second.render(); !r.has_value()) 
                 return r.error();
         return {};
     }
 
-    result<void> application::join() noexcept {
+    template<typename WindowT>
+    result<void> application<WindowT>::join() noexcept {
         __D2D_VULKAN_VERIFY(vkDeviceWaitIdle(*logi_device_ptr));
         return  {};
     }
 }
 
 //namespace d2d {
-//    std::atomic_int64_t application::instance_count{};
+//    template<typename WindowT>
+//    std::atomic_int64_t application<WindowT>::instance_count{};
 //}
