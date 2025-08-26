@@ -26,15 +26,46 @@ namespace d2d {
     using sz2d    = size2<double>;
     using sz3d    = size3<double>;
 
-    using size2i  = size2<std::int64_t>;
-    using size3i  = size3<std::int64_t>;
-    using sz2i    = size2<std::int64_t>;
-    using sz3i    = size3<std::int64_t>;
 
-    using size2u  = size2<std::uint64_t>;
-    using size3u  = size3<std::uint64_t>;
-    using sz2u    = size2<std::uint64_t>;
-    using sz3u    = size3<std::uint64_t>;
+    using size2u8 = size2<std::uint8_t>;
+    using size3u8 = size3<std::uint8_t>;
+    using sz2u8   = size2<std::uint8_t>;
+    using sz3u8   = size3<std::uint8_t>;
+
+    using size2u16 = size2<std::uint16_t>;
+    using size3u16 = size3<std::uint16_t>;
+    using sz2u16   = size2<std::uint16_t>;
+    using sz3u16   = size3<std::uint16_t>;
+
+    using size2u32 = size2<std::uint32_t>;
+    using size3u32 = size3<std::uint32_t>;
+    using sz2u32   = size2<std::uint32_t>;
+    using sz3u32   = size3<std::uint32_t>;
+
+    using size2u64 = size2<std::uint64_t>;
+    using size3u64 = size3<std::uint64_t>;
+    using sz2u64   = size2<std::uint64_t>;
+    using sz3u64   = size3<std::uint64_t>;
+
+    using size2s8 = size2<std::int8_t>;
+    using size3s8 = size3<std::int8_t>;
+    using sz2s8   = size2<std::int8_t>;
+    using sz3s8   = size3<std::int8_t>;
+
+    using size2s16 = size2<std::int16_t>;
+    using size3s16 = size3<std::int16_t>;
+    using sz2s16   = size2<std::int16_t>;
+    using sz3s16   = size3<std::int16_t>;
+
+    using size2s32 = size2<std::int32_t>;
+    using size3s32 = size3<std::int32_t>;
+    using sz2s32   = size2<std::int32_t>;
+    using sz3s32   = size3<std::int32_t>;
+
+    using size2s64 = size2<std::int64_t>;
+    using size3s64 = size3<std::int64_t>;
+    using sz2s64   = size2<std::int64_t>;
+    using sz3s64   = size3<std::int64_t>;
 }
 
 namespace d2d {

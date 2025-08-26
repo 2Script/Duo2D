@@ -13,7 +13,7 @@ int main(){
     constexpr d2d::vector3<std::size_t> x{5, 13, 7};
     static_assert(x[0] == 5);
     constexpr VkOffset3D y = static_cast<VkOffset3D>(x);
-    constexpr d2d::size2u z = static_cast<d2d::size2u>(x);
+    constexpr d2d::size2u64 z = static_cast<d2d::size2u64>(x);
     static_assert(y.x == 5 && y.y == 13 && y.z == 7);
     static_assert(z.width() == 5 && z.height() == 13);
     constexpr d2d::pt2<float> x2 = static_cast<d2d::pt2<float>>(x);

@@ -118,10 +118,10 @@ namespace d2d {
             hb_codepoint_t glyph_idx = glyph_info[i].codepoint;
             (*this)[i]->glyph_idx = glyph_idx;
             
-            pt2f offset = pt2i{glyph_pos[i].x_offset, glyph_pos[i].y_offset} / font_units_per_pixel;
+            pt2f offset = pt2s64{glyph_pos[i].x_offset, glyph_pos[i].y_offset} / font_units_per_pixel;
             pt2f padding = (font_data_ptr->glyph_padding[glyph_idx].with_inverted_axis(axis::y) * size_pixels);
             (*this)[i]->pos = current_pos - padding + offset;
-            pt2f advance = pt2i{glyph_pos[i].x_advance, glyph_pos[i].y_advance} / font_units_per_pixel;
+            pt2f advance = pt2s64{glyph_pos[i].x_advance, glyph_pos[i].y_advance} / font_units_per_pixel;
             current_pos += advance;
         }
         for(std::size_t i = glyph_count; i < size(); ++i)
