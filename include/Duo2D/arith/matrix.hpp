@@ -13,13 +13,13 @@
 namespace d2d {
     
     template<std::size_t M, std::size_t N, typename T>
-    struct matrix : public std::array<std::array<T, N>, M> {
-        constexpr static std::size_t columns = M;
-        constexpr static std::size_t rows = N;
-        using array_type = std::array<std::array<T, N>, M>;
+    struct matrix : public std::array<std::array<T, M>, N> {
+        constexpr static std::size_t rows = M;
+        constexpr static std::size_t columns = N;
+        using array_type = std::array<std::array<T, columns>, rows>;
         using row_type = std::array<T, rows>;
         using column_type = std::array<T, columns>;
-        using flattened_type = std::array<T, N * M>;
+        using flattened_type = std::array<T, rows * columns>;
 
     public:
         constexpr std::size_t size() const noexcept { return N * M; }
@@ -40,7 +40,7 @@ namespace d2d {
         constexpr static matrix<M, N, T> translating(std::array<T, N-1> translate_vec) noexcept requires (M == N);
 
         template<typename F>
-        constexpr static matrix<M, N, T> looking_at(vector<3, T> eye, vector<3, T> center, axis up_axis, F&& sqrt_fn) noexcept requires (M == N && N >= 4);
+        constexpr static matrix<M, N, T> looking_at(vector<3, T> eye, vector<3, T> target, axis up_axis, axis_direction dir, F&& sqrt_fn) noexcept requires (M == N && N == 4);
         template<typename A, typename F>
         constexpr static matrix<M, N, T> perspective(A fov_angle, T screen_width, T screen_height, F&& tan_fn, T near_z, T far_z) noexcept requires (M == N && N == 4);
         template<typename A, typename F>
@@ -82,6 +82,7 @@ namespace d2d {
     };
 }
 
+
 namespace d2d {
     template<std::size_t N, typename T> class scale;
     template<typename A, typename FS, typename FC> requires std::is_arithmetic_v<A> class rotate;
@@ -91,6 +92,8 @@ namespace d2d {
     template<std::size_t Dims, typename UnitTy, typename... Args>
     constexpr point<Dims, UnitTy> transform(point<Dims, UnitTy> src_vec, Args&&... args) noexcept;
 }
+
+
 
 namespace d2d {
     template<std::size_t M, std::size_t N, typename T>

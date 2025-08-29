@@ -1,4 +1,5 @@
 #pragma once
+#include "Duo2D/arith/axis.hpp"
 #include "Duo2D/arith/matrix.hpp"
 #include "Duo2D/arith/point.hpp"
 #include "Duo2D/arith/vector.hpp"
@@ -125,39 +126,49 @@ namespace d2d {
 namespace d2d {
     template<std::size_t M, std::size_t N, typename T>
     template<typename F>
-    constexpr matrix<M, N, T> matrix<M, N, T>::looking_at(vector<3, T> eye, vector<3, T> center, axis up_axis, F&& sqrt_fn) noexcept requires (M == N && N >= 4) {
-        vec3<T> f = normalized(center - eye, std::forward<F>(sqrt_fn)); 
-        vec3<T> dir = {0,0,0};
-        dir[static_cast<std::size_t>(up_axis)] = 1.f;
-        vec3<T> s = normalized(cross(f, dir), std::forward<F>(sqrt_fn)); 
-        vec3<T> t = cross(s, f);
+    constexpr matrix<M, N, T> matrix<M, N, T>::looking_at(vector<3, T> eye, vector<3, T> target, axis up_axis, axis_direction up_axis_dir, F&& sqrt_fn) noexcept requires (M == N && N == 4) {
+        //vec3<T> forward = normalized(eye - target, std::forward<F>(sqrt_fn)); 
+        vec3<T> forward = normalized(target - eye, std::forward<F>(sqrt_fn)); 
+        vec3<T> up_dir = {0,0,0};
+        up_dir[static_cast<std::size_t>(up_axis)] = static_cast<float>(static_cast<std::uint8_t>(up_axis_dir) * 2 - 1);
+        vec3<T> right = normalized(cross(forward, up_dir), std::forward<F>(sqrt_fn)); 
+        vec3<T> down = cross(forward, right);
 
-        matrix<N, N, T> ret = matrix<N, N, T>::identity();
-        for(std::size_t i = 0; i < 3; ++i) {
-            ret[i][0] = s[i]; 
-            ret[i][1] = t[i]; 
-            ret[i][2] = -f[i]; 
-        }
-        ret[3][0] = dot(s, -eye);
-        ret[3][1] = dot(t, -eye);
-        ret[3][2] = dot(-f, -eye);
-        return ret;
+        return {{{
+            {{right[0], right[1], right[2], dot(right, -eye)}},
+            {{down[0], down[1], down[2], dot(down, -eye)}},
+            {{forward[0], forward[1], forward[2], dot(forward, -eye)}},
+            {{0, 0, 0, 1}},
+        }}};
     }
 
 
     template<std::size_t M, std::size_t N, typename T>
     template<typename A, typename F>
     constexpr matrix<M, N, T> matrix<M, N, T>::perspective(A fov_angle, T screen_width, T screen_height, F&& tan_fn, T near_z, T far_z) noexcept requires (M == N && N == 4) {
+        //Reverse Z
         T focal = 1/static_cast<T>(std::forward<F>(tan_fn)(fov_angle / static_cast<A>(2)));
         T denom = (far_z - near_z);
-        T a = near_z / denom;
+        T a = -near_z / denom;
         T b = (near_z * far_z) / denom;
         return {{{
-            {{focal * screen_height / screen_width, 0, 0, 0 }},
-            {{0, -focal, 0, 0 }},
-            {{0, 0, a, -1 }},
-            {{0, 0, b, 0 }}
+            {{focal / (screen_width / screen_height), 0, 0, 0 }},
+            {{0, focal, 0, 0 }},
+            {{0, 0, a, b }},
+            {{0, 0, 1, 0 }}
         }}};
+
+        //Regular Z
+        //T focal = 1/static_cast<T>(std::forward<F>(tan_fn)(fov_angle / static_cast<A>(2)));
+        //T denom = (far_z - near_z);
+        //T a = far_z / denom;
+        //T b = -(near_z * far_z) / denom;
+        //return {{{
+        //    {{focal / (screen_width / screen_height), 0, 0, 0 }},
+        //    {{0, focal, 0, 0 }},
+        //    {{0, 0, a, b }},
+        //    {{0, 0, 1, 0 }}
+        //}}};
     }
 
     template<std::size_t M, std::size_t N, typename T>
@@ -165,14 +176,15 @@ namespace d2d {
     constexpr matrix<M, N, T> matrix<M, N, T>::perspective(A fov_angle, T screen_width, T screen_height, F&& tan_fn, T near_z) noexcept requires (M == N && N == 4) {
         T focal = 1/static_cast<T>(std::forward<F>(tan_fn)(fov_angle / static_cast<A>(2)));
         return {{{
-            {{focal * screen_height / screen_width, 0, 0, 0 }},
+            {{focal / (screen_width / screen_height), 0, 0, 0 }},
             {{0, -focal, 0, 0 }},
-            {{0, 0, 0, -1 }},
-            {{0, 0, near_z, 0 }}
+            {{0, 0, -1, -1 }},
+            {{0, 0, -near_z, 0 }}
         }}};
     }
 
 
+    //untested
     template<std::size_t M, std::size_t N, typename T>
     constexpr matrix<M, N, T> matrix<M, N, T>::orthographic(T screen_width, T screen_height, T near_z, T far_z) noexcept requires (M == N && N == 4) {
         T denom = (far_z - near_z);
@@ -184,6 +196,7 @@ namespace d2d {
         }}};
     }
 
+    //untested
     template<std::size_t M, std::size_t N, typename T>
     constexpr matrix<M, N, T> matrix<M, N, T>::orthographic(T screen_width, T screen_height) noexcept requires (M == N && N == 4) {
         return {{{
