@@ -62,8 +62,8 @@ target_compile_options(${PROJECT_NAME} PUBLIC "$<$<CONFIG:DEBUG>:-O0>")
 target_compile_options(${PROJECT_NAME} PUBLIC "$<$<CONFIG:DEBUG>:-g>")
 target_compile_options(${PROJECT_NAME} PUBLIC "$<$<CONFIG:DEBUG>:-ftemplate-backtrace-limit=0>")
 target_link_options(${PROJECT_NAME} PUBLIC "-fopenmp")
-#target_compile_options(${PROJECT_NAME} PUBLIC "$<$<CONFIG:RELEASE>:-O3>")
-#target_compile_options(${PROJECT_NAME} PUBLIC "$<$<CONFIG:RELEASE>:-ffast-math>")
+target_compile_options(${PROJECT_NAME} PUBLIC "$<$<CONFIG:RELEASE>:-O3>")
+target_compile_options(${PROJECT_NAME} PUBLIC "$<$<CONFIG:RELEASE>:-ffast-math>")
 #target_compile_options(${PROJECT_NAME} PUBLIC "$<$<CONFIG:RELEASE>:-march=native>")
 if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang") # clang only
     #target_compile_options(${PROJECT_NAME} PUBLIC "-Wc++20-compat-pedantic")
@@ -156,7 +156,10 @@ add_subdirectory(test)
 
 ### install ###
 ##TODO: install debug and release
-install(TARGETS ${PROJECT_NAME})
+install(FILES "$<TARGET_FILE:${PROJECT_NAME}>" TYPE LIB CONFIGURATIONS Release)
+install(FILES "$<TARGET_FILE:${PROJECT_NAME}>" DESTINATION "${CMAKE_INSTALL_PREFIX}/lib/debug/usr/lib" CONFIGURATIONS Debug RENAME "$<TARGET_FILE_NAME:${PROJECT_NAME}>.debug")
+#install(TARGETS ${PROJECT_NAME} CONFIGURATIONS RELEASE)
+#install(TARGETS ${PROJECT_NAME} CONFIGURATIONS Debug DESTINTATION "debug/usr/lib")
 install(DIRECTORY include/ DESTINATION include)
 install(DIRECTORY src/ DESTINATION src)
 
