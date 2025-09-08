@@ -16,31 +16,32 @@ namespace d2d {
 }
 
 
+namespace d2d::vk::impl {
+    template <typename... Tuples>
+    struct unique_tuple_cat_result;
+
+    template <>
+    struct unique_tuple_cat_result<std::tuple<>> : std::type_identity<std::tuple<>> {};
+
+    template <typename... TupleTs>
+    struct unique_tuple_cat_result<std::tuple<TupleTs...>> : std::type_identity<std::tuple<TupleTs...>> {};
+
+    template <typename... TupleT1s, typename TupleT2, typename... RemainingTuples>
+    struct unique_tuple_cat_result<std::tuple<TupleT1s...>, std::tuple<TupleT2>, RemainingTuples...> : std::conditional_t<
+        std::disjunction_v<std::is_same<TupleT2, TupleT1s>...>, 
+        unique_tuple_cat_result<std::tuple<TupleT1s...>, RemainingTuples...>,
+        unique_tuple_cat_result<std::tuple<TupleT1s..., TupleT2>, RemainingTuples...>
+    > {};
+
+    template <typename... TupleT1s, typename... TupleT2s, typename... RemainingTuples>
+    struct unique_tuple_cat_result<std::tuple<TupleT1s...>, std::tuple<TupleT2s...>, RemainingTuples...> : 
+        unique_tuple_cat_result<std::tuple<TupleT1s...>, std::tuple<TupleT2s>..., RemainingTuples...> {};
+}
+
+
 namespace d2d::vk {   
     template<typename... Ts>
     struct renderable_data_traits {
-    private:
-        template <typename... Tuples>
-        struct unique_tuple_cat_result;
-
-        template <>
-        struct unique_tuple_cat_result<std::tuple<>> : std::type_identity<std::tuple<>> {};
-
-        template <typename... TupleTs>
-        struct unique_tuple_cat_result<std::tuple<TupleTs...>> : std::type_identity<std::tuple<TupleTs...>> {};
-
-        template <typename... TupleT1s, typename TupleT2, typename... RemainingTuples>
-        struct unique_tuple_cat_result<std::tuple<TupleT1s...>, std::tuple<TupleT2>, RemainingTuples...> : std::conditional_t<
-            std::disjunction_v<std::is_same<TupleT2, TupleT1s>...>, 
-            unique_tuple_cat_result<std::tuple<TupleT1s...>, RemainingTuples...>,
-            unique_tuple_cat_result<std::tuple<TupleT1s..., TupleT2>, RemainingTuples...>
-        > {};
-
-        template <typename... TupleT1s, typename... TupleT2s, typename... RemainingTuples>
-        struct unique_tuple_cat_result<std::tuple<TupleT1s...>, std::tuple<TupleT2s...>, RemainingTuples...> : 
-            unique_tuple_cat_result<std::tuple<TupleT1s...>, std::tuple<TupleT2s>..., RemainingTuples...> {};
-
-
     private:
         template<typename T>
         using data_single_tuple_type = std::conditional_t<::d2d::impl::directly_renderable<T>, std::tuple<T>, std::tuple<>>;
@@ -50,7 +51,7 @@ namespace d2d::vk {
         template<typename T>
         struct container_tuple_single_tuple : std::type_identity<std::tuple<>> {};
         template<::d2d::impl::renderable_container_tuple_like T>
-        struct container_tuple_single_tuple<T> : unique_tuple_cat_result<std::tuple<T>, typename T::tuple_type> {};
+        struct container_tuple_single_tuple<T> : impl::unique_tuple_cat_result<std::tuple<T>, typename T::tuple_type> {};
         template<typename T> 
         using container_tuple_single_tuple_type = typename container_tuple_single_tuple<T>::type;
 
@@ -61,8 +62,8 @@ namespace d2d::vk {
         struct input_map_tuple<std::tuple<TupleTs...>> : std::type_identity<std::tuple<impl::renderable_input_map<TupleTs>...>> {};
 
     public:
-        using data_tuple_type               = typename unique_tuple_cat_result<data_single_tuple_type<Ts>...>::type;
-        using container_data_tuple_type     = typename unique_tuple_cat_result<container_single_tuple_type<Ts>..., container_tuple_single_tuple_type<Ts>...>::type;
+        using data_tuple_type               = typename impl::unique_tuple_cat_result<data_single_tuple_type<Ts>...>::type;
+        using container_data_tuple_type     = typename impl::unique_tuple_cat_result<container_single_tuple_type<Ts>..., container_tuple_single_tuple_type<Ts>...>::type;
         using data_map_tuple_type           = typename input_map_tuple<data_tuple_type>::type;
         using container_data_map_tuple_type = typename input_map_tuple<container_data_tuple_type>::type;
         
