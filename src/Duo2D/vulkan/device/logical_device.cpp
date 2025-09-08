@@ -68,23 +68,6 @@ namespace d2d::vk {
         __D2D_VULKAN_VERIFY(vkCreateDevice(*phys_device_ptr, &device_create_info, nullptr, &ret));
 
 
-        
-        //Check display format support (TEMP: set to default [VK_FORMAT_B8G8R8A8_SRGB & VK_COLOR_SPACE_SRGB_NONLINEAR_KHR])
-        {
-        constexpr static display_format defualt_display_format = {impl::pixel_format_ids[50], impl::color_space_ids[0], pixel_formats[50], color_spaces[0]};
-        const auto it = phys_device_ptr->display_formats.find(defualt_display_format);
-        if(it == phys_device_ptr->display_formats.end())
-            return error::device_lacks_display_format;
-        ret.format = *it;
-        }
-
-        //Check present mode support
-        if(phys_device_ptr->present_modes[static_cast<std::size_t>(present_mode::mailbox)])
-            ret.mode = present_mode::mailbox;
-        else if(phys_device_ptr->present_modes[static_cast<std::size_t>(present_mode::fifo)])
-            ret.mode = present_mode::fifo;
-        else return error::device_lacks_present_mode;
-
         //Create queues
         for(std::size_t i = 0; i < queue_family::num_families; ++i)
             vkGetDeviceQueue(ret.handle, *(phys_device_ptr->queue_family_idxs[i]), 0, &ret.queues[i]);

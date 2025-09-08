@@ -32,7 +32,7 @@ namespace d2d::vk {
         result<void> wait(queue_family::id family) const noexcept;
         void free() const noexcept;
 
-        void render_begin(const swap_chain& window_swap_chain, const render_pass& window_render_pass, std::uint32_t image_index) const noexcept;
+        void render_begin(const swap_chain& window_swap_chain, const render_pass& window_render_pass, std::span<framebuffer> framebuffers, std::uint32_t image_index) const noexcept;
         void render_end() const noexcept;
 
     public:

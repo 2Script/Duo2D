@@ -1,6 +1,7 @@
 #pragma once
 #include "Duo2D/core/basic_window.hpp"
 
+#include <GLFW/glfw3.h>
 #include <cstdint>
 #include <cstring>
 #include <format>
@@ -26,6 +27,8 @@
 #include "Duo2D/traits/same_as.hpp"
 #include "Duo2D/vulkan/core/command_buffer.hpp"
 #include "Duo2D/vulkan/device/logical_device.hpp"
+#include "Duo2D/vulkan/display/depth_image.hpp"
+#include "Duo2D/vulkan/display/pixel_format.hpp"
 #include "Duo2D/vulkan/display/surface.hpp"
 #include "Duo2D/vulkan/display/swap_chain.hpp"
 #include "Duo2D/core/make.hpp"
@@ -34,7 +37,7 @@
 
 namespace d2d {
     template<typename... Ts>
-    result<basic_window<Ts...>> basic_window<Ts...>::create(std::string_view title, std::size_t width, std::size_t height, std::shared_ptr<vk::instance> i) noexcept {
+    result<basic_window<Ts...>> basic_window<Ts...>::create(std::string_view title, unsigned int width, unsigned int height, std::shared_ptr<vk::instance> i) noexcept {
 
         //Create window
         glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
@@ -52,6 +55,12 @@ namespace d2d {
         //Create surface
         RESULT_TRY_MOVE(ret._surface, make<vk::surface>(ret, i));
 
+        //Verify window size
+        int w = 0, h = 0;
+        glfwGetWindowSize(ret.handle.get(), &w, &h);
+        __D2D_GLFW_VERIFY((width == static_cast<unsigned int>(w) && height == static_cast<unsigned int>(h)));
+        ret._size = {width, height};
+
         return std::move(ret);
     }
 }
@@ -67,11 +76,23 @@ namespace d2d {
         RESULT_TRY_MOVE(c, make<vk::command_pool>(logi_device, phys_device));
         command_pool_ptr = std::make_shared<vk::command_pool>(std::move(c));
         
-        //Create render pass/
-        RESULT_TRY_MOVE(_render_pass, make<vk::render_pass>(logi_device));
+        
 
         //Create swap chain
-        RESULT_TRY_MOVE(_swap_chain, make<vk::swap_chain>(logi_device, phys_device, _render_pass, _surface, *this));
+        RESULT_TRY_MOVE(_swap_chain, make<vk::swap_chain>(logi_device, phys_device, pixel_format_priority, default_color_space, present_mode_priority, _surface, *this));
+
+        //Create render pass
+        RESULT_TRY_MOVE(_render_pass, make<vk::render_pass>(logi_device, _swap_chain.format()));
+
+        //Create depth image
+        RESULT_TRY_MOVE(_depth_image, make<vk::depth_image>(logi_device, phys_device, _swap_chain.extent()));
+
+        //Create framebuffers
+        _framebuffers.resize(_swap_chain.image_count());
+        for (size_t i = 0; i < _swap_chain.image_count(); i++) {
+            RESULT_TRY_MOVE(_framebuffers[i], make<vk::framebuffer>(logi_device, _swap_chain.image_views()[i], _depth_image.view(), _render_pass, _swap_chain.extent()));
+        }
+
 
         for(std::size_t i = 0; i < impl::frames_in_flight; ++i) {
             //Create command buffers
@@ -165,6 +186,39 @@ namespace d2d {
 }
 
 
+namespace d2d {
+    template<typename... Ts>
+    result<bool> basic_window<Ts...>::verify_swap_chain(VkResult fn_result, bool even_if_suboptimal) noexcept {
+        switch(fn_result) {
+        case VK_SUCCESS:
+            return false;
+        case VK_SUBOPTIMAL_KHR:
+            if(!even_if_suboptimal) return false;
+            [[fallthrough]];
+        case VK_ERROR_OUT_OF_DATE_KHR: {
+            if(glfwWindowShouldClose(*this)) [[unlikely]] return false;
+            vkDeviceWaitIdle(*this->logi_device_ptr);
+            VkFormat old_format = _swap_chain.format().pixel_format.id;
+            _swap_chain = {}; //delete before remaking swapchain
+            RESULT_TRY_MOVE(_swap_chain, make<vk::swap_chain>(this->logi_device_ptr, this->phys_device_ptr, pixel_format_priority, default_color_space, present_mode_priority, _surface, *this));
+            if(old_format != _swap_chain.format().pixel_format.id) {
+                RESULT_TRY_MOVE(_render_pass, make<vk::render_pass>(this->logi_device_ptr, _swap_chain.format()));
+                RESULT_VERIFY(this->create_descriptors(_render_pass));
+            }
+
+            RESULT_TRY_MOVE(_depth_image, make<vk::depth_image>(this->logi_device_ptr, this->phys_device_ptr, _swap_chain.extent()));
+            for(std::size_t i = 0; i < _swap_chain.image_count(); ++i)
+                RESULT_TRY_MOVE(_framebuffers[i], make<vk::framebuffer>(this->logi_device_ptr, _swap_chain.image_views()[i], _depth_image.view(), _render_pass, _swap_chain.extent()));
+            (Ts::on_swap_chain_update(*this, this->template uniform_map<Ts>()), ...);
+            return true;
+        }
+        default: 
+            return static_cast<errc>(__D2D_VKRESULT_TO_ERRC(fn_result));
+        }
+    }
+}
+
+
 
 namespace d2d {
     template<typename... Ts>
@@ -241,23 +295,9 @@ namespace d2d {
         //vkWaitSemaphores(logical_device(), &wait_info, UINT64_MAX);
 
         uint32_t image_index;
-        VkResult nir = vkAcquireNextImageKHR(*this->logi_device_ptr, _swap_chain, UINT64_MAX, frame_operation_semaphores[frame_operation::image_acquired][frame_idx], VK_NULL_HANDLE, &image_index);
-        
-        //Re-create swap chain if needed
-        bool swap_chain_updated = false;
-        switch(nir) {
-        case VK_SUCCESS:
-            break;
-        case VK_ERROR_OUT_OF_DATE_KHR:
-        case VK_SUBOPTIMAL_KHR: {
-            RESULT_TRY_MOVE(_swap_chain, make<vk::swap_chain>(this->logi_device_ptr, this->phys_device_ptr, _render_pass, _surface, *this));
-            (Ts::on_swap_chain_update(*this, this->template uniform_map<Ts>()), ...);
-            swap_chain_updated = true;
-            return {};
-        }
-        default: 
-            return static_cast<errc>(__D2D_VKRESULT_TO_ERRC(nir));
-        }
+        RESULT_TRY_COPY_UNSCOPED(bool swap_chain_updated, verify_swap_chain(
+            vkAcquireNextImageKHR(*this->logi_device_ptr, _swap_chain, UINT64_MAX, frame_operation_semaphores[frame_operation::image_acquired][frame_idx], VK_NULL_HANDLE, &image_index), false
+        ), scu);
 
         if((this->template empty<Ts>() && ...))
             return {};
@@ -276,7 +316,7 @@ namespace d2d {
             .dstAccessMask = VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT,
         };
         command_buffers[frame_idx].pipeline_barrier(std::span<const VkMemoryBarrier2, 1>{&global_barrier, 1}, {swap_chain_updated ? &this->uniform_buff_barrier : nullptr, static_cast<std::size_t>(swap_chain_updated)}, {});
-        command_buffers[frame_idx].render_begin(_swap_chain, _render_pass, image_index);
+        command_buffers[frame_idx].render_begin(_swap_chain, _render_pass, _framebuffers, image_index);
 
         //TODO?: replace with functor (e.g. a generic_member_functor class)
         RESULT_VERIFY(ol::to_result((std::bind(&basic_window<Ts...>::draw<Ts>, this, frame_idx) && ...)));
@@ -305,7 +345,7 @@ namespace d2d {
             .pSwapchains = &_swap_chain,
             .pImageIndices = &image_index,
         };
-        __D2D_VULKAN_VERIFY(vkQueuePresentKHR(this->logi_device_ptr->queues[vk::queue_family::present], &present_info));
+        RESULT_VERIFY(verify_swap_chain(vkQueuePresentKHR(this->logi_device_ptr->queues[vk::queue_family::present], &present_info), true));
 
         //frame_idx = (frame_idx + 1) % impl::frames_in_flight;
         ++frame_count;

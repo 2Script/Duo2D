@@ -75,7 +75,7 @@ namespace d2d::vk {
     create_uniform:
         //If theres no uniform data, skip creating its buffer
         constexpr static std::size_t uniform_buffer_size = (renderable_data<Ts, FiF>::uniform_data_size + ...);
-        if constexpr (uniform_buffer_size == 0) goto create_descriptors;
+        if constexpr (uniform_buffer_size == 0) goto finalize;
 
         //Create uniform buffer
         RESULT_VERIFY((allocator.template alloc_buffer<0, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 0>(
@@ -96,26 +96,35 @@ namespace d2d::vk {
             .offset = 0,
             .size = uniform_buffer_size,
         };
-        goto create_descriptors;
+        goto finalize;
 
-    create_descriptors:
+    finalize:
         //Create pipelines and descriptors
-        //TODO: Simplify this
-        errc error_code = error::unknown;
-        auto create_descriptors = [&]<typename T>(errc& current_error_code) noexcept -> errc {
-            if(current_error_code != error::unknown) return current_error_code;
-            RESULT_VERIFY(ret.template renderable_data_of<T>().create_uniform_descriptors(ret.uniform_buff, static_offsets<T>()[buffer_data_type::uniform]));
-            RESULT_VERIFY(ret.template renderable_data_of<T>().create_texture_descriptors(ret.textures));
-            RESULT_VERIFY(ret.template renderable_data_of<T>().create_pipeline_layout(logi_device));
-            RESULT_VERIFY(ret.template renderable_data_of<T>().create_pipeline(logi_device, window_render_pass));
-            return error::unknown;
-        };
-        ((error_code = create_descriptors.template operator()<Ts>(error_code)), ...);
-        if(error_code != error::unknown) return error_code;
+        RESULT_VERIFY(ret.create_descriptors(window_render_pass));
 
         return ret;
     }
 }
+
+namespace d2d::vk {
+    template<std::size_t FiF, ::d2d::impl::directly_renderable... Ts> //requires (sizeof...(Ts) > 0)
+    result<void> renderable_tuple<FiF, std::tuple<Ts...>>::create_descriptors(render_pass& window_render_pass) noexcept {
+        //TODO: Simplify this
+        errc error_code = error::unknown;
+        auto create_descriptors = [&]<typename T>(errc& current_error_code) noexcept -> errc {
+            if(current_error_code != error::unknown) return current_error_code;
+            RESULT_VERIFY(this->template renderable_data_of<T>().create_uniform_descriptors(uniform_buff, static_offsets<T>()[buffer_data_type::uniform]));
+            RESULT_VERIFY(this->template renderable_data_of<T>().create_texture_descriptors(textures));
+            RESULT_VERIFY(this->template renderable_data_of<T>().create_pipeline_layout(logi_device_ptr));
+            RESULT_VERIFY(this->template renderable_data_of<T>().create_pipeline(logi_device_ptr, window_render_pass));
+            return error::unknown;
+        };
+        ((error_code = create_descriptors.template operator()<Ts>(error_code)), ...);
+        if(error_code != error::unknown) return error_code;
+        return {};
+    }
+}
+
 
 namespace d2d::vk {
     template<std::size_t FiF, ::d2d::impl::directly_renderable... Ts> //requires (sizeof...(Ts) > 0)

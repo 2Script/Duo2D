@@ -48,6 +48,9 @@ namespace d2d::vk {
         static result<renderable_tuple> create(std::shared_ptr<logical_device> logi_device, std::shared_ptr<physical_device> phys_device, std::shared_ptr<::d2d::impl::font_data_map> font_data_map, render_pass& window_render_pass) noexcept;
     
     protected:
+        result<void> create_descriptors(render_pass& window_render_pass) noexcept;
+
+    protected:
         template<typename T>
         result<void> apply_memory_changes(render_pass& window_render_pass) noexcept;
         template<typename T>

@@ -62,55 +62,6 @@ namespace d2d::vk {
         }
         }
 
-        //Get device surface capabilities
-        VkSurfaceCapabilitiesKHR device_surface_capabilities;
-        vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device_handle, dummy_surface, &device_surface_capabilities);
-
-
-        //Get device display formats (i.e. surface formats)
-        std::set<display_format> device_formats;
-        {
-        std::uint32_t format_count;
-        vkGetPhysicalDeviceSurfaceFormatsKHR(device_handle, dummy_surface, &format_count, nullptr);
-
-        std::vector<VkSurfaceFormatKHR> formats;
-        if (format_count != 0) {
-            formats.resize(format_count);
-            vkGetPhysicalDeviceSurfaceFormatsKHR(device_handle, dummy_surface, &format_count, formats.data());
-        }
-
-        //TODO replace with lookup table
-        for(VkSurfaceFormatKHR f : formats) {
-            for(std::size_t i = 0; i < impl::num_pixel_formats; ++i) {
-                for(std::size_t j = 0; j < impl::num_color_spaces; ++j) {
-                    if(impl::pixel_format_ids[i] == f.format && impl::color_space_ids[j] == f.colorSpace) {
-                        device_formats.emplace(impl::pixel_format_ids[i], impl::color_space_ids[j], pixel_formats[i], color_spaces[j]);
-                        goto next_format;
-                    }
-                }
-            }
-            next_format:;
-        }
-        }
-
-
-        //Get device present modes
-        decltype(physical_device::present_modes) device_present_modes;
-        {
-        uint32_t present_mode_count;
-        vkGetPhysicalDeviceSurfacePresentModesKHR(device_handle, dummy_surface, &present_mode_count, nullptr);
-
-        std::vector<VkPresentModeKHR> supported_present_modes;
-        if (present_mode_count != 0) {
-            supported_present_modes.resize(present_mode_count);
-            vkGetPhysicalDeviceSurfacePresentModesKHR(device_handle, dummy_surface, &present_mode_count, supported_present_modes.data());
-        }
-
-        for(VkPresentModeKHR p : supported_present_modes)
-            if(p <= VK_PRESENT_MODE_FIFO_RELAXED_KHR)
-                device_present_modes[p] = true;
-        }
-
         //Create device info
         physical_device ret{
             .name = device_properties.deviceName,
@@ -119,19 +70,57 @@ namespace d2d::vk {
             .queue_family_idxs = device_idxs,
             .extensions = device_extensions,
             .features = std::bit_cast<features_t>(device_features),
-            .surface_capabilities = device_surface_capabilities,
-            .display_formats = device_formats,
-            .present_modes = device_present_modes,
         };
         ret.handle = device_handle;
         return ret;
     }
 }
 
+
+
 namespace d2d::vk {
-    std::strong_ordering operator<=>(const physical_device& a, const physical_device& b) noexcept {
-        std::int32_t a_type_rating = a.type == device_type::discrete_gpu ? -1 : static_cast<std::int32_t>(a.type);
-        std::int32_t b_type_rating = b.type == device_type::discrete_gpu ? -1 : static_cast<std::int32_t>(b.type);
-        return a_type_rating <=> b_type_rating;
+    template<> typename device_query_traits<device_query::surface_capabilites>::return_type physical_device::query<device_query::surface_capabilites>(surface const& s) const noexcept {
+        VkSurfaceCapabilitiesKHR device_surface_capabilities;
+        vkGetPhysicalDeviceSurfaceCapabilitiesKHR(handle, s, &device_surface_capabilities);
+        return device_surface_capabilities;
+    }
+
+    template<> typename device_query_traits<device_query::display_formats>::return_type physical_device::query<device_query::display_formats>(surface const& s) const noexcept {
+        std::set<display_format> formats;
+        
+        std::uint32_t format_count;
+        vkGetPhysicalDeviceSurfaceFormatsKHR(handle, s, &format_count, nullptr);
+
+        std::vector<VkSurfaceFormatKHR> surface_formats;
+        if (format_count != 0) {
+            surface_formats.resize(format_count);
+            vkGetPhysicalDeviceSurfaceFormatsKHR(handle, s, &format_count, surface_formats.data());
+        }
+
+        //TODO replace with lookup table
+        for(VkSurfaceFormatKHR f : surface_formats)
+            formats.emplace(pixel_formats.find(f.format)->second, color_spaces.find(f.colorSpace)->second);
+
+        //TODO replace with format to bool lookup table?
+        return formats;
+    }
+
+    template<> typename device_query_traits<device_query::present_modes>::return_type physical_device::query<device_query::present_modes>(surface const& s) const noexcept {
+        typename device_query_traits<device_query::present_modes>::return_type device_present_modes;
+        
+        uint32_t present_mode_count;
+        vkGetPhysicalDeviceSurfacePresentModesKHR(handle, s, &present_mode_count, nullptr);
+
+        std::vector<VkPresentModeKHR> supported_present_modes;
+        if (present_mode_count != 0) {
+            supported_present_modes.resize(present_mode_count);
+            vkGetPhysicalDeviceSurfacePresentModesKHR(handle, s, &present_mode_count, supported_present_modes.data());
+        }
+
+        for(VkPresentModeKHR p : supported_present_modes)
+            if(p <= VK_PRESENT_MODE_FIFO_RELAXED_KHR)
+                device_present_modes[p] = true;
+        
+        return device_present_modes;
     }
 }

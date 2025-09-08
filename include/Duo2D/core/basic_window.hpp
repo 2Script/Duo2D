@@ -12,6 +12,7 @@
 #include <GLFW/glfw3.h>
 #include <vulkan/vulkan.h>
 #include <result.hpp>
+#include <vulkan/vulkan_core.h>
 
 #include "Duo2D/core/moveable_atomic.hpp"
 #include "Duo2D/graphics/core/font.hpp"
@@ -27,6 +28,10 @@
 #include "Duo2D/traits/renderable_container_like.hpp"
 #include "Duo2D/traits/same_as.hpp"
 #include "Duo2D/vulkan/core/command_buffer.hpp"
+#include "Duo2D/vulkan/display/depth_image.hpp"
+#include "Duo2D/vulkan/display/display_format.hpp"
+#include "Duo2D/vulkan/display/pixel_format.hpp"
+#include "Duo2D/vulkan/display/present_mode.hpp"
 #include "Duo2D/vulkan/display/surface.hpp"
 #include "Duo2D/vulkan/memory/renderable_data.hpp"
 #include "Duo2D/vulkan/memory/renderable_tuple.hpp"
@@ -65,7 +70,7 @@ namespace d2d {
     struct basic_window : public vk::renderable_tuple<impl::frames_in_flight, typename vk::renderable_data_traits<Ts...>::data_tuple_type> {
         constexpr static std::size_t frames_in_flight = impl::frames_in_flight;
     public:
-        static result<basic_window> create(std::string_view title, std::size_t width, std::size_t height, std::shared_ptr<vk::instance> i) noexcept;
+        static result<basic_window> create(std::string_view title, unsigned int width, unsigned int height, std::shared_ptr<vk::instance> i) noexcept;
 
         basic_window() noexcept : basic_window(nullptr) {}
         result<void> initialize(std::shared_ptr<vk::logical_device> logi_device, std::shared_ptr<vk::physical_device> phys_device, std::shared_ptr<impl::font_data_map> font_data_map) noexcept;
@@ -80,6 +85,9 @@ namespace d2d {
         result<void> apply_memory_changes() noexcept;
         template<typename T>
         result<void> apply_attributes() noexcept;
+    
+    private:
+        result<bool> verify_swap_chain(VkResult fn_result, bool even_if_suboptimal) noexcept;
 
     public:
         template<impl::directly_renderable             T> constexpr bool has_changes() const noexcept;
@@ -104,12 +112,16 @@ namespace d2d {
         constexpr vk::logical_device  const& logical_device()  const noexcept { return *this->logi_device_ptr; }
         constexpr vk::physical_device const& physical_device() const noexcept { return *this->phys_device_ptr; }
 
-        constexpr vk::surface                 const& surface()       const noexcept { return _surface; }
-        constexpr vk::swap_chain              const& swap_chain()    const noexcept { return _swap_chain; }
-        constexpr vk::render_pass             const& render_pass()   const noexcept { return _render_pass; }
-        constexpr vk::texture_map             const& texture_map()   const noexcept { return this->textures; }
-        constexpr std::size_t                        frame_index()   const noexcept { return frame_count.load() % impl::frames_in_flight; }
-        inline    std::weak_ptr<impl::font_data_map> font_data_map() const noexcept { return this->font_data_map_ptr; }
+        constexpr vk::surface                  const& surface()         const noexcept { return _surface; }
+        constexpr vk::swap_chain               const& swap_chain()      const noexcept { return _swap_chain; }
+        constexpr std::vector<vk::framebuffer> const& framebuffers()    const noexcept { return _framebuffers; }
+        constexpr vk::depth_image              const& depth_image()     const noexcept { return _depth_image; }
+        constexpr vk::render_pass              const& render_pass()     const noexcept { return _render_pass; }
+        constexpr vk::texture_map              const& texture_map()     const noexcept { return this->textures; }
+        constexpr std::size_t                         frame_index()     const noexcept { return frame_count.load() % impl::frames_in_flight; }
+        constexpr extent2                      const& screen_size()     const noexcept { return _size; }
+
+        inline std::weak_ptr<impl::font_data_map> font_data_map() const noexcept { return this->font_data_map_ptr; }
 
     public:
         __D2D_CONSTEXPR_UNIQUE_PTR operator GLFWwindow*() const noexcept { return handle.get(); }
@@ -217,7 +229,7 @@ namespace d2d {
             active_bindings(), inactive_bindings(), event_fns(), text_input_fn(), modifier_flags{},
             renderable_container_datas(), font_paths(), font_paths_outdated(false),
             handle(w, {}), command_pool_ptr(),
-            _surface(), _swap_chain(), _render_pass(),
+            _surface(), _swap_chain(), _render_pass(), _size{},
             command_buffers{}, render_fences{}, frame_operation_semaphores{}, rendering_complete_semaphores(),
             frame_count{}, update_count() {}
         
@@ -244,10 +256,19 @@ namespace d2d {
         std::unique_ptr<GLFWwindow, generic_functor<glfwDestroyWindow>> handle;
         std::shared_ptr<vk::command_pool> command_pool_ptr;
 
+        constexpr static std::array<vk::pixel_format_info, 2> pixel_format_priority = {vk::pixel_formats.find(VK_FORMAT_B8G8R8A8_SRGB)->second, vk::pixel_formats.find(VK_FORMAT_B8G8R8A8_UNORM)->second};
+        constexpr static vk::color_space_info default_color_space = vk::color_spaces.find(VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)->second;
+        //constexpr static std::pair<VkFormat, vk::pixel_format_info> default_pixel_format = *vk::pixel_formats.find(VK_FORMAT_B8G8R8A8_SRGB);
+        //constexpr static std::pair<VkColorSpaceKHR, vk::color_space_info> default_color_space = *vk::color_spaces.find(VK_COLOR_SPACE_SRGB_NONLINEAR_KHR);
+        //constexpr static vk::display_format default_display_format = {default_pixel_format.first, default_color_space.first, default_pixel_format.second, default_color_space.second};
+        constexpr static std::array<vk::present_mode, static_cast<std::size_t>(vk::present_mode::num_present_modes)> present_mode_priority{vk::present_mode::mailbox, vk::present_mode::fifo, vk::present_mode::fifo_relaxed, vk::present_mode::immediate}; 
         //Decleration order matters: swap_chain MUST be destroyed before surface
         vk::surface _surface;
         vk::swap_chain _swap_chain;
+        vk::depth_image _depth_image;
+        std::vector<vk::framebuffer> _framebuffers;
         vk::render_pass _render_pass;
+        extent2 _size;
 
         //std::size_t frame_idx;
 

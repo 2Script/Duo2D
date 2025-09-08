@@ -13,8 +13,6 @@ namespace d2d::vk {
         static result<logical_device> create(std::weak_ptr<physical_device> associated_phys_device) noexcept;
 
     public:
-        present_mode mode;
-        display_format format;
         //May need to be per-window instead of per-device?
         std::array<VkQueue, queue_family::num_families> queues;
     };

@@ -3,6 +3,7 @@
 #include "Duo2D/arith/rect.hpp"
 #include "Duo2D/arith/size.hpp"
 #include "Duo2D/vulkan/device/logical_device.hpp"
+#include "Duo2D/vulkan/display/framebuffer.hpp"
 #include <cstddef>
 #include <cstdint>
 #include <vulkan/vulkan_core.h>
@@ -81,20 +82,20 @@ namespace d2d::vk {
 }
 
 namespace d2d::vk {
-    void command_buffer::render_begin(const swap_chain& window_swap_chain, const render_pass& window_render_pass, std::uint32_t image_index) const noexcept {
+    void command_buffer::render_begin(const swap_chain& window_swap_chain, const render_pass& window_render_pass, std::span<framebuffer> framebuffers, std::uint32_t image_index) const noexcept {
 
         //Set render pass
-        constexpr static VkClearValue clear_color = {{{0.0f, 0.0f, 0.0f, 1.0f}}};
+        constexpr static std::array<VkClearValue, 2> clear_colors = {{{.color = {{0.0f, 0.0f, 0.0f, 1.0f}}}, {.depthStencil = {0.0f, 0}}}};
         VkRenderPassBeginInfo render_pass_info{
             .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
             .renderPass = window_render_pass,
-            .framebuffer = window_swap_chain.framebuffers[image_index],
+            .framebuffer = framebuffers[image_index],
             .renderArea{
                 .offset = {0, 0},
                 .extent = static_cast<VkExtent2D>(window_swap_chain.extent()),
             },
-            .clearValueCount = 1,
-            .pClearValues = &clear_color,
+            .clearValueCount = clear_colors.size(),
+            .pClearValues = clear_colors.data(),
         };
         vkCmdBeginRenderPass(handle, &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
 
