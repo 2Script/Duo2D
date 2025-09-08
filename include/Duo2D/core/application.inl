@@ -157,6 +157,7 @@ namespace d2d {
     template<typename WindowT>
     void application<WindowT>::poll_events() noexcept {
         glfwPollEvents();
+
         for (auto& w : windows)
             if(!glfwWindowShouldClose(w.second))
                 return;
@@ -166,9 +167,20 @@ namespace d2d {
     template<typename WindowT>
     result<void> application<WindowT>::render() noexcept {
         for (auto& w : windows) 
-            if(auto r = w.second.render(); !r.has_value()) 
+            if(auto r = w.second.render(); !r.has_value()) [[unlikely]]
                 return r.error();
         return {};
+    }
+
+
+    template<typename WindowT>
+    std::future<result<void>> application<WindowT>::start_async_render() noexcept {
+        return std::async([](d2d::application<WindowT>& a) -> d2d::result<void> {
+            while(a.open())
+                if(auto r = a.render(); !r.has_value()) [[unlikely]]
+                    return r.error();
+            return {};
+        }, std::ref(*this));
     }
 
     template<typename WindowT>
