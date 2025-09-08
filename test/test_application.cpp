@@ -244,13 +244,7 @@ int main(){
     }, std::ref(cyan_ref));//, std::ref(*win));
 
 
-    std::thread render_thread([](d2d::application<>& a) -> d2d::result<void> {
-        while(a.open())
-            if(auto r = a.render(); !r.has_value()) [[unlikely]]
-                return r.error();
-        return {};
-    }, std::ref(app));
-
+    std::future<d2d::result<void>> render = app.start_async_render();
 
     while(app.open()) {
         app.poll_events();
@@ -258,8 +252,24 @@ int main(){
         //    return r.error();
     }
     
-    edit_s.join();
-    render_thread.join();
     RESULT_VERIFY(app.join());
+    if(auto r = render.get(); !r.has_value()) {
+        std::cout << std::format("rendering error {}: {}", static_cast<std::int64_t>(r.error()), d2d::error::code_descs.find(r.error())->second)<< std::endl;
+
+        auto formats = win->physical_device().query<d2d::vk::device_query::display_formats>(win->surface());
+        std::cout << std::format("{} formats ({} is selected):", formats.size(), static_cast<std::uint32_t>(win->swap_chain().format().pixel_format.id));
+        for(auto f : formats)
+            std::cout << std::format("{},", static_cast<std::uint32_t>(f.pixel_format.id));
+        std::cout << std::endl;
+
+        auto present_modes = win->physical_device().query<d2d::vk::device_query::present_modes>(win->surface());
+        std::cout << std::format("{} present_modes ({} is selected):", present_modes.size(), static_cast<std::uint32_t>(win->swap_chain().mode()));
+        for(bool b : present_modes)
+            std::cout << std::format("{},", b);
+        std::cout << std::endl;
+    }
+    edit_s.join();
+
+    std::cout << d2d::error::last_glfw_desc() << std::endl;
     return 0;
 }
