@@ -16,47 +16,46 @@
 
 
 namespace d2d {
-    template<std::size_t Dims, typename UnitTy, impl::vec_data_type HoldsData = impl::vec_data_type::none, std::uint8_t TransformFlags = 0>
-    struct vector : public std::array<UnitTy, Dims> {
+    template<std::size_t Dims, typename T, impl::vec_data_type HoldsData = impl::vec_data_type::point, std::uint8_t TransformFlags = 0>
+    struct vector : public std::array<T, Dims> {
         static_assert(Dims > 0, "0-dimensional vector is not valid!");
     private:
-        using clean_vector = vector<Dims, UnitTy, HoldsData, 0>;
-        template<typename T, typename Op> using l_result_vector = vector<Dims, decltype(std::declval<Op>()(std::declval<UnitTy>(), std::declval<T>())), HoldsData, TransformFlags>;
-        template<typename T, typename Op> using r_result_vector = vector<Dims, decltype(std::declval<Op>()(std::declval<T>(), std::declval<UnitTy>())), HoldsData, TransformFlags>;
+        using clean_vector = vector<Dims, T, HoldsData, 0>;
+        template<typename L, typename R, typename Op> using result_vector = impl::result_vector<Dims, L, R, Op, HoldsData, TransformFlags>;
 
     public:
-        using vk_type           = typename impl::vector_traits<Dims, UnitTy, HoldsData, TransformFlags>::vk_type;
-        using vk_component_type = typename impl::vector_traits<Dims, UnitTy, HoldsData, TransformFlags>::vk_component_type;
-        constexpr static bool scalable     = impl::vector_traits<Dims, UnitTy, HoldsData, TransformFlags>::scalable;
-        constexpr static bool rotatable    = impl::vector_traits<Dims, UnitTy, HoldsData, TransformFlags>::rotatable;
-        constexpr static bool translatable = impl::vector_traits<Dims, UnitTy, HoldsData, TransformFlags>::translatable;
+        using vk_type           = typename impl::vector_traits<Dims, T, HoldsData, TransformFlags>::vk_type;
+        using vk_component_type = typename impl::vector_traits<Dims, T, HoldsData, TransformFlags>::vk_component_type;
+        constexpr static bool scalable     = impl::vector_traits<Dims, T, HoldsData, TransformFlags>::scalable;
+        constexpr static bool rotatable    = impl::vector_traits<Dims, T, HoldsData, TransformFlags>::rotatable;
+        constexpr static bool translatable = impl::vector_traits<Dims, T, HoldsData, TransformFlags>::translatable;
 
     public:
         using punned_integer_type = 
-            std::conditional_t<sizeof(std::array<UnitTy, Dims>) * CHAR_BIT ==  8, std::uint8_t,
-            std::conditional_t<sizeof(std::array<UnitTy, Dims>) * CHAR_BIT == 16, std::uint16_t,
-            std::conditional_t<sizeof(std::array<UnitTy, Dims>) * CHAR_BIT == 32, std::uint32_t, 
-            std::conditional_t<sizeof(std::array<UnitTy, Dims>) * CHAR_BIT == 64, std::uint64_t,
+            std::conditional_t<sizeof(std::array<T, Dims>) * CHAR_BIT ==  8, std::uint8_t,
+            std::conditional_t<sizeof(std::array<T, Dims>) * CHAR_BIT == 16, std::uint16_t,
+            std::conditional_t<sizeof(std::array<T, Dims>) * CHAR_BIT == 32, std::uint32_t, 
+            std::conditional_t<sizeof(std::array<T, Dims>) * CHAR_BIT == 64, std::uint64_t,
         void>>>>;
         constexpr static bool punnable = !std::is_same_v<punned_integer_type, void>;
 
     public:
-        constexpr       UnitTy& x()       noexcept requires (impl::within_graphical_coordinates<Dims> && HoldsData == impl::vec_data_type::point) { return (*this)[0]; }
-        constexpr const UnitTy& x() const noexcept requires (impl::within_graphical_coordinates<Dims> && HoldsData == impl::vec_data_type::point) { return (*this)[0]; }
-        constexpr       UnitTy& y()       noexcept requires (impl::within_graphical_coordinates<Dims> && HoldsData == impl::vec_data_type::point) { return (*this)[1]; }
-        constexpr const UnitTy& y() const noexcept requires (impl::within_graphical_coordinates<Dims> && HoldsData == impl::vec_data_type::point) { return (*this)[1]; }
-        constexpr       UnitTy& z()       noexcept requires ((Dims == 3 || Dims == 4) && HoldsData == impl::vec_data_type::point) { return (*this)[2]; }
-        constexpr const UnitTy& z() const noexcept requires ((Dims == 3 || Dims == 4) && HoldsData == impl::vec_data_type::point) { return (*this)[2]; }
-        constexpr       UnitTy& w()       noexcept requires (Dims == 4 && HoldsData == impl::vec_data_type::point) { return (*this)[3]; }
-        constexpr const UnitTy& w() const noexcept requires (Dims == 4 && HoldsData == impl::vec_data_type::point) { return (*this)[3]; }
+        constexpr       T& x()       noexcept requires (impl::within_graphical_coordinates<Dims> && HoldsData == impl::vec_data_type::point) { return (*this)[0]; }
+        constexpr const T& x() const noexcept requires (impl::within_graphical_coordinates<Dims> && HoldsData == impl::vec_data_type::point) { return (*this)[0]; }
+        constexpr       T& y()       noexcept requires (impl::within_graphical_coordinates<Dims> && HoldsData == impl::vec_data_type::point) { return (*this)[1]; }
+        constexpr const T& y() const noexcept requires (impl::within_graphical_coordinates<Dims> && HoldsData == impl::vec_data_type::point) { return (*this)[1]; }
+        constexpr       T& z()       noexcept requires ((Dims == 3 || Dims == 4) && HoldsData == impl::vec_data_type::point) { return (*this)[2]; }
+        constexpr const T& z() const noexcept requires ((Dims == 3 || Dims == 4) && HoldsData == impl::vec_data_type::point) { return (*this)[2]; }
+        constexpr       T& w()       noexcept requires (Dims == 4 && HoldsData == impl::vec_data_type::point) { return (*this)[3]; }
+        constexpr const T& w() const noexcept requires (Dims == 4 && HoldsData == impl::vec_data_type::point) { return (*this)[3]; }
 
     public:
-        constexpr       UnitTy& width()        noexcept requires (impl::within_cartesian_coordinates<Dims> && HoldsData == impl::vec_data_type::size) { return (*this)[0]; }
-        constexpr const UnitTy& width()  const noexcept requires (impl::within_cartesian_coordinates<Dims> && HoldsData == impl::vec_data_type::size) { return (*this)[0]; }
-        constexpr       UnitTy& height()       noexcept requires (impl::within_cartesian_coordinates<Dims> && HoldsData == impl::vec_data_type::size) { return (*this)[1]; }
-        constexpr const UnitTy& height() const noexcept requires (impl::within_cartesian_coordinates<Dims> && HoldsData == impl::vec_data_type::size) { return (*this)[1]; }
-        constexpr       UnitTy& depth()        noexcept requires (Dims == 3 && HoldsData == impl::vec_data_type::size) { return (*this)[2]; }
-        constexpr const UnitTy& depth()  const noexcept requires (Dims == 3 && HoldsData == impl::vec_data_type::size) { return (*this)[2]; }
+        constexpr       T& width()        noexcept requires (impl::within_cartesian_coordinates<Dims> && HoldsData == impl::vec_data_type::size) { return (*this)[0]; }
+        constexpr const T& width()  const noexcept requires (impl::within_cartesian_coordinates<Dims> && HoldsData == impl::vec_data_type::size) { return (*this)[0]; }
+        constexpr       T& height()       noexcept requires (impl::within_cartesian_coordinates<Dims> && HoldsData == impl::vec_data_type::size) { return (*this)[1]; }
+        constexpr const T& height() const noexcept requires (impl::within_cartesian_coordinates<Dims> && HoldsData == impl::vec_data_type::size) { return (*this)[1]; }
+        constexpr       T& depth()        noexcept requires (Dims == 3 && HoldsData == impl::vec_data_type::size) { return (*this)[2]; }
+        constexpr const T& depth()  const noexcept requires (Dims == 3 && HoldsData == impl::vec_data_type::size) { return (*this)[2]; }
 
     public:
         constexpr vector& invert_axis(axis a) noexcept requires impl::within_graphical_coordinates<Dims> { (*this)[static_cast<std::size_t>(a)] = -(*this)[static_cast<std::size_t>(a)]; return *this; }
@@ -69,47 +68,50 @@ namespace d2d {
     
     public:
         //TODO: SIMD (probably just needs a target_clones)
-        template<impl::non_vector T, impl::vec_data_type OtherHoldsData> constexpr vector& operator+=(const vector<Dims, T, OtherHoldsData>& rhs) noexcept { for(std::size_t i = 0; i < Dims; ++i) (*this)[i] += rhs[i]; return *this; }
-        template<impl::non_vector T, impl::vec_data_type OtherHoldsData> constexpr vector& operator-=(const vector<Dims, T, OtherHoldsData>& rhs) noexcept { for(std::size_t i = 0; i < Dims; ++i) (*this)[i] -= rhs[i]; return *this; }
-        template<impl::non_vector T, impl::vec_data_type OtherHoldsData> constexpr vector& operator*=(const vector<Dims, T, OtherHoldsData>& rhs) noexcept { for(std::size_t i = 0; i < Dims; ++i) (*this)[i] *= rhs[i]; return *this; }
-        template<impl::non_vector T, impl::vec_data_type OtherHoldsData> constexpr vector& operator/=(const vector<Dims, T, OtherHoldsData>& rhs) noexcept { for(std::size_t i = 0; i < Dims; ++i) (*this)[i] /= rhs[i]; return *this; }
+        template<typename U, impl::vec_data_type OtherHoldsData> constexpr vector& operator+=(const vector<Dims, U, OtherHoldsData>& rhs) noexcept { for(std::size_t i = 0; i < Dims; ++i) (*this)[i] += rhs[i]; return *this; }
+        template<typename U, impl::vec_data_type OtherHoldsData> constexpr vector& operator-=(const vector<Dims, U, OtherHoldsData>& rhs) noexcept { for(std::size_t i = 0; i < Dims; ++i) (*this)[i] -= rhs[i]; return *this; }
+        template<typename U, impl::vec_data_type OtherHoldsData> constexpr vector& operator*=(const vector<Dims, U, OtherHoldsData>& rhs) noexcept { for(std::size_t i = 0; i < Dims; ++i) (*this)[i] *= rhs[i]; return *this; }
+        template<typename U, impl::vec_data_type OtherHoldsData> constexpr vector& operator/=(const vector<Dims, U, OtherHoldsData>& rhs) noexcept { for(std::size_t i = 0; i < Dims; ++i) (*this)[i] /= rhs[i]; return *this; }
 
-        template<impl::non_vector T, impl::vec_data_type OtherHoldsData> friend constexpr l_result_vector<T, std::plus<>      > operator+(vector lhs, const vector<Dims, T, OtherHoldsData>& rhs) noexcept { l_result_vector<T, std::plus<>      > ret; for(std::size_t i = 0; i < Dims; ++i) ret[i] = (lhs[i] + rhs[i]); return ret; }
-        template<impl::non_vector T, impl::vec_data_type OtherHoldsData> friend constexpr l_result_vector<T, std::minus<>     > operator-(vector lhs, const vector<Dims, T, OtherHoldsData>& rhs) noexcept { l_result_vector<T, std::minus<>     > ret; for(std::size_t i = 0; i < Dims; ++i) ret[i] = (lhs[i] - rhs[i]); return ret; }
-        template<impl::non_vector T, impl::vec_data_type OtherHoldsData> friend constexpr l_result_vector<T, std::multiplies<>> operator*(vector lhs, const vector<Dims, T, OtherHoldsData>& rhs) noexcept { l_result_vector<T, std::multiplies<>> ret; for(std::size_t i = 0; i < Dims; ++i) ret[i] = (lhs[i] * rhs[i]); return ret; }
-        template<impl::non_vector T, impl::vec_data_type OtherHoldsData> friend constexpr l_result_vector<T, std::divides<>   > operator/(vector lhs, const vector<Dims, T, OtherHoldsData>& rhs) noexcept { l_result_vector<T, std::divides<>   > ret; for(std::size_t i = 0; i < Dims; ++i) ret[i] = (lhs[i] / rhs[i]); return ret; }
+        template<typename U, impl::vec_data_type OtherHoldsData> friend constexpr result_vector<T, U, std::plus<>      > operator+(vector lhs, const vector<Dims, U, OtherHoldsData>& rhs) noexcept { result_vector<T, U, std::plus<>      > ret; for(std::size_t i = 0; i < Dims; ++i) ret[i] = (lhs[i] + rhs[i]); return ret; }
+        template<typename U, impl::vec_data_type OtherHoldsData> friend constexpr result_vector<T, U, std::minus<>     > operator-(vector lhs, const vector<Dims, U, OtherHoldsData>& rhs) noexcept { result_vector<T, U, std::minus<>     > ret; for(std::size_t i = 0; i < Dims; ++i) ret[i] = (lhs[i] - rhs[i]); return ret; }
+        template<typename U, impl::vec_data_type OtherHoldsData> friend constexpr result_vector<T, U, std::multiplies<>> operator*(vector lhs, const vector<Dims, U, OtherHoldsData>& rhs) noexcept { result_vector<T, U, std::multiplies<>> ret; for(std::size_t i = 0; i < Dims; ++i) ret[i] = (lhs[i] * rhs[i]); return ret; }
+        template<typename U, impl::vec_data_type OtherHoldsData> friend constexpr result_vector<T, U, std::divides<>   > operator/(vector lhs, const vector<Dims, U, OtherHoldsData>& rhs) noexcept { result_vector<T, U, std::divides<>   > ret; for(std::size_t i = 0; i < Dims; ++i) ret[i] = (lhs[i] / rhs[i]); return ret; }
     public:
-        template<impl::non_vector T> constexpr vector& operator+=(const T& rhs) noexcept { for(std::size_t i = 0; i < Dims; ++i) (*this)[i] += rhs; return *this; }
-        template<impl::non_vector T> constexpr vector& operator-=(const T& rhs) noexcept { for(std::size_t i = 0; i < Dims; ++i) (*this)[i] -= rhs; return *this; }
-        template<impl::non_vector T> constexpr vector& operator*=(const T& rhs) noexcept { for(std::size_t i = 0; i < Dims; ++i) (*this)[i] *= rhs; return *this; }
-        template<impl::non_vector T> constexpr vector& operator/=(const T& rhs) noexcept { for(std::size_t i = 0; i < Dims; ++i) (*this)[i] /= rhs; return *this; }
+        template<impl::non_vector U> constexpr vector& operator+=(const U& rhs) noexcept { for(std::size_t i = 0; i < Dims; ++i) (*this)[i] += rhs; return *this; }
+        template<impl::non_vector U> constexpr vector& operator-=(const U& rhs) noexcept { for(std::size_t i = 0; i < Dims; ++i) (*this)[i] -= rhs; return *this; }
+        template<impl::non_vector U> constexpr vector& operator*=(const U& rhs) noexcept { for(std::size_t i = 0; i < Dims; ++i) (*this)[i] *= rhs; return *this; }
+        template<impl::non_vector U> constexpr vector& operator/=(const U& rhs) noexcept { for(std::size_t i = 0; i < Dims; ++i) (*this)[i] /= rhs; return *this; }
 
         //TODO expression templates
-        template<impl::non_vector T> friend constexpr l_result_vector<T, std::plus<>      > operator+(vector lhs, const T& rhs) noexcept { l_result_vector<T, std::plus<>      > ret; for(std::size_t i = 0; i < Dims; ++i) ret[i] = (lhs[i] + rhs   ); return ret;  }
-        template<impl::non_vector T> friend constexpr l_result_vector<T, std::minus<>     > operator-(vector lhs, const T& rhs) noexcept { l_result_vector<T, std::minus<>     > ret; for(std::size_t i = 0; i < Dims; ++i) ret[i] = (lhs[i] - rhs   ); return ret;  }
-        template<impl::non_vector T> friend constexpr l_result_vector<T, std::multiplies<>> operator*(vector lhs, const T& rhs) noexcept { l_result_vector<T, std::multiplies<>> ret; for(std::size_t i = 0; i < Dims; ++i) ret[i] = (lhs[i] * rhs   ); return ret;  }
-        template<impl::non_vector T> friend constexpr l_result_vector<T, std::divides<>   > operator/(vector lhs, const T& rhs) noexcept { l_result_vector<T, std::divides<>   > ret; for(std::size_t i = 0; i < Dims; ++i) ret[i] = (lhs[i] / rhs   ); return ret;  }
-        template<impl::non_vector T> friend constexpr r_result_vector<T, std::plus<>      > operator+(T lhs, const vector& rhs) noexcept { r_result_vector<T, std::plus<>      > ret; for(std::size_t i = 0; i < Dims; ++i) ret[i] = (lhs    + rhs[i]); return ret;  }
-        template<impl::non_vector T> friend constexpr r_result_vector<T, std::minus<>     > operator-(T lhs, const vector& rhs) noexcept { r_result_vector<T, std::minus<>     > ret; for(std::size_t i = 0; i < Dims; ++i) ret[i] = (lhs    - rhs[i]); return ret;  }
-        template<impl::non_vector T> friend constexpr r_result_vector<T, std::multiplies<>> operator*(T lhs, const vector& rhs) noexcept { r_result_vector<T, std::multiplies<>> ret; for(std::size_t i = 0; i < Dims; ++i) ret[i] = (lhs    * rhs[i]); return ret;  }
-        template<impl::non_vector T> friend constexpr r_result_vector<T, std::divides<>   > operator/(T lhs, const vector& rhs) noexcept { r_result_vector<T, std::divides<>   > ret; for(std::size_t i = 0; i < Dims; ++i) ret[i] = (lhs    / rhs[i]); return ret;  }
+        template<impl::non_vector U> friend constexpr result_vector<T, U, std::plus<>      > operator+(vector lhs, const U& rhs) noexcept { result_vector<T, U, std::plus<>      > ret; for(std::size_t i = 0; i < Dims; ++i) ret[i] = (lhs[i] + rhs   ); return ret;  }
+        template<impl::non_vector U> friend constexpr result_vector<T, U, std::minus<>     > operator-(vector lhs, const U& rhs) noexcept { result_vector<T, U, std::minus<>     > ret; for(std::size_t i = 0; i < Dims; ++i) ret[i] = (lhs[i] - rhs   ); return ret;  }
+        template<impl::non_vector U> friend constexpr result_vector<T, U, std::multiplies<>> operator*(vector lhs, const U& rhs) noexcept { result_vector<T, U, std::multiplies<>> ret; for(std::size_t i = 0; i < Dims; ++i) ret[i] = (lhs[i] * rhs   ); return ret;  }
+        template<impl::non_vector U> friend constexpr result_vector<T, U, std::divides<>   > operator/(vector lhs, const U& rhs) noexcept { result_vector<T, U, std::divides<>   > ret; for(std::size_t i = 0; i < Dims; ++i) ret[i] = (lhs[i] / rhs   ); return ret;  }
+        template<impl::non_vector U> friend constexpr result_vector<U, T, std::plus<>      > operator+(U lhs, const vector& rhs) noexcept { result_vector<U, T, std::plus<>      > ret; for(std::size_t i = 0; i < Dims; ++i) ret[i] = (lhs    + rhs[i]); return ret;  }
+        template<impl::non_vector U> friend constexpr result_vector<U, T, std::minus<>     > operator-(U lhs, const vector& rhs) noexcept { result_vector<U, T, std::minus<>     > ret; for(std::size_t i = 0; i < Dims; ++i) ret[i] = (lhs    - rhs[i]); return ret;  }
+        template<impl::non_vector U> friend constexpr result_vector<U, T, std::multiplies<>> operator*(U lhs, const vector& rhs) noexcept { result_vector<U, T, std::multiplies<>> ret; for(std::size_t i = 0; i < Dims; ++i) ret[i] = (lhs    * rhs[i]); return ret;  }
+        template<impl::non_vector U> friend constexpr result_vector<U, T, std::divides<>   > operator/(U lhs, const vector& rhs) noexcept { result_vector<U, T, std::divides<>   > ret; for(std::size_t i = 0; i < Dims; ++i) ret[i] = (lhs    / rhs[i]); return ret;  }
 
         constexpr vector operator-() const noexcept { vector ret; for(std::size_t i = 0; i < Dims; ++i) ret[i] = -(*this)[i]; return ret; } 
 
     public:
-        constexpr explicit operator clean_vector() const noexcept { return {*this}; }
+        ///redundant
+        //template<impl::vec_data_type OtherHoldsData>
+        //constexpr explicit operator vector<Dims, T, OtherHoldsData, TransformFlags>() const noexcept { return std::bit_cast<vector<Dims, T, OtherHoldsData, TransformFlags>>(*this); }
+        constexpr explicit operator clean_vector() const noexcept { return std::bit_cast<clean_vector>(*this); }
 
     public:
-        //constexpr explicit operator std::array<UnitTy, Dims>() const noexcept { return _elems; }
-        constexpr explicit operator decltype(std::tuple_cat(std::declval<std::array<UnitTy, Dims>>()))() const noexcept { return std::tuple_cat(*this); }
-        constexpr explicit operator std::pair<UnitTy, UnitTy>() const noexcept requires (Dims == 2) { return {(*this)[0], (*this)[1]}; }
+        //constexpr explicit operator std::array<T, Dims>() const noexcept { return _elems; }
+        constexpr explicit operator decltype(std::tuple_cat(std::declval<std::array<T, Dims>>()))() const noexcept { return std::tuple_cat(*this); }
+        constexpr explicit operator std::pair<T, T>() const noexcept requires (Dims == 2) { return {(*this)[0], (*this)[1]}; }
 
     public:
-        constexpr explicit operator vk_type() const noexcept requires (impl::vk_vector_compatible<Dims, UnitTy, HoldsData, TransformFlags>) {
+        constexpr explicit operator vk_type() const noexcept requires (impl::vk_vector_compatible<Dims, T, HoldsData, TransformFlags>) {
             return to<vk_type, vk_component_type>(std::make_index_sequence<Dims>{});
         }
 
-        template<std::size_t OtherDims, typename OtherUnitTy, impl::vec_data_type OtherHoldsData> requires (std::is_convertible_v<UnitTy, OtherUnitTy>)
+        template<std::size_t OtherDims, typename OtherUnitTy, impl::vec_data_type OtherHoldsData> requires (std::is_convertible_v<T, OtherUnitTy>)
         constexpr explicit operator vector<OtherDims, OtherUnitTy, OtherHoldsData>() const noexcept {
             constexpr std::size_t new_dims = OtherDims > Dims ? Dims : OtherDims;
             return to<vector<OtherDims, OtherUnitTy, OtherHoldsData>, OtherUnitTy>(std::make_index_sequence<new_dims>{});
@@ -123,10 +125,11 @@ namespace d2d {
 
 namespace d2d {
     //TODO target_clones (except maybe dot, which might need manual SIMD for _mm_dp_ps)
-    template<std::size_t N, typename T, impl::vec_data_type HD> 
-    constexpr T dot(vector<N, T, HD> lhs, const vector<N, T, HD>& rhs) noexcept { 
-        auto do_dot = [&lhs, &rhs]<std::size_t... I>(std::index_sequence<I...>){ return ((lhs[I] * rhs[I]) + ...); }; 
-        return do_dot(std::make_index_sequence<N>{});
+    template<std::size_t N, typename LeftT, typename RightT> 
+    constexpr typename impl::result_vector<N, LeftT, RightT, std::multiplies<>>::value_type dot(vector<N, LeftT> lhs, const vector<N, RightT>& rhs) noexcept { 
+        return []<typename VL, typename VR, std::size_t... I>(VL&& l, VR&& r, std::index_sequence<I...>){ 
+            return ((std::forward<VL>(l)[I] * std::forward<VR>(r)[I]) + ...); 
+        }(lhs, rhs, std::make_index_sequence<N>{});
     }
 
     template<std::size_t N, typename T, impl::vec_data_type HD, typename F> 
@@ -138,35 +141,35 @@ namespace d2d {
     template<std::size_t N, typename T, impl::vec_data_type HD> 
     vector<N, T, HD> normalized(vector<N, T, HD> v) noexcept { return normalized(v, static_cast<T(&)(T)>(std::sqrt)); }
         
-    template<typename T, impl::vec_data_type HD> 
-    constexpr T cross(vector<2, T, HD> lhs, const vector<2, T, HD>& rhs) noexcept { 
+    template<typename LeftT, typename RightT> 
+    constexpr typename impl::result_vector<2, LeftT, RightT, std::multiplies<>>::value_type cross(vector<2, LeftT> lhs, const vector<2, RightT>& rhs) noexcept { 
         return lhs[0] * rhs[1] - lhs[1] * rhs[0];
     }
-    template<typename T, impl::vec_data_type HD> 
-    constexpr vector<3, T, HD> cross(vector<3, T, HD> lhs, const vector<3, T, HD>& rhs) noexcept { 
+    template<typename T, typename U> 
+    constexpr impl::result_vector<3, T, U, std::multiplies<>> cross(vector<3, T> lhs, const vector<3, U>& rhs) noexcept { 
         return {(lhs[1] * rhs[2] - lhs[2] * rhs[1]), (lhs[2] * rhs[0] - lhs[0] * rhs[2]), (lhs[0] * rhs[1] - lhs[1] * rhs[0])};
     }
 }
 
 
 //TODO?: make a generalized std::hash specialization and make this a custom hash type
-template<std::size_t Dims, typename UnitTy, d2d::impl::vec_data_type HoldsData, std::uint8_t TransformFlags> requires (sizeof(d2d::vector<Dims, UnitTy, HoldsData, TransformFlags>) <= sizeof(std::size_t) && d2d::vector<Dims, UnitTy, HoldsData, TransformFlags>::punnable)
-struct std::hash<d2d::vector<Dims, UnitTy, HoldsData, TransformFlags>> {
-    constexpr std::size_t operator()(d2d::vector<Dims, UnitTy, HoldsData, TransformFlags> const& vec) const noexcept {
-        return static_cast<std::size_t>(std::bit_cast<typename d2d::vector<Dims, UnitTy, HoldsData, TransformFlags>::punned_integer_type>(vec));
+template<std::size_t Dims, typename T, d2d::impl::vec_data_type HoldsData, std::uint8_t TransformFlags> requires (sizeof(d2d::vector<Dims, T, HoldsData, TransformFlags>) <= sizeof(std::size_t) && d2d::vector<Dims, T, HoldsData, TransformFlags>::punnable)
+struct std::hash<d2d::vector<Dims, T, HoldsData, TransformFlags>> {
+    constexpr std::size_t operator()(d2d::vector<Dims, T, HoldsData, TransformFlags> const& vec) const noexcept {
+        return static_cast<std::size_t>(std::bit_cast<typename d2d::vector<Dims, T, HoldsData, TransformFlags>::punned_integer_type>(vec));
     }
 };
 
 
 namespace d2d {
-    template<std::size_t Dims, typename UnitTy>
-    using vec = vector<Dims, UnitTy>;
+    template<std::size_t Dims, typename T>
+    using vec = vector<Dims, T>;
 
-    template<typename UnitTy> using vector2 = vector<2, UnitTy>;
-    template<typename UnitTy> using vector3 = vector<3, UnitTy>;
-    template<typename UnitTy> using vector4 = vector<4, UnitTy>;
-    template<typename UnitTy> using vec2 = vec<2, UnitTy>;
-    template<typename UnitTy> using vec3 = vec<3, UnitTy>;
-    template<typename UnitTy> using vec4 = vec<4, UnitTy>;
+    template<typename T> using vector2 = vector<2, T>;
+    template<typename T> using vector3 = vector<3, T>;
+    template<typename T> using vector4 = vector<4, T>;
+    template<typename T> using vec2 = vec<2, T>;
+    template<typename T> using vec3 = vec<3, T>;
+    template<typename T> using vec4 = vec<4, T>;
 }
 
