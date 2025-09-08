@@ -88,6 +88,22 @@ namespace d2d::vk {
             .blendConstants = {0.0f, 0.0f, 0.0f, 0.0f},
         };
 
+        //Specify depth/stencil
+        VkPipelineDepthStencilStateCreateInfo depth_and_stencil_info{
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
+            .pNext = nullptr,
+            .flags = 0,
+            .depthTestEnable = VK_TRUE,
+            .depthWriteEnable = VK_TRUE,
+            .depthCompareOp = VK_COMPARE_OP_GREATER_OR_EQUAL,
+            .depthBoundsTestEnable = VK_FALSE,
+            .stencilTestEnable = VK_FALSE,
+            .front = VkStencilOpState{},
+            .back = VkStencilOpState(),
+            .minDepthBounds = 0.0f,
+            .maxDepthBounds = 1.0f
+        };
+
 
         RESULT_TRY_MOVE_UNSCOPED(shader_module vert_shader, make<shader_module>(device, renderable_properties<T>::shader_data_type::vert, VK_SHADER_STAGE_VERTEX_BIT), vs);
         RESULT_TRY_MOVE_UNSCOPED(shader_module frag_shader, make<shader_module>(device, renderable_properties<T>::shader_data_type::frag, VK_SHADER_STAGE_FRAGMENT_BIT), fs);
@@ -104,7 +120,7 @@ namespace d2d::vk {
             .pViewportState = &viewport_info,
             .pRasterizationState = &rasterizer_info,
             .pMultisampleState = &multisampling_info,
-            .pDepthStencilState = nullptr,
+            .pDepthStencilState = &depth_and_stencil_info,
             .pColorBlendState = &color_blend_info,
             .pDynamicState = &dynamic_state_info,
             .layout = layout,

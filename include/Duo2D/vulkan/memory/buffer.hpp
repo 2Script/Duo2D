@@ -33,8 +33,7 @@ namespace d2d::vk {
         std::size_t bytes = 0;
         std::size_t offset = 0;
         VkBufferUsageFlags flags;
-    public:    
-        template<std::size_t N>
-        friend struct device_memory;
+    public:
+        friend struct device_memory_base;
     };
 }

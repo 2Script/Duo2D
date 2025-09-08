@@ -41,8 +41,7 @@ namespace d2d::vk {
         VkImageLayout image_layout;
         VkImageUsageFlags flags;
         std::uint32_t image_count;
-    public:    
-        template<std::size_t N>
-        friend struct device_memory;
+    public:
+        friend struct device_memory_base;
     };
 }

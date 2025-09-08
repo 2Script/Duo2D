@@ -14,6 +14,7 @@ set(CPP_FILES
     vulkan/device/logical_device.cpp
     vulkan/device/physical_device.cpp
 
+    vulkan/display/depth_image.cpp
     vulkan/display/framebuffer.cpp
     vulkan/display/image_sampler.cpp
     vulkan/display/image_view.cpp

@@ -1,7 +1,7 @@
 #include "Duo2D/vulkan/display/image_view.hpp"
 
 namespace d2d::vk {
-    result<image_view> image_view::create(std::shared_ptr<logical_device> device, VkImage img, VkFormat format, std::uint32_t image_count) noexcept {
+    result<image_view> image_view::create(std::shared_ptr<logical_device> device, VkImage img, VkFormat format, std::uint32_t image_count, VkImageAspectFlags aspect_mask) noexcept {
         image_view ret{};
         ret.dependent_handle = device;
         VkImageViewCreateInfo image_view_create_info{
@@ -11,7 +11,7 @@ namespace d2d::vk {
             .format = format,
             .components = {VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY},
             .subresourceRange = {
-                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                .aspectMask = aspect_mask,
                 .baseMipLevel = 0,
                 .levelCount = 1,
                 .baseArrayLayer = 0,

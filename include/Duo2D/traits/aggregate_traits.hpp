@@ -7,6 +7,7 @@
 namespace d2d::impl {
     template<class T> concept aggregate = std::is_aggregate_v<T>;
     template<class T> concept arithmetic = std::is_arithmetic_v<T>;
+    template<class T> concept enumeration = std::is_enum_v<T>;
     template<class T> concept manually_counted = !aggregate<T> && !arithmetic<T> && requires {{T::member_count} -> std::same_as<const std::size_t&>;};
 
     struct any_t { template<class T> operator T() {} };
