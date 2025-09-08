@@ -13,7 +13,7 @@
 namespace d2d {
     
     template<std::size_t M, std::size_t N, typename T>
-    struct matrix : public std::array<std::array<T, M>, N> {
+    struct matrix : public std::array<std::array<T, N>, M> {
         constexpr static std::size_t rows = M;
         constexpr static std::size_t columns = N;
         using array_type = std::array<std::array<T, columns>, rows>;
@@ -28,15 +28,23 @@ namespace d2d {
         constexpr flattened_type flatten() const noexcept { return std::bit_cast<flattened_type>(*this); }
         constexpr explicit operator flattened_type() const noexcept { return flatten(); }
 
+    public:
+        template<std::size_t A, std::size_t B, typename U>
+        constexpr explicit operator matrix<A, B, U>() const noexcept requires (A != M || B != N || !std::is_same_v<T, U>);
 
     public:
         //TODO use SIMD (i.e. target_clones)
         consteval static matrix<M, N, T> identity() noexcept requires (M == N);
+        constexpr static matrix<M, N, T> transposed(matrix<N, M, T> original) noexcept;
+
+
         constexpr static matrix<M, N, T> scaling(std::array<T, N-1> scale_vec) noexcept requires (M == N);
         template<typename A, typename FS, typename FC> requires std::is_arithmetic_v<std::remove_cvref_t<A>>
         constexpr static matrix<M, N, T> rotating(A&& angle, FS&& sin_fn, FC&& cos_fn) noexcept requires (M == N && N == 2);
         template<typename A, typename FS, typename FC> requires std::is_arithmetic_v<std::remove_cvref_t<A>>
-        constexpr static matrix<M, N, T> rotating(A&& angle, axis rotate_axis, FS&& sin_fn, FC&& cos_fn) noexcept requires (M == N && (N >= 3));
+        constexpr static matrix<M, N, T> rotating(A&& angle, axis rotate_axis, FS&& sin_fn, FC&& cos_fn) noexcept requires (M == N && N == 3);
+        template<typename A, typename FS, typename FC> requires std::is_arithmetic_v<std::remove_cvref_t<A>>
+        constexpr static matrix<M, N, T> rotating(A&& angle, axis rotate_axis, FS&& sin_fn, FC&& cos_fn) noexcept requires (M == N && N == 4);
         constexpr static matrix<M, N, T> translating(std::array<T, N-1> translate_vec) noexcept requires (M == N);
 
         template<typename F>

@@ -9,6 +9,19 @@
 
 namespace d2d {
     template<std::size_t M, std::size_t N, typename T>
+    template<std::size_t A, std::size_t B, typename U>
+    constexpr matrix<M, N, T>::operator matrix<A, B, U>() const noexcept requires (A != M || B != N || !std::is_same_v<T, U>) {
+        matrix<A, B, U> m = identity();
+        for(std::size_t i = 0; i < std::min(M, A); ++i)
+            for(std::size_t j = 0; j < std::min(N, B); ++j)
+                m[i][j] = static_cast<U>((*this)[i][j]);
+        return m;
+    }
+}
+
+
+namespace d2d {
+    template<std::size_t M, std::size_t N, typename T>
     consteval matrix<M, N, T> matrix<M, N, T>::identity() noexcept requires (M == N) {
         constexpr auto row = []<std::size_t I, std::size_t... Js>
         (std::integral_constant<std::size_t, I>, std::index_sequence<Js...>) {
@@ -21,9 +34,22 @@ namespace d2d {
     }
 
     template<std::size_t M, std::size_t N, typename T>
+    constexpr matrix<M, N, T> matrix<M, N, T>::transposed(matrix<N, M, T> original) noexcept {
+        matrix<M,N,T> ret;
+        for(std::size_t i = 0; i < M; ++i)
+            for(std::size_t j = 0; j < N; ++j)
+                ret[i][j] = original[j][i];
+        return ret;
+    }
+}
+
+
+
+namespace d2d {
+    template<std::size_t M, std::size_t N, typename T>
     constexpr matrix<M, N, T> matrix<M, N, T>::translating(std::array<T, N-1> translate_vec) noexcept requires (M == N) {
         matrix<M,N,T> m = matrix<M,N,T>::identity();
-        for(std::size_t i = 0; i < (N - 1); ++i)
+        for(std::size_t i = 0; i < (M - 1); ++i)
             m[i][N - 1] = translate_vec[i];
         return m;
     }
@@ -47,7 +73,7 @@ namespace d2d {
 
     template<std::size_t M, std::size_t N, typename T>
     template<typename A, typename FS, typename FC> requires std::is_arithmetic_v<std::remove_cvref_t<A>>
-    constexpr matrix<M, N, T> matrix<M, N, T>::rotating(A&& angle, axis rotate_axis, FS&& sin_fn, FC&& cos_fn) noexcept requires (M == N && (N >= 3)) {
+    constexpr matrix<M, N, T> matrix<M, N, T>::rotating(A&& angle, axis rotate_axis, FS&& sin_fn, FC&& cos_fn) noexcept requires (M == N && N == 3) {
         matrix<M,N,T> m = matrix<M,N,T>::identity();
         T s = static_cast<T>(std::forward<FS>(sin_fn)(std::forward<A>(angle)));
         T c = static_cast<T>(std::forward<FC>(cos_fn)(std::forward<A>(angle)));
@@ -68,6 +94,24 @@ namespace d2d {
             break;
         }
         return m;
+    }
+
+    template<std::size_t M, std::size_t N, typename T>
+    template<typename A, typename FS, typename FC> requires std::is_arithmetic_v<std::remove_cvref_t<A>>
+    constexpr matrix<M, N, T> matrix<M, N, T>::rotating(A&& angle, axis rotate_axis, FS&& sin_fn, FC&& cos_fn) noexcept requires (M == N && N == 4) {
+        vec3<T> axis_vec = {0,0,0};
+        axis_vec[static_cast<std::size_t>(rotate_axis)] = static_cast<T>(1);
+        T s = static_cast<T>(std::forward<FS>(sin_fn)(std::forward<A>(angle)));
+        T c = static_cast<T>(std::forward<FC>(cos_fn)(std::forward<A>(angle)));
+        T x = axis_vec.x();
+        T y = axis_vec.y();
+        T z = axis_vec.z();
+        return {{{
+            {{x * x * (1 - c) + c,     x * y * (1 - c) - z * s, x * z * (1 - c) + y * s, 0}},
+            {{x * y * (1 - c) + z * s, y * y * (1 - c) + c,     y * z * (1 - c) - x * s, 0}},
+            {{x * z * (1 - c) - y * s, y * z * (1 - c) + x * s, z * z * (1 - c) + c,     0}},
+            {{0, 0, 0, 1}},
+        }}};
     }
 }
 
