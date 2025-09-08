@@ -10,7 +10,7 @@ namespace d2d::vk {
         image ret{};
         ret.dependent_handle = device;
         //TODO: correct index (can't just use format)
-        ret.bytes = width * height * (pixel_formats[format].total_size / CHAR_BIT);
+        ret.bytes = width * height * pixel_formats.find(format)->second.total_size_bytes;
         ret.offset = mem_offset;
         ret.extent = {width, height};
         ret.flags = usage;
