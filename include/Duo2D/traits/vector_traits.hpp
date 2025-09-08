@@ -11,7 +11,7 @@ namespace d2d::impl {
     };
 
     enum class vec_data_type {
-        none, point, size
+        point, size
     };
 }
 
@@ -54,4 +54,9 @@ namespace d2d::impl {
     struct is_vector_specialization<vector<Dims, UnitTy, HoldsData, TransformFlags>> : std::true_type{};
     template<typename T>
     concept non_vector = !is_vector_specialization<T>::value;
+}
+
+namespace d2d::impl {
+    template<std::size_t Dims, typename L, typename R, typename Op, impl::vec_data_type HoldsData = impl::vec_data_type::point, std::uint8_t TransformFlags = 0>
+    using result_vector = vector<Dims, decltype(std::declval<Op>()(std::declval<L>(), std::declval<R>())), HoldsData, TransformFlags>;
 }
