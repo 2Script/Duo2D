@@ -16,7 +16,8 @@ namespace d2d {
     struct debug_rect;
     template<> struct renderable_traits<debug_rect> {
         using shader_type = debug_rect;
-        using shader_data_type = shaders::debug_rect;
+        constexpr static auto vert_shader_data = std::to_array(shaders::debug_rect::vert);
+        constexpr static auto frag_shader_data = std::to_array(shaders::debug_rect::frag);
         using uniform_type = extent2;
         using attribute_types = vk::make_attribute_types_t<transform2, std::uint32_t>;
         using index_type = std::uint16_t;

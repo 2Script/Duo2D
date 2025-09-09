@@ -1,4 +1,5 @@
 #pragma once
+#include <concepts>
 #include <type_traits>
 #include <vulkan/vulkan.h>
 #include "Duo2D/traits/renderable_properties.hpp"
@@ -11,7 +12,10 @@ namespace d2d::impl {
         {renderable_properties<T>::binding_descs()} noexcept;
         {renderable_properties<T>::attribute_descs()} noexcept;
         //You must have a shader data type (i.e. a type that contains the vertex and fragment shader code bytes)
-        typename renderable_properties<T>::shader_data_type;
+        {renderable_properties<T>::vert_shader_data.data()} -> std::same_as<const unsigned char*>;
+        {renderable_properties<T>::frag_shader_data.data()} -> std::same_as<const unsigned char*>;
+        {renderable_properties<T>::vert_shader_data.size()} -> std::same_as<std::size_t>;
+        {renderable_properties<T>::frag_shader_data.size()} -> std::same_as<std::size_t>;
         //You must specify the cull mode and which face is the front
         {renderable_properties<T>::cull_mode} -> std::same_as<const VkCullModeFlags&>;
         {renderable_properties<T>::front_face} -> std::same_as<const VkFrontFace&>;

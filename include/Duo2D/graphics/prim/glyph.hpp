@@ -20,7 +20,8 @@ namespace d2d {
     struct glyph;
     template<> struct renderable_traits<glyph> {
         using shader_type = glyph;
-        using shader_data_type = shaders::glyph;
+        constexpr static auto vert_shader_data = std::to_array(shaders::glyph::vert);
+        constexpr static auto frag_shader_data = std::to_array(shaders::glyph::frag);
         struct uniform_type {
             extent2 swap_chain_extent;
         };

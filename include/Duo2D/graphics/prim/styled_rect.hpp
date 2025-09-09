@@ -25,7 +25,8 @@ namespace d2d {
     };
     template<> struct renderable_traits<styled_rect> {
         using shader_type = styled_rect;
-        using shader_data_type = shaders::rect;
+        constexpr static auto vert_shader_data = std::to_array(shaders::rect::vert);
+        constexpr static auto frag_shader_data = std::to_array(shaders::rect::frag);
         using uniform_type = extent2;
         using push_constant_types = std::tuple<extent2&>;
         using attribute_types = vk::make_attribute_types_t<true_color, transform2, std::uint32_t, rect<std::uint32_t>>;
