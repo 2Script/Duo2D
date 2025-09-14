@@ -87,14 +87,14 @@ namespace d2d::vk {
             using mapped_type    = typename impl::renderable_input_map<C>::mapped_type   ;
             using value_type     = typename impl::renderable_input_map<C>::value_type    ;
             using iterator       = typename impl::renderable_input_map<C>::iterator      ;
-            using const_iterator = typename impl::renderable_input_map<C>::const_iterator;  
+            using const_iterator = typename impl::renderable_input_map<C>::const_iterator;
         };
         template<::d2d::impl::renderable_container_tuple_like C, std::size_t FiF> struct map_traits<C, FiF> {
             using key_type       = typename impl::renderable_input_map<C>::key_type      ;
             using mapped_type    = typename impl::renderable_input_map<C>::mapped_type   ;
             using value_type     = typename impl::renderable_input_map<C>::value_type    ;
             using iterator       = typename impl::renderable_input_map<C>::iterator      ;
-            using const_iterator = typename impl::renderable_input_map<C>::const_iterator;  
+            using const_iterator = typename impl::renderable_input_map<C>::const_iterator;
         };
     
 

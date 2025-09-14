@@ -1,5 +1,7 @@
 #pragma once
 #include <cstddef>
+#include <tuple>
+#include <unordered_map>
 
 #include "Duo2D/traits/directly_renderable.hpp"
 #include "Duo2D/vulkan/memory/renderable_data.hpp"

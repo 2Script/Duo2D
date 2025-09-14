@@ -6,6 +6,7 @@
 #include <vector>
 #include <string>
 #include <vulkan/vulkan.h>
+#include "Duo2D/core/contiguous_map.hpp"
 #include "Duo2D/vulkan/display/texture.hpp"
 #include "Duo2D/vulkan/traits/attribute_traits.hpp"
 #include "Duo2D/traits/directly_renderable.hpp"
@@ -18,8 +19,12 @@
 #include "Duo2D/vulkan/memory/texture_map.hpp"
 
 namespace d2d::vk::impl {
+    //TODO: use contiguous_map once we are no longer storing references to map elements (like we do in renderable_container, or possbily attributes)
     template<typename T>
-    using renderable_input_map = std::unordered_map<std::string, T>;
+    using renderable_input_map = std::unordered_map<std::uint64_t, T>; //contiguous_map<std::uint64_t, T>;
+
+    template<typename T>
+    using renderable_state_container = std::unordered_map<std::uint64_t, bool>; //std::vector<bool>;
 }
 
 
@@ -33,16 +38,23 @@ namespace d2d::vk::impl {
         using iterator       = typename renderable_input_map<T>::iterator;
         using const_iterator = typename renderable_input_map<T>::const_iterator;
     public:
-        iterator erase(iterator pos) noexcept;
-        iterator erase(const_iterator pos) noexcept;
-        iterator erase(const_iterator first, const_iterator last) noexcept;
-        std::size_t erase(std::string_view key) noexcept;
+        constexpr iterator erase(const_iterator pos) noexcept;
+        constexpr iterator erase(const_iterator first, const_iterator last) noexcept;
+        std::size_t erase(key_type const& key) noexcept;
+
+    public:
+        result<void> set_hidden(key_type const& key, bool value) noexcept;
+        result<void> toggle_hidden(key_type const& key) noexcept;
+
+        bool shown(key_type const& key) noexcept;
+        bool hidden(key_type const& key) noexcept;
 
     public:
         constexpr bool const& has_changes() const noexcept { return outdated; }
         constexpr bool      & has_changes()       noexcept { return outdated; }
 
     private:
+        renderable_state_container<T> hidden_state;
         bool outdated = false;
     };
 }

@@ -12,7 +12,7 @@ namespace d2d::impl {
 
     public:
         template<typename... Ts>
-        constexpr void on_window_insert(basic_window<Ts...>&, std::string_view) noexcept {}
+        constexpr void on_window_insert(basic_window<Ts...>&, std::uint64_t) noexcept {}
 
     public:
         template<typename... Ts>

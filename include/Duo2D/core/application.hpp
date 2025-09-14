@@ -48,7 +48,7 @@ namespace d2d {
         void poll_events() noexcept;
         result<void> render() noexcept;
         std::future<result<void>> start_async_render() noexcept;
-        result<void> join() noexcept;
+        result<void> join() const noexcept;
 
         
     private:

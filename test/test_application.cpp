@@ -1,4 +1,6 @@
 
+#include <bit>
+#include <cstdint>
 #include <iostream>
 #include <result/to_result.hpp>
 #include <set>
@@ -14,6 +16,7 @@
 #include <Duo2D/core/window.hpp>
 #include <Duo2D/arith/matrix.hpp>
 #include <Duo2D/arith/point.hpp>
+#include "Duo2D/graphics/core/color.hpp"
 #include "Duo2D/input/category.hpp"
 #include "Duo2D/input/code.hpp"
 #include "Duo2D/input/modifier_flags.hpp"
@@ -26,6 +29,14 @@
 #if __has_feature(address_sanitizer) || defined(__SANITIZE_ADDRESS__)
 extern "C" const char* __asan_default_options() { return "detect_leaks=0"; }
 #endif
+
+
+struct alignas(std::uint64_t) test_key {
+    std::uint32_t major_id;
+    std::uint32_t minor_id;
+
+    constexpr operator std::uint64_t() const noexcept { return std::bit_cast<std::uint64_t>(*this); }
+};
 
 
 int main(){
@@ -70,18 +81,19 @@ int main(){
     s._texture_paths = {test_img_alpha_path, ""};
     //s.texture_bounds->pos = {350, 100};
     //s.texture_bounds->size = {300, 1044-100};
-    std::pair<const std::string, d2d::styled_rect> p = {"cyan", s};
-    std::pair<const std::string, d2d::clone_rect> pc = {"cyan", c};
-    std::pair<const std::string, d2d::debug_rect> pd = {"yellow", dr};
-    std::pair<const std::string, d2d::debug_rect> j = {"junk", junk};
+    std::pair<std::uint64_t, d2d::styled_rect> p = {test_key{0, std::bit_cast<std::uint32_t>(s.color.get_ref())}, s};
+    std::pair<std::uint64_t, d2d::clone_rect> pc = {test_key{1, std::bit_cast<std::uint32_t>(c.color.get_ref())}, c};
+    std::pair<std::uint64_t, d2d::debug_rect> pd = {test_key{2, std::bit_cast<std::uint32_t>(dr.color)}, dr};
+    std::pair<std::uint64_t, d2d::debug_rect> j = {test_key{2, 0}, junk};
 
     auto insert_cyan = win->insert(std::move(p));
     if(!insert_cyan.second) return -69;
     d2d::styled_rect& cyan_ref = insert_cyan.first->second;
     cyan_ref.border_width = 7;
+    RESULT_VERIFY(win->set_hidden<d2d::styled_rect>(p.first, true));
     RESULT_VERIFY(win->apply_changes<d2d::styled_rect>());
 
-    auto emplace_magenta = win->try_emplace<d2d::clone_rect>("magenta", d2d::styled_rect{d2d::rect<float>{400,50,1000,675}, 0x990099FF});
+    auto emplace_magenta = win->try_emplace<d2d::clone_rect>(test_key{1, 0x99'00'99'FF}, d2d::styled_rect{d2d::rect<float>{400,50,1000,675}, 0x990099FF});
     if(!emplace_magenta.second) return -69;
     d2d::clone_rect& magenta_ref = emplace_magenta.first->second;
     magenta_ref.transform->scale = {.6f, .9f};
@@ -104,7 +116,7 @@ int main(){
     ////d2d::debug_rect& white_ref = insert_white.first->second;
     RESULT_VERIFY(win->apply_changes<d2d::debug_rect>());
 
-    win->erase<d2d::debug_rect>("yellow");
+    win->erase<d2d::debug_rect>(test_key{2, std::bit_cast<std::uint32_t>(dr.color)});
     RESULT_VERIFY(win->apply_changes<d2d::debug_rect>());
     auto insert_new = win->insert(pd);
     if(!insert_new.second) return -69;
@@ -112,8 +124,8 @@ int main(){
     if(win->insert(pd).second) return -69;
     RESULT_VERIFY(win->apply_changes<d2d::debug_rect>());
 
-    win->emplace<d2d::debug_rect>("junk", junk);
-    win->erase<d2d::debug_rect>("junk");
+    win->emplace<d2d::debug_rect>(test_key{2, 0}, junk);
+    win->erase<d2d::debug_rect>(test_key{2, 0});
     RESULT_VERIFY(win->apply_changes<d2d::debug_rect>());
 
     //expensive text rendering
@@ -138,16 +150,17 @@ int main(){
     //if(text_ref.try_emplace("very_long_after", {}, test_font2, 64, 0xFFFFFFFF).second) return -69; //fails - needs size increase
     //if(!text_ref.try_emplace("after", {}, test_font2, 64, 0xFFFFFFFF).second) return -69; //succeeds - no realloc
 
-    auto emplace_text_2 = win->try_emplace<d2d::text>("sample_text_2", 16);
+    auto emplace_text_2 = win->try_emplace<d2d::text>(test_key{3, 1}, 16);
     if(!emplace_text_2.second) return -69;
     d2d::text& text_2_ref = emplace_text_2.first->second;
     //text_2_ref.emplace("Affluent in mega", d2d::pt2f{700, 750}, test_font, 128, 0x0C'0C'0C'FF, 5);
     text_2_ref.emplace("Affluent in mega", d2d::pt2f{700, 750}, test_font_mono, 128, 0x0C'0C'0C'FF, 5);
     RESULT_VERIFY(win->apply_changes<d2d::text>());
 
-    auto emplace_progress_bar = win->try_emplace<d2d::progress_bar>("sample_progress_bar", d2d::pt2f{700, 900}, d2d::sz2f{400, 100}, test_font_mono, 0xFF'FF'FF'FF, 0xFF'00'00'FF, 0xFF'FF'FF'FF, 32);
+    auto emplace_progress_bar = win->try_emplace<d2d::progress_bar>(test_key{4, 0}, d2d::pt2f{700, 900}, d2d::sz2f{400, 100}, test_font_mono, 0xFF'FF'FF'FF, 0xFF'00'00'FF, 0xFF'FF'FF'FF, 32);
     if(!emplace_progress_bar.second) return -69;
     RESULT_VERIFY(win->apply_changes<d2d::progress_bar>());
+    RESULT_VERIFY(win->set_hidden<d2d::progress_bar>(test_key{4, 0}, true));
 
     //s._texture_paths = {test_img_alpha_path, ""};
     //s.texture_bounds->pos = {350, 100};
@@ -225,13 +238,17 @@ int main(){
 
 
 
-    std::thread edit_s([](d2d::styled_rect& sr){//, d2d::window& w){
+    std::thread edit_s([](d2d::styled_rect& sr, d2d::window& w) noexcept -> d2d::result<void> {//, d2d::window& w){
         sr.texture_bounds->pos = {1000, 1000};
         std::this_thread::sleep_for(std::chrono::milliseconds(3000));
         //std::size_t begin_count = ++w.update_count.value;
         std::cout << "updating texture" << std::endl;
         sr.texture_bounds->pos = {350, 100};
         sr.texture_bounds->size = {300, 1044-100};
+        RESULT_VERIFY(w.set_hidden<d2d::styled_rect>(test_key{0, std::bit_cast<std::uint32_t>(sr.color.get_ref())}, false));
+        RESULT_VERIFY(w.set_hidden<d2d::progress_bar>(test_key{4, 0}, false));
+        RESULT_VERIFY(w.set_hidden<d2d::text>(test_key{3, 1}, true));
+        return {};
         //if(w.update_count.value <= begin_count) {
         //    VkSemaphoreSignalInfo signal_info {
         //        .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SIGNAL_INFO,
@@ -241,7 +258,7 @@ int main(){
         //    };
         //    vkSignalSemaphore(w.logical_device(), &signal_info);
         //}
-    }, std::ref(cyan_ref));//, std::ref(*win));
+    }, std::ref(cyan_ref), std::ref(*win));
 
 
     std::future<d2d::result<void>> render = app.start_async_render();
@@ -252,7 +269,6 @@ int main(){
         //    return r.error();
     }
     
-    RESULT_VERIFY(app.join());
     if(auto r = render.get(); !r.has_value()) {
         std::cout << std::format("rendering error {}: {}", static_cast<std::int64_t>(r.error()), d2d::error::code_descs.find(r.error())->second)<< std::endl;
 
@@ -268,6 +284,7 @@ int main(){
             std::cout << std::format("{},", b);
         std::cout << std::endl;
     }
+    RESULT_VERIFY(app.join());
     edit_s.join();
 
     std::cout << d2d::error::last_glfw_desc() << std::endl;

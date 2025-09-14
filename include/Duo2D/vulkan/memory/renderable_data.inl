@@ -17,29 +17,52 @@
 
 namespace d2d::vk::impl {
     template<::d2d::impl::directly_renderable T>
-    renderable_input_data<T>::iterator renderable_input_data<T>::erase(iterator pos) noexcept {
+    constexpr renderable_input_data<T>::iterator renderable_input_data<T>::erase(const_iterator pos) noexcept {
         outdated = true;
         return renderable_input_map<T>::erase(pos);
     }
 
     template<::d2d::impl::directly_renderable T>
-    renderable_input_data<T>::iterator renderable_input_data<T>::erase(const_iterator pos) noexcept {
-        outdated = true;
-        return renderable_input_map<T>::erase(pos);
-    }
-
-    template<::d2d::impl::directly_renderable T>
-    renderable_input_data<T>::iterator renderable_input_data<T>::erase(const_iterator first, const_iterator last) noexcept {
+    constexpr renderable_input_data<T>::iterator renderable_input_data<T>::erase(const_iterator first, const_iterator last) noexcept {
         outdated = true;
         return renderable_input_map<T>::erase(first, last);
     }
 
     
     template<::d2d::impl::directly_renderable T>
-    std::size_t renderable_input_data<T>::erase(std::string_view key) noexcept {
-        const std::size_t erased_count = renderable_input_map<T>::erase(std::string(key));
+    std::size_t renderable_input_data<T>::erase(key_type const& key) noexcept {
+        const std::size_t erased_count = renderable_input_map<T>::erase(key);
         if(erased_count) outdated = true;
         return erased_count;
+    }
+}
+
+
+namespace d2d::vk::impl {
+    template<::d2d::impl::directly_renderable T>
+    result<void> renderable_input_data<T>::set_hidden(key_type const& key, bool value) noexcept {
+        if(this->find(key) == this->end()) return errc::element_not_found;
+        hidden_state.insert_or_assign(key, value);
+        return {};
+    }
+
+    template<::d2d::impl::directly_renderable T>
+    result<void> renderable_input_data<T>::toggle_hidden(key_type const& key) noexcept {
+        if(this->find(key) == this->end()) return errc::element_not_found;
+        auto emplace_result = hidden_state.try_emplace(key);
+        emplace_result.first->second = !emplace_result.first->second;
+        return {};
+    }
+
+
+    template<::d2d::impl::directly_renderable T>
+    bool renderable_input_data<T>::shown(key_type const& key) noexcept {
+        return !hidden_state.try_emplace(key).first->second;
+    }
+
+    template<::d2d::impl::directly_renderable T>
+    bool renderable_input_data<T>::hidden(key_type const& key) noexcept {
+        return hidden_state.try_emplace(key).first->second;
     }
 }
 

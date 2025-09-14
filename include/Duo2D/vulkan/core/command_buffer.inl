@@ -74,20 +74,24 @@ namespace d2d::vk {
         }
 
         //Draw vertices
-        if constexpr (renderable_constraints<T>::has_fixed_vertices || renderable_constraints<T>::has_fixed_indices) {
-            if constexpr (renderable_constraints<T>::has_indices) 
-                vkCmdDrawIndexed(handle, renderable_properties<T>::index_count, renderables.template instance_count<T>(), 0, 0, 0);
-            else
-                vkCmdDraw(handle, renderable_properties<T>::vertex_count, renderables.template instance_count<T>(), 0, 0);
-        }
-        else {
-            for(std::size_t i = 0; i < renderables.template instance_count<T>(); ++i) {
-                if constexpr (renderable_constraints<T>::has_indices) 
-                    vkCmdDrawIndexed(handle, renderables.template index_count<T>(i), 1, renderables.template first_index<T>(i), renderables.template first_vertex<T>(i), i);
-                else
-                    vkCmdDraw(handle, renderables.template vertex_count<T>(i), 1, renderables.template first_vertex<T>(i), i);
-            }
-        }
+        //if constexpr (renderable_constraints<T>::has_fixed_vertices || renderable_constraints<T>::has_fixed_indices) {
+        //    if constexpr (renderable_constraints<T>::has_indices) 
+        //        vkCmdDrawIndexed(handle, renderable_properties<T>::index_count, renderables.template instance_count<T>(), 0, 0, 0);
+        //    else
+        //        vkCmdDraw(handle, renderable_properties<T>::vertex_count, renderables.template instance_count<T>(), 0, 0);
+        //}
+        //else {
+        //    for(std::size_t i = 0; i < renderables.template instance_count<T>(); ++i) {
+        //        if constexpr (renderable_constraints<T>::has_indices) 
+        //            vkCmdDrawIndexed(handle, renderables.template index_count<T>(i), 1, renderables.template first_index<T>(i), renderables.template first_vertex<T>(i), i);
+        //        else
+        //            vkCmdDraw(handle, renderables.template vertex_count<T>(i), 1, renderables.template first_vertex<T>(i), i);
+        //    }
+        //}
+        if constexpr (renderable_constraints<T>::has_indices) 
+            vkCmdDrawIndexedIndirect(handle, renderables.template draw_command_buffer<T>(), 0, renderables.template draw_count<T>(), sizeof(VkDrawIndexedIndirectCommand));
+        else
+            vkCmdDrawIndirect(handle, renderables.template draw_command_buffer<T>(), 0, renderables.template draw_count<T>(), sizeof(VkDrawIndirectCommand));
 
         return {};
     }

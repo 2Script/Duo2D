@@ -1,11 +1,18 @@
 #pragma once
+#include "Duo2D/traits/renderable_constraints.hpp"
 #include "Duo2D/vulkan/memory/renderable_tuple.hpp"
 
+#include <cstring>
+#include <limits>
 #include <memory>
+#include <mutex>
 #include <numeric>
+#include <result/verify.h>
 #include <string_view>
 
 #include <result.hpp>
+#include <type_traits>
+#include <utility>
 #include <vulkan/vulkan.h>
 #include <llfio.hpp>
 #include <DuoDecode/decoder.hpp>
@@ -17,6 +24,7 @@
 
 #include "Duo2D/core/error.hpp"
 #include "Duo2D/vulkan/display/texture.hpp"
+#include "Duo2D/vulkan/sync/semaphore.hpp"
 #include "Duo2D/vulkan/traits/buffer_traits.hpp"
 #include "Duo2D/traits/renderable_properties.hpp"
 #include "Duo2D/traits/directly_renderable.hpp"
@@ -34,6 +42,9 @@ namespace d2d::vk {
         ret.logi_device_ptr = logi_device;
         ret.phys_device_ptr = phys_device;
         ret.font_data_map_ptr = font_data_map;
+
+        //Create draw command semaphore
+        RESULT_TRY_MOVE(ret.draw_cmd_update_semaphore, make<vk::semaphore>(logi_device, VK_SEMAPHORE_TYPE_TIMELINE));
         
         //Create command pool for copy commands
         vk::command_pool c;
@@ -106,6 +117,7 @@ namespace d2d::vk {
     }
 }
 
+
 namespace d2d::vk {
     template<std::size_t FiF, ::d2d::impl::directly_renderable... Ts> //requires (sizeof...(Ts) > 0)
     result<void> renderable_tuple<FiF, std::tuple<Ts...>>::create_descriptors(render_pass& window_render_pass) noexcept {
@@ -123,6 +135,110 @@ namespace d2d::vk {
         if(error_code != error::unknown) return error_code;
         return {};
     }
+
+
+    template<std::size_t FiF, ::d2d::impl::directly_renderable... Ts> //requires (sizeof...(Ts) > 0)
+    template<typename T>
+    result<void> renderable_tuple<FiF, std::tuple<Ts...>>::update_draw_commands() noexcept {
+        constexpr static std::size_t I = renderable_index<T>;
+        renderable_allocator allocator(logi_device_ptr, phys_device_ptr, copy_cmd_pool_ptr);
+
+        //std::vector<draw_command_type<T>>& draw_cmds = std::get<I>(draw_commands);
+        //draw_cmds.clear();
+        std::vector<draw_command_type<T>> draw_cmds{};
+        draw_cmds.reserve(this->template renderable_data_of<T>().size());
+        std::size_t i = 0;
+        for(auto iter = this->template renderable_data_of<T>().begin(); iter != this->template renderable_data_of<T>().end(); ++iter, ++i){
+            if(hidden<T>(iter->first)) continue;
+            if constexpr (renderable_constraints<T>::has_indices) 
+                draw_cmds.emplace_back(index_count<T>(i), 1, first_index<T>(i), first_vertex<T>(i), i);
+            else
+                draw_cmds.emplace_back(vertex_count<T>(i), 1, first_vertex<T>(i), i);
+        }
+
+        const std::size_t draw_cmds_size_bytes = draw_cmds.size() * sizeof(draw_command_type<T>);
+        const std::size_t draw_cmds_max_size_bytes = this->template renderable_data_of<T>().size() * sizeof(draw_command_type<T>);
+
+        std::array<std::unique_lock<std::mutex>, FiF> draw_cmd_buff_locks;
+        for(std::size_t i = 0; i < FiF; ++i)
+            draw_cmd_buff_locks[i] = std::unique_lock<std::mutex>(draw_cmd_buff_mutexes[i], std::defer_lock);
+        []<std::size_t... I>(std::array<std::unique_lock<std::mutex>, FiF>& arr, std::index_sequence<I...>){ 
+            std::lock(arr[I]...);
+        }(draw_cmd_buff_locks, std::make_index_sequence<FiF>{});
+
+        std::size_t draw_cmd_idx = this->draw_cmd_update_count++;//this->draw_cmd_update_count.fetch_add(1, std::memory_order::relaxed);
+
+        this->draw_cmd_cnt[I] = draw_cmds.size();
+        if(draw_cmds_size_bytes <= draw_cmd_buffs[I].size_bytes())
+            draw_cmd_buff_locks = {};
+
+        VkSemaphoreWaitInfo wait_info{
+            .sType = VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO,
+            .pNext = nullptr,
+            .flags = 0,
+            .semaphoreCount = 1,
+            .pSemaphores = &draw_cmd_update_semaphore, 
+            .pValues = &draw_cmd_idx,
+        };
+        vkWaitSemaphores(*logi_device_ptr, &wait_info, std::numeric_limits<std::uint64_t>::max());
+
+        if(draw_cmds_size_bytes > draw_cmd_buffs[I].size_bytes() || (draw_cmd_buffs[I].size_bytes() == 0 && draw_cmds_max_size_bytes != 0)) {
+            RESULT_VERIFY((allocator.template alloc_buffer<I, VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT>(
+                std::span{draw_cmd_buffs}, draw_cmds_max_size_bytes, draw_cmd_shared_mem
+            )));
+            for(std::size_t i = 0; i < FiF; ++i)
+                draw_cmd_buff_locks = {};
+
+            RESULT_TRY_COPY(draw_cmd_buffs_map, draw_cmd_shared_mem.map(logi_device_ptr, VK_WHOLE_SIZE));
+        }
+        
+        const std::size_t offset = draw_cmd_buffs[I].memory_offset();
+        std::memcpy(static_cast<std::byte*>(draw_cmd_buffs_map) + offset, draw_cmds.data(), draw_cmds_size_bytes);
+
+
+        VkSemaphoreSignalInfo signal_info {
+            .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SIGNAL_INFO,
+            .pNext = nullptr,
+            .semaphore = draw_cmd_update_semaphore,
+            .value = draw_cmd_idx + 1,
+        };
+        vkSignalSemaphore(*logi_device_ptr, &signal_info);
+
+
+        return {};
+    }
+}
+
+
+namespace d2d::vk {
+    template<std::size_t FiF, ::d2d::impl::directly_renderable... Ts> //requires (sizeof...(Ts) > 0)
+    template<typename T>
+    result<void> renderable_tuple<FiF, std::tuple<Ts...>>::set_hidden(typename renderable_data<T, FiF>::key_type const& key, bool value) noexcept {
+        RESULT_VERIFY(this->template renderable_data_of<T>().set_hidden(key, value));
+        RESULT_VERIFY(this->update_draw_commands<T>());
+        return {};
+    }
+
+    template<std::size_t FiF, ::d2d::impl::directly_renderable... Ts> //requires (sizeof...(Ts) > 0)
+    template<typename T>
+    result<void> renderable_tuple<FiF, std::tuple<Ts...>>::toggle_hidden(typename renderable_data<T, FiF>::key_type const& key) noexcept {
+        RESULT_VERIFY(this->template renderable_data_of<T>().toggle_hidden(key));
+        RESULT_VERIFY(this->update_draw_commands<T>());
+        return {};
+    }
+
+
+    template<std::size_t FiF, ::d2d::impl::directly_renderable... Ts> //requires (sizeof...(Ts) > 0)
+    template<typename T>
+    bool renderable_tuple<FiF, std::tuple<Ts...>>::shown(typename renderable_data<T, FiF>::key_type const& key) noexcept {
+        return this->template renderable_data_of<T>().shown(key);
+    }
+
+    template<std::size_t FiF, ::d2d::impl::directly_renderable... Ts> //requires (sizeof...(Ts) > 0)
+    template<typename T>
+    bool renderable_tuple<FiF, std::tuple<Ts...>>::hidden(typename renderable_data<T, FiF>::key_type const& key) noexcept {
+        return this->template renderable_data_of<T>().hidden(key);
+    }
 }
 
 
@@ -133,6 +249,7 @@ namespace d2d::vk {
         constexpr static std::size_t I = renderable_index<T>;
         if(this->template renderable_data_of<T>().size() == 0) {
             data_buffs[I] = buffer{};
+            draw_cmd_buffs[I] = buffer{};
             return {};
         }
         
@@ -171,22 +288,24 @@ namespace d2d::vk {
         }
 
 
-        if constexpr (!renderable_constraints<T>::has_attributes) return {};
+        if constexpr (!renderable_constraints<T>::has_attributes) goto create_draw_cmds;
 
         constexpr static std::size_t I_a = renderable_index_with_attrib<T>;
 
         if(this->template renderable_data_of<T>().attribute_buffer_size() == 0) {
             attribute_buffs[I_a] = buffer{};
-            return {};
+            goto create_draw_cmds;
         }
         
         if(this->template renderable_data_of<T>().attribute_buffer_size() > attribute_buffs[I_a].size()) {
             (this->template renderable_data_of<Ts>().unbind_attributes(), ...);
-            renderable_allocator allocator(logi_device_ptr, phys_device_ptr, copy_cmd_pool_ptr);
             RESULT_VERIFY((allocator.template alloc_buffer<I_a, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT>(
                 std::span{attribute_buffs}, this->template renderable_data_of<T>().attribute_buffer_size(), shared_mem
             )));
         }
+
+    create_draw_cmds:
+        RESULT_VERIFY(this->update_draw_commands<T>());
         return {};
     }
 
@@ -430,53 +549,61 @@ namespace d2d::vk {
 namespace d2d::vk {
     template<std::size_t FiF, ::d2d::impl::directly_renderable... Ts> //requires (sizeof...(Ts) > 0)
     template<typename T>
-    constexpr const buffer& renderable_tuple<FiF, std::tuple<Ts...>>::index_buffer() const noexcept requires renderable_constraints<T>::has_indices { 
+    constexpr buffer const& renderable_tuple<FiF, std::tuple<Ts...>>::draw_command_buffer() const noexcept { 
+        return draw_cmd_buffs[renderable_index<T>];
+    }
+
+    template<std::size_t FiF, ::d2d::impl::directly_renderable... Ts> //requires (sizeof...(Ts) > 0)
+    template<typename T>
+    constexpr buffer const& renderable_tuple<FiF, std::tuple<Ts...>>::index_buffer() const noexcept requires renderable_constraints<T>::has_indices { 
         if constexpr (renderable_constraints<T>::has_fixed_indices) return static_data_buff; 
         else return data_buffs[renderable_index<T>];
     }
 
     template<std::size_t FiF, ::d2d::impl::directly_renderable... Ts> //requires (sizeof...(Ts) > 0)
     template<typename T>
-    constexpr const buffer& renderable_tuple<FiF, std::tuple<Ts...>>::uniform_buffer() const noexcept requires renderable_constraints<T>::has_uniform { 
+    constexpr buffer const& renderable_tuple<FiF, std::tuple<Ts...>>::uniform_buffer() const noexcept requires renderable_constraints<T>::has_uniform { 
         return uniform_buff; 
     }
 
     template<std::size_t FiF, ::d2d::impl::directly_renderable... Ts> //requires (sizeof...(Ts) > 0)
     template<typename T>
-    constexpr const buffer& renderable_tuple<FiF, std::tuple<Ts...>>::vertex_buffer() const noexcept requires renderable_constraints<T>::has_vertices  { 
+    constexpr buffer const& renderable_tuple<FiF, std::tuple<Ts...>>::vertex_buffer() const noexcept requires renderable_constraints<T>::has_vertices  { 
         if constexpr (renderable_constraints<T>::has_fixed_vertices) return static_data_buff; 
         else return data_buffs[renderable_index<T>];
     };
 
     template<std::size_t FiF, ::d2d::impl::directly_renderable... Ts> //requires (sizeof...(Ts) > 0)
     template<typename T> 
-    constexpr const buffer& renderable_tuple<FiF, std::tuple<Ts...>>::instance_buffer() const noexcept requires renderable_constraints<T>::has_instance_data { 
+    constexpr buffer const& renderable_tuple<FiF, std::tuple<Ts...>>::instance_buffer() const noexcept requires renderable_constraints<T>::has_instance_data { 
         return data_buffs[renderable_index<T>]; 
     };
 
     template<std::size_t FiF, ::d2d::impl::directly_renderable... Ts> //requires (sizeof...(Ts) > 0)
     template<typename T> 
-    constexpr const buffer& renderable_tuple<FiF, std::tuple<Ts...>>::attribute_buffer() const noexcept requires renderable_constraints<T>::has_attributes { 
+    constexpr buffer const& renderable_tuple<FiF, std::tuple<Ts...>>::attribute_buffer() const noexcept requires renderable_constraints<T>::has_attributes { 
         return attribute_buffs[renderable_index_with_attrib<T>]; 
     };
 
     template<std::size_t FiF, ::d2d::impl::directly_renderable... Ts> //requires (sizeof...(Ts) > 0)
     template<typename T> 
-    constexpr const buffer& renderable_tuple<FiF, std::tuple<Ts...>>::texture_idx_buffer() const noexcept requires renderable_constraints<T>::has_textures { 
+    constexpr buffer const& renderable_tuple<FiF, std::tuple<Ts...>>::texture_idx_buffer() const noexcept requires renderable_constraints<T>::has_textures { 
         return data_buffs[renderable_index<T>];
     };
 
 
     template<std::size_t FiF, ::d2d::impl::directly_renderable... Ts> //requires (sizeof...(Ts) > 0)
     template<typename T>
-    constexpr std::uint32_t renderable_tuple<FiF, std::tuple<Ts...>>::index_count(std::size_t i) const noexcept requires (!renderable_constraints<T>::has_fixed_indices && renderable_constraints<T>::has_indices) {
-        return this->template renderable_data_of<T>().index_count(i);
+    constexpr std::uint32_t renderable_tuple<FiF, std::tuple<Ts...>>::index_count(std::size_t i) const noexcept requires (renderable_constraints<T>::has_indices) {
+        if constexpr (renderable_constraints<T>::has_fixed_indices) return renderable_properties<T>::index_count;
+        else return this->template renderable_data_of<T>().index_count(i);
     }
 
     template<std::size_t FiF, ::d2d::impl::directly_renderable... Ts> //requires (sizeof...(Ts) > 0)
     template<typename T>
-    constexpr std::uint32_t renderable_tuple<FiF, std::tuple<Ts...>>::vertex_count(std::size_t i) const noexcept requires (!renderable_constraints<T>::has_fixed_vertices && renderable_constraints<T>::has_vertices) {
-        return this->template renderable_data_of<T>().vertex_count(i);
+    constexpr std::uint32_t renderable_tuple<FiF, std::tuple<Ts...>>::vertex_count(std::size_t i) const noexcept requires (renderable_constraints<T>::has_vertices) {
+        if constexpr (renderable_constraints<T>::has_fixed_vertices) return renderable_properties<T>::vertex_count;
+        else return this->template renderable_data_of<T>().vertex_count(i);
     }
 
     template<std::size_t FiF, ::d2d::impl::directly_renderable... Ts> //requires (sizeof...(Ts) > 0)
@@ -485,17 +612,26 @@ namespace d2d::vk {
         return this->template renderable_data_of<T>().instance_count();
     }
 
+    template<std::size_t FiF, ::d2d::impl::directly_renderable... Ts> //requires (sizeof...(Ts) > 0)
+    template<typename T>
+    constexpr std::size_t renderable_tuple<FiF, std::tuple<Ts...>>::draw_count() const noexcept { 
+        return draw_cmd_cnt[renderable_index<T>];
+        //return std::get<renderable_index<T>>(draw_commands).size();
+    }
+
 
     template<std::size_t FiF, ::d2d::impl::directly_renderable... Ts> //requires (sizeof...(Ts) > 0)
     template<typename T>
-    constexpr std::uint32_t renderable_tuple<FiF, std::tuple<Ts...>>::first_index(std::size_t i) const noexcept requires (!renderable_constraints<T>::has_fixed_indices && renderable_constraints<T>::has_indices) {
-        return this->template renderable_data_of<T>().first_index(i);
+    constexpr std::uint32_t renderable_tuple<FiF, std::tuple<Ts...>>::first_index(std::size_t i) const noexcept requires (renderable_constraints<T>::has_indices) {
+        if constexpr (renderable_constraints<T>::has_fixed_indices) return 0;
+        else return this->template renderable_data_of<T>().first_index(i);
     }
 
     template<std::size_t FiF, ::d2d::impl::directly_renderable... Ts> //requires (sizeof...(Ts) > 0)
     template<typename T>
-    constexpr std::uint32_t renderable_tuple<FiF, std::tuple<Ts...>>::first_vertex(std::size_t i) const noexcept requires (!renderable_constraints<T>::has_fixed_vertices && renderable_constraints<T>::has_vertices) {
-        return this->template renderable_data_of<T>().first_vertex(i);
+    constexpr std::uint32_t renderable_tuple<FiF, std::tuple<Ts...>>::first_vertex(std::size_t i) const noexcept requires (renderable_constraints<T>::has_vertices || renderable_constraints<T>::has_fixed_indices) {
+        if constexpr (renderable_constraints<T>::has_fixed_vertices || renderable_constraints<T>::has_fixed_indices) return 0;
+        else return this->template renderable_data_of<T>().first_vertex(i);
     }
 
     template<std::size_t FiF, ::d2d::impl::directly_renderable... Ts> //requires (sizeof...(Ts) > 0)

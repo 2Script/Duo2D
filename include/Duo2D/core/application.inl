@@ -3,9 +3,11 @@
 
 #include <atomic>
 #include <memory>
+#include <ratio>
 #include <utility>
 
 #include <vulkan/vulkan.h>
+#include <vulkan/vulkan_core.h>
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
@@ -184,8 +186,22 @@ namespace d2d {
     }
 
     template<typename WindowT>
-    result<void> application<WindowT>::join() noexcept {
+    result<void> application<WindowT>::join() const noexcept {
+        for (auto const& w : windows) {
+            VkSemaphoreWaitInfo wait_info {
+                .sType = VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO,
+                .pNext = nullptr,
+                .flags = 0,
+                .semaphoreCount = 1,
+                .pSemaphores = &w.second.draw_cmd_update_semaphore,
+                .pValues = &w.second.draw_cmd_update_count,
+            };
+            __D2D_VULKAN_VERIFY(vkWaitSemaphores(*logi_device_ptr, &wait_info, 3 * std::nano::den));
+        }
+        
         __D2D_VULKAN_VERIFY(vkDeviceWaitIdle(*logi_device_ptr));
+
+
         return  {};
     }
 }

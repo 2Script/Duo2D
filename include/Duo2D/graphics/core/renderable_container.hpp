@@ -32,6 +32,7 @@ namespace d2d {
     struct renderable_container<ChildT, N, ContainerT> : public ContainerT<hybrid_ptr<ChildT>, N>, public impl::renderable_event_callbacks {
         using container_type = ContainerT<hybrid_ptr<ChildT>, N>;
         using renderable_type = ChildT;
+        using input_map_key_type = typename vk::impl::renderable_input_map<ChildT>::key_type;
         using value_type             = typename container_type::value_type;
         using iterator               = typename container_type::iterator;
         using const_iterator         = typename container_type::const_iterator;
@@ -46,10 +47,30 @@ namespace d2d {
 
         constexpr renderable_container(container_type const& container) noexcept;
         constexpr renderable_container(container_type     && container) noexcept;
+    public:
+        constexpr renderable_container(renderable_container&& other) noexcept = default;
+        constexpr renderable_container& operator=(renderable_container&& other) noexcept = default;
+        constexpr renderable_container(renderable_container const& other) noexcept = default;
+        constexpr renderable_container& operator=(renderable_container const& other) noexcept = default;
 
     public:
+        ~renderable_container() noexcept;
+
+    public:
+        template<typename... Ts>
+        constexpr void on_window_insert(basic_window<Ts...>& win, input_map_key_type insertion_key) noexcept;
+
         template<typename U = ChildT, typename... Ts>
         constexpr void on_window_insert_child_renderable(basic_window<Ts...>&, typename basic_window<Ts...>::template iterator<U> inserted_renderable_iter, std::size_t container_idx) noexcept;
+    
+    private:
+        //TODO user iterators (e.g. an iterator_wrapper class) in the main child container so that this vector isn't needed anymore
+        input_map_key_type self_key = 0;
+        ContainerT<input_map_key_type, N> child_keys{};
+        vk::impl::renderable_input_data<ChildT>* child_input_data_ptr = nullptr;
+    private:
+        template<typename... Ts>
+        friend struct basic_window;
     };
 
     //TODO?
@@ -64,9 +85,8 @@ namespace d2d {
         //TODO: implement an alternative to this
         //static_assert(std::is_base_of_v<dynamic_renderable_container<T, ChildT, ContainerT>, T>, "dynamic_renderable_container<T, ...> must be a base class of T");
     public:
-        template<typename V>
-        using input_map_iterator_type = typename vk::impl::renderable_input_map<V>::iterator;
-        using iterator_vector_type = std::vector<input_map_iterator_type<ChildT>>;
+        using input_map_key_type = typename vk::impl::renderable_input_map<ChildT>::key_type;
+        using key_vector_type = std::vector<input_map_key_type>;
         using input_data_type = vk::impl::renderable_input_data<ChildT>;
     public:
         using container_type = ContainerT<hybrid_ptr<ChildT>>;
@@ -109,7 +129,7 @@ namespace d2d {
 
     protected:
         template<typename U = T, typename... Ts>
-        constexpr void on_window_insert(basic_window<Ts...>& win, std::string_view insertion_key) noexcept;
+        constexpr void on_window_insert(basic_window<Ts...>& win, input_map_key_type insertion_key) noexcept;
 
         template<typename U = ChildT, typename... Ts>
         constexpr void on_window_insert_child_renderable(basic_window<Ts...>& win, typename basic_window<Ts...>::template iterator<U> inserted_child_iter, std::size_t container_idx) noexcept;
@@ -137,14 +157,14 @@ namespace d2d {
 
     private:
         //TODO user iterators (e.g. an iterator_wrapper class) in the main child container so that this vector isn't needed anymore
-        std::vector<input_map_iterator_type<ChildT>> child_iters;
+        key_vector_type child_keys;
         input_data_type* child_input_data_ptr;
 
     private:
         void* window_ptr;
-        std::string self_key;
+        input_map_key_type self_key;
         result<void>(*apply_changes_fn)(void*);
-        bool(*insert_children_fn)(void*, std::string_view, T&);
+        bool(*insert_children_fn)(void*, input_map_key_type, T&);
         bool live;
     };
 }
@@ -157,6 +177,8 @@ namespace d2d {
         using tuple_type = std::tuple<RenderableContainerTs...>;
         using base_type = std::tuple<hybrid_ptr<RenderableContainerTs>...>;
     public:
+        //NOTE: no destructor to remove child container, since this whole system will probably be reworked later (i.e. tuples and containers will be merged)
+
         using base_type::base_type;
 
         constexpr static std::size_t container_count = sizeof...(RenderableContainerTs);
@@ -168,11 +190,22 @@ namespace d2d {
 
         template<std::size_t I>
         constexpr value_type<I>& get_container() noexcept;
+        template<std::size_t I>
+        constexpr value_type<I> const& get_container() const noexcept;
 
 
     public:
+        template<typename... Ts>
+        constexpr void on_window_insert(basic_window<Ts...>& win, std::uint64_t insertion_key) noexcept;
+
         template<std::size_t I, typename... Ts>
         constexpr void on_window_insert_child_container(basic_window<Ts...>&, typename basic_window<Ts...>::template iterator<container_type<I>> inserted_child_iter) noexcept;
+    
+    private:
+        std::uint64_t self_key = 0;
+    private:
+        template<typename... Ts>
+        friend struct basic_window;
     };
 }
 

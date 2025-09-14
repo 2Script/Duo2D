@@ -133,7 +133,7 @@ namespace d2d {
 
 namespace d2d {
     template<typename... Ts>
-    constexpr void text::on_window_insert(basic_window<Ts...>& win, std::string_view insertion_key) noexcept {
+    constexpr void text::on_window_insert(basic_window<Ts...>& win, std::uint64_t insertion_key) noexcept {
         base_type::on_window_insert(win, insertion_key);
 
         bool changes_queued = font_data_map_ptr.expired();

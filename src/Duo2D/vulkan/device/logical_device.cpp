@@ -42,6 +42,7 @@ namespace d2d::vk {
             .timelineSemaphore = VK_TRUE,
         };
         VkPhysicalDeviceFeatures desired_base_features {
+            .multiDrawIndirect = VK_TRUE,
             .samplerAnisotropy = VK_TRUE,
         };
 

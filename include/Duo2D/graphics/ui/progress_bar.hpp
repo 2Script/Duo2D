@@ -18,9 +18,10 @@ namespace d2d {
 
 namespace d2d {
     //"fake" progress bar - not the final product, just used for testing
-    class progress_bar : public renderable_container_tuple<renderable_container<d2d::styled_rect, 2>, text, text_tuple, styled_rect> {
+    //TODO: allow directly renderables once again (directly renderables dont have self_key member)
+    class progress_bar : public renderable_container_tuple<renderable_container<d2d::styled_rect, 2>, text, text_tuple, renderable_container<d2d::styled_rect, 1>> {
     public:
-        using base_type = renderable_container_tuple<renderable_container<d2d::styled_rect, 2>, text, text_tuple, styled_rect>;
+        using base_type = renderable_container_tuple<renderable_container<d2d::styled_rect, 2>, text, text_tuple, renderable_container<d2d::styled_rect, 1>>;
     public:
         inline progress_bar(std::size_t text_reserve = 0) noexcept;
         inline progress_bar(pt2f pos, size2f bar_size, font const& text_font, true_color border_color, true_color bar_color, true_color text_color = 0x00'00'00'FF, font_size_t text_font_size = 24, std::size_t text_reserve = 0) noexcept;

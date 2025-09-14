@@ -155,7 +155,7 @@ namespace d2d {
         std::pair<iterator<T>, bool> try_emplace(S&& str, Args&&... args) noexcept requires impl::not_convertible_to_iters<S, T, iterator, const_iterator>;
     private:
         template<typename T>
-        void apply_insertion(std::string_view name, T& inserted_value) noexcept;
+        void apply_insertion(key_type<T> key, T& inserted_value) noexcept;
     public:
         template<typename T>
         iterator<T> erase(iterator<T> pos) noexcept;
@@ -164,7 +164,7 @@ namespace d2d {
         template<typename T>
         iterator<T> erase(const_iterator<T> first, const_iterator<T> last) noexcept;
         template<typename T>
-        std::size_t erase(std::string_view key) noexcept;
+        std::size_t erase(key_type<T> const& key) noexcept;
 
     public:
         template<typename T>
@@ -172,6 +172,14 @@ namespace d2d {
         template<typename T>
         std::size_t size() const noexcept;
 
+    public:
+
+    public:
+        template<typename T> result<void> set_hidden(key_type<T> const& key, bool value) noexcept;
+        template<typename T> result<void> toggle_hidden(key_type<T> const& key) noexcept;
+
+        template<typename T> bool shown(key_type<T> const& key) noexcept;
+        template<typename T> bool hidden(key_type<T> const& key) noexcept;
 
 
     public:
@@ -216,9 +224,9 @@ namespace d2d {
         template<impl::when_decayed_same_as<font>      T> constexpr impl::font_path_map                      const& renderable_data_of() const noexcept;
 
 
-        template<typename                              T> constexpr bool insert_children(std::string_view    , T&          ) noexcept { return false; }
-        template<impl::renderable_container_like       T> constexpr bool insert_children(std::string_view key, T& container) noexcept;
-        template<impl::renderable_container_tuple_like T> constexpr bool insert_children(std::string_view key, T& tuple    ) noexcept;
+        template<typename                              T> constexpr bool insert_children(key_type<T>    , T&          ) noexcept { return false; }
+        template<impl::renderable_container_like       T> constexpr bool insert_children(key_type<T> key, T& container) noexcept;
+        template<impl::renderable_container_tuple_like T> constexpr bool insert_children(key_type<T> key, T& tuple    ) noexcept;
 
 
 
@@ -235,8 +243,14 @@ namespace d2d {
         
     private:
         friend vk::physical_device;
+        
+        template<typename, std::size_t, template<typename, std::size_t...> typename>
+        friend class renderable_container;
         template<typename, typename, template<typename...> typename>
         friend class dynamic_renderable_container;
+
+        template<typename WindowT>
+        friend class application;
 
 
     private:
@@ -277,7 +291,6 @@ namespace d2d {
         struct frame_operation { enum { image_acquired, /*cmd_buffer_finished,*/ num_semaphore_types }; };
         std::array<std::array<vk::semaphore, frames_in_flight>, frame_operation::num_semaphore_types> frame_operation_semaphores;
         std::vector<vk::semaphore> rendering_complete_semaphores;
-        vk::semaphore timeline_semaphore;
         
         //TEMP
         moveable_atomic<std::size_t> frame_count, update_count;

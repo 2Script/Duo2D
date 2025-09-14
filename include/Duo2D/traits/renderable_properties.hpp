@@ -33,6 +33,10 @@ namespace d2d {
             typename traits_type::vertex_type;
         };
 
+        constexpr static bool has_index_type = requires {
+            requires std::is_same_v<typename traits_type::index_type, std::uint16_t> || std::is_same_v<typename traits_type::index_type, std::uint32_t>;
+        };
+
         constexpr static bool has_attribute_types = requires {
             std::tuple_size_v<typename traits_type::attribute_types>;
         };

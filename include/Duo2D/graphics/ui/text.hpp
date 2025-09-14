@@ -40,7 +40,7 @@ namespace d2d {
 
     public:
         template<typename... Ts>
-        constexpr void on_window_insert(basic_window<Ts...>& win, std::string_view insertion_key) noexcept;
+        constexpr void on_window_insert(basic_window<Ts...>& win, std::uint64_t insertion_key) noexcept;
 
 
     private:

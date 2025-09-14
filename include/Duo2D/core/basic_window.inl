@@ -2,6 +2,8 @@
 #include "Duo2D/core/basic_window.hpp"
 
 #include <GLFW/glfw3.h>
+#include <atomic>
+#include <climits>
 #include <cstdint>
 #include <cstring>
 #include <format>
@@ -114,8 +116,6 @@ namespace d2d {
 
         //update uniform buffer
         (Ts::on_swap_chain_update(*this, this->template uniform_map<Ts>()), ...);
-
-        RESULT_TRY_MOVE(timeline_semaphore, make<vk::semaphore>(logi_device, VK_SEMAPHORE_TYPE_TIMELINE));
 
         return {};
     }
@@ -319,19 +319,23 @@ namespace d2d {
         command_buffers[frame_idx].render_begin(_swap_chain, _render_pass, _framebuffers, image_index);
 
         //TODO?: replace with functor (e.g. a generic_member_functor class)
+        std::unique_lock<std::mutex> draw_cmd_buff_lock(this->draw_cmd_buff_mutexes[frame_idx]);
         RESULT_VERIFY(ol::to_result((std::bind(&basic_window<Ts...>::draw<Ts>, this, frame_idx) && ...)));
+        std::size_t draw_cmd_idx = this->draw_cmd_update_count++;//this->draw_cmd_update_count.fetch_add(1, std::memory_order::relaxed);
+        draw_cmd_buff_lock.unlock();
 
         command_buffers[frame_idx].render_end();
         RESULT_VERIFY(command_buffers[frame_idx].end());
 
         //only 1 sempahore for now becuase current use of timeline semaphores has a possible latency:
         //TODO: semaphores need to be setup so that the current frame being rendered (and not the frame currently being submitted) needs to wait on the CPU operations
-        const std::array<vk::semaphore_submit_info, 1> wait_semaphore_infos = {{
+        const std::array<vk::semaphore_submit_info, 2> wait_semaphore_infos = {{
             {frame_operation_semaphores[frame_operation::image_acquired][frame_idx], VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT},
-            //{timeline_semaphore, VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT, update_count.value.load()}
+            {this->draw_cmd_update_semaphore, VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT, draw_cmd_idx}
         }}; 
-        const std::array<vk::semaphore_submit_info, 1> submit_semaphore_infos = {{
+        const std::array<vk::semaphore_submit_info, 2> submit_semaphore_infos = {{
             {rendering_complete_semaphores[image_index], VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT},
+            {this->draw_cmd_update_semaphore, VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT, draw_cmd_idx + 1}
         }}; 
         RESULT_VERIFY(command_buffers[frame_idx].submit(vk::queue_family::graphics, wait_semaphore_infos, submit_semaphore_infos, render_fences[frame_idx]));
 
@@ -452,9 +456,9 @@ namespace d2d {
 namespace d2d {
     template<typename... Ts>
     template<typename T>
-    void basic_window<Ts...>::apply_insertion(std::string_view name, T& inserted_value) noexcept {
-        insert_children<T>(name, inserted_value);
-        inserted_value.on_window_insert(*this, name);
+    void basic_window<Ts...>::apply_insertion(key_type<T> key, T& inserted_value) noexcept {
+        insert_children<T>(key, inserted_value);
+        inserted_value.on_window_insert(*this, key);
     }
 }
 
@@ -477,7 +481,7 @@ namespace d2d {
     }
     template<typename... Ts>
     template<typename T>
-    std::size_t basic_window<Ts...>::erase(std::string_view key) noexcept {
+    std::size_t basic_window<Ts...>::erase(key_type<T> const& key) noexcept {
         return renderable_data_of<T>().erase(key);
     }
 }
@@ -493,6 +497,34 @@ namespace d2d {
     template<typename T>
     std::size_t basic_window<Ts...>::size() const noexcept {
         return renderable_data_of<T>().size();
+    }
+}
+
+
+namespace d2d {
+    template<typename... Ts>
+    template<typename T>
+    result<void> basic_window<Ts...>::set_hidden(key_type<T> const& key, bool value) noexcept {
+        if constexpr(impl::directly_renderable<T>)
+            RESULT_VERIFY((base_tuple_type::template set_hidden<T>(key, value)))
+        else if constexpr(impl::renderable_container_like<T>) {
+            auto it = renderable_data_of<T>().find(key);
+            if(it == renderable_data_of<T>().end()) return errc::element_not_found;
+
+            for(std::size_t i = 0; i < it->second.size(); ++i)
+                RESULT_VERIFY(set_hidden<typename T::renderable_type>(it->second.child_keys[i], value))
+        }
+        else {
+            auto it = renderable_data_of<T>().find(key);
+            if(it == renderable_data_of<T>().end()) return errc::element_not_found;
+
+            auto set_all_hidden = [this]<std::size_t... Is>(T const& tuple, bool v, std::index_sequence<Is...>) noexcept -> result<void> {
+                RESULT_VERIFY(ol::to_result((std::bind(&basic_window<Ts...>::set_hidden<typename T::template container_type<Is>>, this, tuple.template get_container<Is>()->self_key, v) && ...)));
+                return {};
+            };
+            RESULT_VERIFY(set_all_hidden(it->second, value, std::make_index_sequence<T::container_count>{}));
+        }
+        return {};
     }
 }
 
@@ -649,12 +681,11 @@ namespace d2d {
 
     template<typename... Ts>
     template<impl::renderable_container_like T> 
-    constexpr bool basic_window<Ts...>::insert_children(std::string_view name, T& container) noexcept {
+    constexpr bool basic_window<Ts...>::insert_children(key_type<T> key, T& container) noexcept {
         bool emplaced = false;
+        key_type<T> k = key + (static_cast<std::uint64_t>(0b1) << ((sizeof(std::uint64_t) - sizeof(std::uint8_t)) * CHAR_BIT));
         for(std::size_t i = 0; i < container.size(); ++i) {
-            bool formatted_key = name.length() >= container_child_prefix.length() && std::memcmp(name.data(), container_child_prefix.data(), container_child_prefix.size()) == 0;
-            std::string s = formatted_key ? std::format("{}_{}", name, i) : std::format(container_child_format_key, name, std::format("_{}", i));
-            auto insert_result = this->insert_or_assign<typename T::renderable_type>(s, std::move(*(container[i])));
+            auto insert_result = this->insert_or_assign<typename T::renderable_type>(k + i, std::move(*(container[i])));
             container.template on_window_insert_child_renderable<typename T::renderable_type>(*this, insert_result.first, i);
             emplaced = insert_result.second || emplaced;
         }
@@ -664,11 +695,10 @@ namespace d2d {
 
     template<typename... Ts>
     template<impl::renderable_container_tuple_like T> 
-    constexpr bool basic_window<Ts...>::insert_children(std::string_view name, T& tuple) noexcept {
+    constexpr bool basic_window<Ts...>::insert_children(key_type<T> key, T& tuple) noexcept {
+        key_type<T> k = key + (static_cast<std::uint64_t>(0b1) << ((sizeof(std::uint64_t) - sizeof(std::uint8_t)) * CHAR_BIT));
         auto insert_child = [&, this]<std::size_t I>(std::integral_constant<std::size_t, I>) noexcept -> bool {
-            bool formatted_key = name.length() >= container_child_prefix.length() && std::memcmp(name.data(), container_child_prefix.data(), container_child_prefix.size()) == 0;
-            std::string s = formatted_key ? std::format("{}_{}", name, I) : std::format(container_tuple_child_format_key, name, std::format("_{}", I));
-            auto insert_result = this->insert_or_assign<typename T::template container_type<I>>(s, std::move(*(tuple.template get_container<I>())));
+            auto insert_result = this->insert_or_assign<typename T::template container_type<I>>(k + I, std::move(*(tuple.template get_container<I>())));
             tuple.template on_window_insert_child_container<I>(*this, insert_result.first);
             return insert_result.second;
         };
