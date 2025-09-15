@@ -1,11 +1,13 @@
 #pragma once
 #include <cstddef>
+#include <functional>
 #include <type_traits>
 #include <tuple>
 
 #include <llfio.hpp>
 
 #include "Duo2D/traits/directly_renderable.hpp"
+#include "Duo2D/traits/interactable_like.hpp"
 #include "Duo2D/traits/renderable_container_like.hpp"
 #include "Duo2D/traits/same_as.hpp"
 #include "Duo2D/vulkan/memory/renderable_data.hpp"
@@ -47,6 +49,8 @@ namespace d2d::vk {
         using data_single_tuple_type = std::conditional_t<::d2d::impl::directly_renderable<T>, std::tuple<T>, std::tuple<>>;
         template<typename T>
         using container_single_tuple_type = std::conditional_t<::d2d::impl::renderable_container_like<T>, std::tuple<T>, std::tuple<>>;
+        template<typename T>
+        using interactable_single_tuple_type = std::conditional_t<::d2d::impl::interactable_like<T>, std::tuple<T>, std::tuple<>>;
 
         template<typename T>
         struct container_tuple_single_tuple : std::type_identity<std::tuple<>> {};
@@ -61,11 +65,19 @@ namespace d2d::vk {
         template<typename... TupleTs>
         struct input_map_tuple<std::tuple<TupleTs...>> : std::type_identity<std::tuple<impl::renderable_input_map<TupleTs>...>> {};
 
+        template<typename T>
+        struct input_ref_map_tuple;
+        template<typename... TupleTs>
+        struct input_ref_map_tuple<std::tuple<TupleTs...>> : std::type_identity<std::tuple<impl::renderable_input_map<std::pair<std::reference_wrapper<TupleTs>, bool>>...>> {};
+
+
     public:
-        using data_tuple_type               = typename impl::unique_tuple_cat_result<data_single_tuple_type<Ts>...>::type;
-        using container_data_tuple_type     = typename impl::unique_tuple_cat_result<container_single_tuple_type<Ts>..., container_tuple_single_tuple_type<Ts>...>::type;
-        using data_map_tuple_type           = typename input_map_tuple<data_tuple_type>::type;
-        using container_data_map_tuple_type = typename input_map_tuple<container_data_tuple_type>::type;
+        using data_tuple_type                = typename impl::unique_tuple_cat_result<data_single_tuple_type<Ts>...>::type;
+        using container_data_tuple_type      = typename impl::unique_tuple_cat_result<container_single_tuple_type<Ts>..., container_tuple_single_tuple_type<Ts>...>::type;
+        using interactable_tuple_type        = typename impl::unique_tuple_cat_result<interactable_single_tuple_type<Ts>...>::type;
+        using data_map_tuple_type            = typename input_map_tuple<data_tuple_type>::type;
+        using container_data_map_tuple_type  = typename input_map_tuple<container_data_tuple_type>::type;
+        using interactable_map_tuple_type = typename input_ref_map_tuple<interactable_tuple_type>::type;
         
         template<typename T, std::size_t FiF> struct map_traits {};
         template<::d2d::impl::when_decayed_same_as<::d2d::font> F, std::size_t FiF> struct map_traits<F, FiF> {

@@ -1,8 +1,11 @@
 #pragma once
+#include "Duo2D/arith/point.hpp"
 #include "Duo2D/arith/rect.hpp"
 #include "Duo2D/graphics/core/color.hpp"
 #include "Duo2D/graphics/core/renderable.hpp"
 #include "Duo2D/graphics/prim/styled_rect.hpp"
+#include "Duo2D/input/interactable.hpp"
+#include "Duo2D/traits/interactable_like.hpp"
 #include "Duo2D/traits/renderable_traits.hpp"
 #include "Duo2D/arith/size.hpp"
 #include "Duo2D/shaders/debug_rect.hpp"
@@ -33,7 +36,7 @@ namespace d2d {
 
 
 namespace d2d {
-    struct debug_rect : public renderable<debug_rect> {
+    struct debug_rect : public renderable<debug_rect>, public interactable {
         rect<float> bounds;
         true_color color; //TEMP: only color, replace with style
         vk::attribute<transform2> transform = {};
@@ -51,9 +54,45 @@ namespace d2d {
         constexpr attribute_types attributes() noexcept { return std::tie(transform, border_width); }
     
     public:
+        constexpr bool contains(pt2d pos) noexcept {
+            return bounds.contains(static_cast<pt2f>(pos * swap_chain_ratio()));
+        }
+
+    private:
+        inline static sz2d& swap_chain_ratio() noexcept {
+            static sz2d ratio{1,1};
+            return ratio;
+        }
+
+
+    public:
         template<typename... Ts, typename UniformT, std::size_t N>
         constexpr static void on_swap_chain_update(basic_window<Ts...> const& win, std::span<UniformT, N> uniform_map) noexcept {
             for(std::size_t i = 0; i < N; ++i) std::memcpy(&uniform_map[i], &win.swap_chain().extent(), sizeof(UniformT));
+            swap_chain_ratio() = static_cast<sz2d>(win.swap_chain().extent()) / static_cast<sz2d>(win.screen_size());
+        }
+
+    public:
+        template<typename... Ts>
+        constexpr void on_press(basic_window<Ts...>&, input::combination, input::mouse_pos_t) noexcept {
+            std::cout << "debug rect " << "pressed" << std::endl;
+        }
+        template<typename... Ts>
+        constexpr void on_release(basic_window<Ts...>&, input::combination, input::mouse_pos_t) noexcept {
+            std::cout << "debug rect " << "release" << std::endl;
+        }
+        template<typename... Ts>
+        constexpr void on_hover(basic_window<Ts...>&, pt2d) noexcept {
+            std::cout << "debug rect " << "hover" << std::endl;
+        }
+    public:
+        template<typename... Ts>
+        constexpr void on_gain_focus(basic_window<Ts...>&, input::combination, input::mouse_pos_t) noexcept {
+            std::cout << "debug rect " << "gained focus" << std::endl;
+        }
+        template<typename... Ts>
+        constexpr void on_lose_focus(basic_window<Ts...>&, input::combination, input::mouse_pos_t) noexcept {
+            std::cout << "debug rect " << "lost focus" << std::endl;
         }
     };
 }

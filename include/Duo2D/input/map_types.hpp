@@ -8,5 +8,5 @@
 
 namespace d2d::input {
     using binding_map = std::unordered_map<combination, event_set>;
-    using event_fns_map = std::unordered_map<event_t, std::function<generic_event_function>>;
+    using event_fns_map = std::unordered_map<categorized_event_t, std::function<generic_event_function>>;
 }

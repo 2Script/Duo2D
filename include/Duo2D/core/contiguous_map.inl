@@ -139,7 +139,7 @@ namespace d2d {
         if(first == last) return last;
 
         typename base_type::iterator ret;
-        for(auto it = first; it < last; ++it)
+        for(auto it = first; it != last; ++it)
             ret = this->erase(it);
         return ret;
 

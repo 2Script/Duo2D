@@ -11,6 +11,7 @@ namespace d2d::input {
     namespace category {
     enum : category_id_t {
         system,
+        ui,
 
         num_default_categories,
     };

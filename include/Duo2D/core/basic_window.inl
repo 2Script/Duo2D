@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <cstring>
 #include <format>
+#include <iterator>
 #include <memory>
 #include <optional>
 #include <result/verify.h>
@@ -24,7 +25,9 @@
 #include "Duo2D/input/combination.hpp"
 #include "Duo2D/input/event_function.hpp"
 #include "Duo2D/input/event_int.hpp"
+#include "Duo2D/input/interactable.hpp"
 #include "Duo2D/traits/directly_renderable.hpp"
+#include "Duo2D/traits/interactable_like.hpp"
 #include "Duo2D/traits/renderable_container_like.hpp"
 #include "Duo2D/traits/same_as.hpp"
 #include "Duo2D/vulkan/core/command_buffer.hpp"
@@ -458,6 +461,7 @@ namespace d2d {
     template<typename T>
     void basic_window<Ts...>::apply_insertion(key_type<T> key, T& inserted_value) noexcept {
         insert_children<T>(key, inserted_value);
+        if constexpr(impl::interactable_like<T>) interactables_of<T>().insert_or_assign(key, std::make_pair(std::ref(inserted_value), false));//interactable_ptrs.push_back(static_cast<interactable*>(&inserted_value));
         inserted_value.on_window_insert(*this, key);
     }
 }
@@ -467,21 +471,57 @@ namespace d2d {
     template<typename... Ts>
     template<typename T>
     basic_window<Ts...>::iterator<T> basic_window<Ts...>::erase(basic_window<Ts...>::iterator<T> pos) noexcept {
+        if constexpr(impl::interactable_like<T>) {
+            interactables_of<T>().erase(pos->first);
+            ////TODO: improve this after using a vector for renderable inputs
+            //auto it = std::remove(interactable_ptrs.begin(), interactable_ptrs.end(), static_cast<interactable*>(&pos->second));
+            //std::size_t erase_idx = std::distance(interactable_ptrs.begin(), it);
+            //focus_idx.compare_exchange_strong(erase_idx, static_cast<std::size_t>(-1), std::memory_order_relaxed);
+            //interactable_ptrs.erase(it, interactable_ptrs.end());
+        }
+
         return renderable_data_of<T>().erase(pos);
     }
     template<typename... Ts>
     template<typename T>
     basic_window<Ts...>::iterator<T> basic_window<Ts...>::erase(basic_window<Ts...>::const_iterator<T> pos) noexcept {
+        if constexpr(impl::interactable_like<T>){
+            interactables_of<T>().erase(pos->first);
+            ////TODO: improve this after using a vector for renderable inputs
+            //auto it = std::remove(interactable_ptrs.begin(), interactable_ptrs.end(), static_cast<interactable*>(&pos->second));
+            //std::size_t erase_idx = std::distance(interactable_ptrs.begin(), it);
+            //focus_idx.compare_exchange_strong(erase_idx, static_cast<std::size_t>(-1), std::memory_order_relaxed);
+            //interactable_ptrs.erase(it, interactable_ptrs.end());
+        }
+
         return renderable_data_of<T>().erase(pos);
     }
     template<typename... Ts>
     template<typename T>
     basic_window<Ts...>::iterator<T> basic_window<Ts...>::erase(basic_window<Ts...>::const_iterator<T> first, basic_window<Ts...>::const_iterator<T> last) noexcept {
+        if constexpr(impl::interactable_like<T>) {
+            for(auto map_it = first; map_it != last; ++map_it){
+                interactables_of<T>().erase(map_it->first);
+                ////TODO: improve this after using a vector for renderable inputs
+                //auto it = std::remove(interactable_ptrs.begin(), interactable_ptrs.end(), static_cast<interactable*>(&map_it->second));
+                //std::size_t erase_idx = std::distance(interactable_ptrs.begin(), it);
+                //focus_idx.compare_exchange_strong(erase_idx, static_cast<std::size_t>(-1), std::memory_order_relaxed);
+                //interactable_ptrs.erase(it, interactable_ptrs.end());
+            }
+        }
         return renderable_data_of<T>().erase(first, last);
     }
     template<typename... Ts>
     template<typename T>
     std::size_t basic_window<Ts...>::erase(key_type<T> const& key) noexcept {
+        if constexpr(impl::interactable_like<T>){
+            interactables_of<T>().erase(key);
+            ////TODO: improve this after using a vector for renderable inputs
+            //auto it = std::remove(interactable_ptrs.begin(), interactable_ptrs.end(), static_cast<interactable*>(&renderable_data_of<T>().find(key)->second));
+            //std::size_t erase_idx = std::distance(interactable_ptrs.begin(), it);
+            //focus_idx.compare_exchange_strong(erase_idx, static_cast<std::size_t>(-1), std::memory_order_relaxed);
+            //interactable_ptrs.erase(it, interactable_ptrs.end());
+        }
         return renderable_data_of<T>().erase(key);
     }
 }
@@ -566,10 +606,10 @@ namespace d2d {
         while(category_flags.any()) {
             input::category_id_t category_id = input::max_category_id - std::countl_zero(category_flags.to_ullong());
             input::event_id_t event_id = event_set_it->second.event_ids[category_id];
-            auto event_fn_it = win_ptr->event_functions().find(input::event_t{event_id, category_id});
+            auto event_fn_it = win_ptr->event_functions().find(input::categorized_event_t{event_id, category_id});
             if(event_fn_it != win_ptr->event_functions().end()) {
-                std::invoke(event_fn_it->second, win_ptr, combo, pressed, input::event_t{event_id, category_id}, mouse_aux_data, glfwGetWindowUserPointer(window_ptr));
-                return;
+                std::invoke(event_fn_it->second, win_ptr, combo, pressed, input::categorized_event_t{event_id, category_id}, mouse_aux_data, glfwGetWindowUserPointer(window_ptr));
+                //return;
             }
             category_flags.reset(category_id);
         }
@@ -605,8 +645,8 @@ namespace d2d {
 
     template<typename... Ts>
     void basic_window<Ts...>::mouse_move(GLFWwindow* window_ptr, double x, double y) noexcept {
-        thread_pool().detach_task(std::bind(process_input, window_ptr, input::mouse_code::move, true, pt2d{x, y}));
-        thread_pool().detach_task(std::bind(process_input, window_ptr, input::mouse_code::move, false, pt2d{x, y}));
+        thread_pool().detach_task(std::bind(process_input, window_ptr, input::mouse_code::move, true, input::mouse_aux_t{pt2d{x, y}}));
+        thread_pool().detach_task(std::bind(process_input, window_ptr, input::mouse_code::move, false, input::mouse_aux_t{pt2d{x, y}}));
         //return process_input(window_ptr, input::mouse_code::move, std::nullopt, pt2d{x, y});
     }
 
@@ -618,16 +658,8 @@ namespace d2d {
 
     template<typename... Ts>
     void basic_window<Ts...>::mouse_scroll(GLFWwindow* window_ptr, double x, double y) noexcept {
-        if(x != 0) {
-            thread_pool().detach_task(std::bind(process_input, window_ptr, x > 0 ? input::mouse_code::scroll_left : input::mouse_code::scroll_right, true, x));
-            thread_pool().detach_task(std::bind(process_input, window_ptr, x > 0 ? input::mouse_code::scroll_left : input::mouse_code::scroll_right, false, x));
-            //process_input(window_ptr, x > 0 ? input::mouse_code::scroll_left : input::mouse_code::scroll_right, std::nullopt, x);
-        }
-        if(y != 0) {
-            thread_pool().detach_task(std::bind(process_input, window_ptr, y > 0 ? input::mouse_code::scroll_up : input::mouse_code::scroll_down, true, y));
-            thread_pool().detach_task(std::bind(process_input, window_ptr, y > 0 ? input::mouse_code::scroll_up : input::mouse_code::scroll_down, false, y));
-            //process_input(window_ptr, y > 0 ? input::mouse_code::scroll_up : input::mouse_code::scroll_down, std::nullopt, y);
-        }
+        thread_pool().detach_task(std::bind(process_input, window_ptr, input::mouse_code::scroll, true, input::mouse_aux_t{-pt2d{x, y}}));
+        thread_pool().detach_task(std::bind(process_input, window_ptr, input::mouse_code::scroll, false, input::mouse_aux_t{-pt2d{x, y}}));
     }
 }
 
@@ -676,6 +708,18 @@ namespace d2d {
     template<impl::when_decayed_same_as<font> T>
     constexpr impl::font_path_map const& basic_window<Ts...>::renderable_data_of() const noexcept {
         return font_paths;
+    }
+
+
+    template<typename... Ts>
+    template<impl::interactable_like T>
+    constexpr vk::impl::renderable_input_map<std::pair<std::reference_wrapper<T>, bool>>& basic_window<Ts...>::interactables_of() noexcept {
+        return std::get<vk::impl::renderable_input_map<std::pair<std::reference_wrapper<T>, bool>>>(interactable_refs);
+    }
+    template<typename... Ts>
+    template<impl::interactable_like T>
+    constexpr vk::impl::renderable_input_map<std::pair<std::reference_wrapper<T>, bool>> const& basic_window<Ts...>::interactables_of() const noexcept {
+        return std::get<vk::impl::renderable_input_map<std::pair<std::reference_wrapper<T>, bool>>>(interactable_refs);
     }
 
 

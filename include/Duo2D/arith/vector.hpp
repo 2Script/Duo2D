@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <array>
 #include <climits>
+#include <compare>
 #include <cstddef>
 #include <cstdint>
 #include <functional>
@@ -93,7 +94,7 @@ namespace d2d {
         template<impl::non_vector U> friend constexpr result_vector<U, T, std::multiplies<>> operator*(U lhs, const vector& rhs) noexcept { result_vector<U, T, std::multiplies<>> ret; for(std::size_t i = 0; i < Dims; ++i) ret[i] = (lhs    * rhs[i]); return ret;  }
         template<impl::non_vector U> friend constexpr result_vector<U, T, std::divides<>   > operator/(U lhs, const vector& rhs) noexcept { result_vector<U, T, std::divides<>   > ret; for(std::size_t i = 0; i < Dims; ++i) ret[i] = (lhs    / rhs[i]); return ret;  }
 
-        constexpr vector operator-() const noexcept { vector ret; for(std::size_t i = 0; i < Dims; ++i) ret[i] = -(*this)[i]; return ret; } 
+        constexpr vector operator-() const noexcept { vector ret; for(std::size_t i = 0; i < Dims; ++i) ret[i] = -(*this)[i]; return ret; }
 
     public:
         ///redundant

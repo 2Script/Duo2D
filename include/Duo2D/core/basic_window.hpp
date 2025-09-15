@@ -2,6 +2,7 @@
 #include <atomic>
 #include <concepts>
 #include <cstddef>
+#include <cstdint>
 #include <functional>
 #include <memory>
 #include <string_view>
@@ -25,6 +26,7 @@
 #include "Duo2D/input/window_info.hpp"
 #include "Duo2D/traits/generic_functor.hpp"
 #include "Duo2D/traits/directly_renderable.hpp"
+#include "Duo2D/traits/interactable_like.hpp"
 #include "Duo2D/traits/renderable_container_like.hpp"
 #include "Duo2D/traits/same_as.hpp"
 #include "Duo2D/vulkan/core/command_buffer.hpp"
@@ -121,6 +123,7 @@ namespace d2d {
         constexpr std::size_t                         frame_index()     const noexcept { return frame_count.load() % impl::frames_in_flight; }
         constexpr extent2                      const& screen_size()     const noexcept { return _size; }
 
+        //inline std::set<std::reference_wrapper<interactable>, impl::interactable_compare_functor>& interactables() noexcept { return interactable_refs; }
         inline std::weak_ptr<impl::font_data_map> font_data_map() const noexcept { return this->font_data_map_ptr; }
 
     public:
@@ -223,6 +226,9 @@ namespace d2d {
         template<impl::when_decayed_same_as<font>      T> constexpr impl::font_path_map                           & renderable_data_of()       noexcept;
         template<impl::when_decayed_same_as<font>      T> constexpr impl::font_path_map                      const& renderable_data_of() const noexcept;
 
+        template<impl::interactable_like T> constexpr vk::impl::renderable_input_map<std::pair<std::reference_wrapper<T>, bool>>      & interactables_of()       noexcept;
+        template<impl::interactable_like T> constexpr vk::impl::renderable_input_map<std::pair<std::reference_wrapper<T>, bool>> const& interactables_of() const noexcept;
+
 
         template<typename                              T> constexpr bool insert_children(key_type<T>    , T&          ) noexcept { return false; }
         template<impl::renderable_container_like       T> constexpr bool insert_children(key_type<T> key, T& container) noexcept;
@@ -235,11 +241,11 @@ namespace d2d {
         basic_window(GLFWwindow* w) noexcept : base_tuple_type(), 
             category_flags(static_cast<input::category_flags_t>(0b1) << input::category::system),
             active_bindings(), inactive_bindings(), event_fns(), text_input_fn(), modifier_flags{},
-            renderable_container_datas(), font_paths(), font_paths_outdated(false),
+            renderable_container_datas(), interactable_refs(), font_paths(), font_paths_outdated(false),
             handle(w, {}), command_pool_ptr(),
             _surface(), _swap_chain(), _render_pass(), _size{},
             command_buffers{}, render_fences{}, frame_operation_semaphores{}, rendering_complete_semaphores(),
-            frame_count{}, update_count() {}
+            frame_count{}, update_count(), focus_key(static_cast<std::size_t>(-1)) {}
         
     private:
         friend vk::physical_device;
@@ -251,6 +257,9 @@ namespace d2d {
 
         template<typename WindowT>
         friend class application;
+
+        //TEMP?
+        friend struct d2d::input::defaults::interactable;
 
 
     private:
@@ -264,6 +273,8 @@ namespace d2d {
 
     private:
         typename vk::renderable_data_traits<Ts...>::container_data_map_tuple_type renderable_container_datas;
+        //std::vector<interactable*> interactable_ptrs;
+        typename vk::renderable_data_traits<Ts...>::interactable_map_tuple_type interactable_refs;
         impl::font_path_map font_paths;
         bool font_paths_outdated;
 
@@ -294,6 +305,7 @@ namespace d2d {
         
         //TEMP
         moveable_atomic<std::size_t> frame_count, update_count;
+        moveable_atomic<std::uint64_t> focus_key;
 
         constexpr static std::string_view container_child_prefix           = "__d2d_renderable_container";
         constexpr static std::string_view container_child_format_key       = "__d2d_renderable_container_{}__object{}";

@@ -67,8 +67,9 @@ int main(){
     d2d::transform(v, d2d::scale{4, 4}, d2d::translate{10,10});
     d2d::styled_rect s = d2d::styled_rect{{50,100,300,1044-100}, 0x009999FF};
     d2d::clone_rect c = d2d::clone_rect{s};
-    d2d::debug_rect dr = d2d::debug_rect{{}, {400, 750,200,100}, 0x999900FF};
-    d2d::debug_rect junk = d2d::debug_rect{{}, {500-400,450-225,800,450}, 0x222222FF};
+    d2d::debug_rect dr = d2d::debug_rect{{}, {}, {400, 750,200,100}, 0x999900FF};
+    d2d::debug_rect junk = d2d::debug_rect{{}, {}, {500-400,450-225,800,450}, 0x222222FF};
+    static_assert(d2d::impl::interactable_like<d2d::debug_rect>);
     //s.bounds = d2d::rect<float>{800-400,450-225,800,450};
     //s.color = 0x009999FF;
     s.transform->scale = {.6f, .9f};
@@ -173,24 +174,32 @@ int main(){
     auto w2 = app.add_window("Duo2D Test (Second Window)");
     if(!w.has_value()) return w2.error();
     } */
-    d2d::input::event_set left_active{};
+    for(auto const& event_fn : d2d::input::defaults::interactable::event_fns<d2d::window>())
+        win->event_functions().insert(event_fn);
+    for(auto const& press_binding : d2d::input::defaults::interactable::press_bindings<d2d::window>())
+        win->input_active_bindings().insert(press_binding);
+    for(auto const& release_binding : d2d::input::defaults::interactable::release_bindings<d2d::window>())
+        win->input_inactive_bindings().insert(release_binding);
+
+
+    d2d::input::event_set& left_active = win->input_active_bindings()[d2d::input::combination{{d2d::input::generic_code::any}, d2d::input::key_code::kb_a}];
     left_active.applicable_categories.set(d2d::input::category::system);
     left_active.event_ids[d2d::input::category::system] = 0;
-    d2d::input::event_set left_inactive{};
+    d2d::input::event_set& left_inactive = win->input_inactive_bindings()[d2d::input::combination{{d2d::input::generic_code::any}, d2d::input::key_code::kb_a}];
     left_inactive.applicable_categories.set(d2d::input::category::system);
     left_inactive.event_ids[d2d::input::category::system] = 1;
-    win->event_functions().try_emplace(d2d::input::event_t{0, d2d::input::category::system}, [](void*, d2d::input::combination, bool pressed, d2d::input::event_t, d2d::input::mouse_aux_t, void*){
+    win->event_functions().try_emplace(d2d::input::categorized_event_t{0, d2d::input::category::system}, [](void*, d2d::input::combination, bool pressed, d2d::input::categorized_event_t, d2d::input::mouse_aux_t, void*){
         std::cout << "left active (by " << (pressed ? std::string_view("press") : std::string_view("release")) << ")" << std::endl;
     });
-    win->event_functions().try_emplace(d2d::input::event_t{1, d2d::input::category::system}, [](void*, d2d::input::combination, bool pressed, d2d::input::event_t, d2d::input::mouse_aux_t, void*){
+    win->event_functions().try_emplace(d2d::input::categorized_event_t{1, d2d::input::category::system}, [](void*, d2d::input::combination, bool pressed, d2d::input::categorized_event_t, d2d::input::mouse_aux_t, void*){
         std::cout << "left inactive (by " << (pressed ? std::string_view("press") : std::string_view("release")) << ")" << std::endl;
     });
     //win->input_active_bindings().insert_or_assign(d2d::input::combination{{}, d2d::input::key_code::kb_a}, left_active);
     //win->input_inactive_bindings().insert_or_assign(d2d::input::combination{{d2d::input::key_code::kb_a}, d2d::input::generic_code::any}, left_active);
     //win->input_active_bindings().insert_or_assign(d2d::input::combination{{d2d::input::key_code::kb_a}, d2d::input::generic_code::any}, left_inactive);
     //win->input_inactive_bindings().insert_or_assign(d2d::input::combination{{}, d2d::input::key_code::kb_a}, left_inactive);
-    win->input_active_bindings().insert_or_assign(d2d::input::combination{{d2d::input::generic_code::any}, d2d::input::key_code::kb_a}, left_active);
-    win->input_inactive_bindings().insert_or_assign(d2d::input::combination{{d2d::input::generic_code::any}, d2d::input::key_code::kb_a}, left_inactive);
+    //win->input_active_bindings().insert_or_assign(d2d::input::combination{{d2d::input::generic_code::any}, d2d::input::key_code::kb_a}, left_active);
+    //win->input_inactive_bindings().insert_or_assign(d2d::input::combination{{d2d::input::generic_code::any}, d2d::input::key_code::kb_a}, left_inactive);
 
 
     d2d::input::event_set& ctrl_a_g = win->input_active_bindings()[d2d::input::combination{{d2d::input::key_code::kb_left_ctrl, d2d::input::key_code::kb_a}, d2d::input::key_code::kb_g}];
@@ -199,40 +208,41 @@ int main(){
     d2d::input::event_set& ctrl_g_a = win->input_active_bindings()[d2d::input::combination{{d2d::input::key_code::kb_left_ctrl, d2d::input::key_code::kb_g}, d2d::input::key_code::kb_a}];
     ctrl_g_a.applicable_categories.set(d2d::input::category::system);
     ctrl_g_a.event_ids[d2d::input::category::system] = 2;
-    win->event_functions().try_emplace(d2d::input::event_t{2, d2d::input::category::system}, [](void*, d2d::input::combination, bool, d2d::input::event_t, d2d::input::mouse_aux_t, void*){
+    win->event_functions().try_emplace(d2d::input::categorized_event_t{2, d2d::input::category::system}, [](void*, d2d::input::combination, bool, d2d::input::categorized_event_t, d2d::input::mouse_aux_t, void*){
         std::cout << "advanced key event called" << std::endl;
     }); 
 
-    win->current_input_categories().set(1);
+    win->current_input_categories().set(d2d::input::category::ui);
     //win->current_input_categories().set(2);
 
     d2d::input::event_set& inactive_mouse_move = win->input_inactive_bindings()[d2d::input::combination{{d2d::input::generic_code::any}, d2d::input::mouse_code::move}];
-    inactive_mouse_move.applicable_categories.set(2);
-    inactive_mouse_move.event_ids[2] = 0;
-    win->event_functions().try_emplace(d2d::input::event_t{0, 2}, [](void*, d2d::input::combination, bool, d2d::input::event_t, d2d::input::mouse_aux_t, void*){
+    inactive_mouse_move.applicable_categories.set(d2d::input::category::system);
+    inactive_mouse_move.event_ids[d2d::input::category::system] = 3;
+    win->event_functions().try_emplace(d2d::input::categorized_event_t{3, d2d::input::category::system}, [](void*, d2d::input::combination, bool, d2d::input::categorized_event_t, d2d::input::mouse_aux_t, void*){
         std::cout << "mouse move (inactive)" << std::endl;
     }); 
 
     d2d::input::event_set& shift_mouse_move = win->input_active_bindings()[d2d::input::combination{{d2d::input::key_code::kb_left_shift}, d2d::input::mouse_code::move}];
-    shift_mouse_move.applicable_categories.set(1);
-    shift_mouse_move.event_ids[1] = 0;
-    win->event_functions().try_emplace(d2d::input::event_t{0, 1}, [](void*, d2d::input::combination, bool, d2d::input::event_t, d2d::input::mouse_aux_t, void*){
+    shift_mouse_move.applicable_categories.set(d2d::input::category::system);
+    shift_mouse_move.event_ids[d2d::input::category::system] = 4;
+    win->event_functions().try_emplace(d2d::input::categorized_event_t{4, d2d::input::category::system}, [](void*, d2d::input::combination, bool, d2d::input::categorized_event_t, d2d::input::mouse_aux_t, void*){
         std::cout << "shift mouse move" << std::endl;
     }); 
 
-    d2d::input::event_set& shift_scroll_up = win->input_active_bindings()[d2d::input::combination{{d2d::input::key_code::kb_left_shift}, d2d::input::mouse_code::scroll_up}];
-    shift_scroll_up.applicable_categories.set(1);
-    shift_scroll_up.event_ids[1] = 1;
-    win->event_functions().try_emplace(d2d::input::event_t{1, 1}, [](void*, d2d::input::combination, bool, d2d::input::event_t, d2d::input::mouse_aux_t, void*){
+    d2d::input::event_set& shift_scroll_up = win->input_active_bindings()[d2d::input::combination{{d2d::input::key_code::kb_left_shift}, d2d::input::mouse_code::scroll}];
+    shift_scroll_up.applicable_categories.set(d2d::input::category::system);
+    shift_scroll_up.event_ids[d2d::input::category::system] = 5;
+    win->event_functions().try_emplace(d2d::input::categorized_event_t{5, d2d::input::category::system}, [](void*, d2d::input::combination, bool, d2d::input::categorized_event_t, d2d::input::mouse_aux_t scroll_magnitude, void*){
+        if(scroll_magnitude->y() >= 0) return;
         std::cout << "shift scroll" << std::endl;
     }); 
 
 
     d2d::input::event_set& left_mouse_btn = win->input_active_bindings()[d2d::input::combination{{}, d2d::input::mouse_code::button_1}];
-    left_mouse_btn.applicable_categories.set(1);
-    left_mouse_btn.event_ids[1] = 2;
-    win->input_modifier_flags()[d2d::input::mouse_code::button_1] |= d2d::input::modifier_flags::no_modifiers_allowed;
-    win->event_functions().try_emplace(d2d::input::event_t{2, 1}, [](void*, d2d::input::combination, bool, d2d::input::event_t, d2d::input::mouse_aux_t, void*){
+    left_mouse_btn.applicable_categories.set(d2d::input::category::system);
+    left_mouse_btn.event_ids[d2d::input::category::system] = 6;
+    //win->input_modifier_flags()[d2d::input::mouse_code::button_1] |= d2d::input::modifier_flags::no_modifiers_allowed;
+    win->event_functions().try_emplace(d2d::input::categorized_event_t{6, d2d::input::category::system}, [](void*, d2d::input::combination, bool, d2d::input::categorized_event_t, d2d::input::mouse_aux_t, void*){
         std::cout << "left mouse button" << std::endl;
     }); 
 

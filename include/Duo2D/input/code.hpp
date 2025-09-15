@@ -329,12 +329,8 @@ namespace d2d::input {
         button_7 = key_code::reserved_1_7,
         button_8 = key_code::reserved_1_8,
 
-        scroll_right = key_code::reserved_3_1,
-        scroll_left  = key_code::reserved_3_2,
-        scroll_down  = key_code::reserved_3_3,
-        scroll_up    = key_code::reserved_3_4,
-
-        move = key_code::reserved_2_1,
+        move   = key_code::reserved_2_1,
+        scroll = key_code::reserved_2_2,
     };
     }
 }
@@ -342,7 +338,7 @@ namespace d2d::input {
 namespace d2d::input {
     namespace generic_code {
     enum : code_t { 
-        any = key_code::reserved_2_2,
+        any = key_code::reserved_1_11,
     };
     }
 }

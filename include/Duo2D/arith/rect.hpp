@@ -60,6 +60,16 @@ namespace d2d {
         constexpr point2<T> center() const noexcept requires (impl::identity_rect<T, SizeT>) { return pos + (size / 2); }
 
     public:
+        //TODO: target_clones
+        //We don't need short circuiting, so let the compiler use SIMD instructions by using bitwise AND
+        constexpr bool contains(point2<T> pt) const noexcept {
+            return static_cast<bool>(
+                static_cast<int>(pos[0] <= pt[0]) & (pos[1] <= pt[1]) &
+                static_cast<int>(pt[0] <= pos[0] + size[0]) & (pt[1] <= pos[1] + size[1])
+            );
+        }
+
+    public:
         constexpr static std::size_t member_count = 2;
     public:
         point2<T> pos;
