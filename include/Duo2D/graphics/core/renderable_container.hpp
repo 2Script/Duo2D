@@ -21,7 +21,7 @@ namespace d2d {
     template<typename ChildT, std::size_t N, template<typename, std::size_t...> typename ContainerT = std::array>
     class renderable_container {};
 
-    template<typename T, typename ChildT, template<typename...> typename ContainerT = std::vector>
+    template<typename ChildT, template<typename...> typename ContainerT = std::vector>
     class dynamic_renderable_container {};
 }
 
@@ -57,7 +57,7 @@ namespace d2d {
         ~renderable_container() noexcept;
 
     public:
-        template<typename... Ts>
+        template<typename U, typename... Ts>
         constexpr void on_window_insert(basic_window<Ts...>& win, input_map_key_type insertion_key) noexcept;
 
         template<typename U = ChildT, typename... Ts>
@@ -80,8 +80,8 @@ namespace d2d {
 
 
 namespace d2d {
-    template<typename T, impl::directly_renderable ChildT, template<typename...> typename ContainerT>
-    class dynamic_renderable_container<T, ChildT, ContainerT> : public ContainerT<hybrid_ptr<ChildT>>, public impl::renderable_event_callbacks {
+    template<impl::directly_renderable ChildT, template<typename...> typename ContainerT>
+    class dynamic_renderable_container<ChildT, ContainerT> : public ContainerT<hybrid_ptr<ChildT>>, public impl::renderable_event_callbacks {
         //TODO: implement an alternative to this
         //static_assert(std::is_base_of_v<dynamic_renderable_container<T, ChildT, ContainerT>, T>, "dynamic_renderable_container<T, ...> must be a base class of T");
     public:
@@ -128,7 +128,7 @@ namespace d2d {
         //inline void clear() noexcept;
 
     protected:
-        template<typename U = T, typename... Ts>
+        template<typename U, typename... Ts>
         constexpr void on_window_insert(basic_window<Ts...>& win, input_map_key_type insertion_key) noexcept;
 
         template<typename U = ChildT, typename... Ts>
@@ -164,7 +164,7 @@ namespace d2d {
         void* window_ptr;
         input_map_key_type self_key;
         result<void>(*apply_changes_fn)(void*);
-        bool(*insert_children_fn)(void*, input_map_key_type, T&);
+        bool(*insert_children_fn)(void*, input_map_key_type, void*);
         bool live;
     };
 }
@@ -195,7 +195,7 @@ namespace d2d {
 
 
     public:
-        template<typename... Ts>
+        template<typename U, typename... Ts>
         constexpr void on_window_insert(basic_window<Ts...>& win, std::uint64_t insertion_key) noexcept;
 
         template<std::size_t I, typename... Ts>

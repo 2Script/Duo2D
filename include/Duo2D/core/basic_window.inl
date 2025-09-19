@@ -462,7 +462,7 @@ namespace d2d {
     void basic_window<Ts...>::apply_insertion(key_type<T> key, T& inserted_value) noexcept {
         insert_children<T>(key, inserted_value);
         if constexpr(impl::interactable_like<T>) interactables_of<T>().insert_or_assign(key, std::make_pair(std::ref(inserted_value), false));//interactable_ptrs.push_back(static_cast<interactable*>(&inserted_value));
-        inserted_value.on_window_insert(*this, key);
+        inserted_value.template on_window_insert<T>(*this, key);
     }
 }
 

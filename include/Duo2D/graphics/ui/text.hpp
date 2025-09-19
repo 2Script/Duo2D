@@ -10,10 +10,10 @@
 
 namespace d2d {
     //Use variable_renderable_container
-    class text : public dynamic_renderable_container<text, glyph> {
+    class text : public dynamic_renderable_container<glyph> {
         using glyph_count_t = unsigned int;
     public:
-        using base_type = dynamic_renderable_container<text, glyph>;
+        using base_type = dynamic_renderable_container<glyph>;
         constexpr static std::size_t default_reserved_size = 0x40;
 
     public:
@@ -39,7 +39,7 @@ namespace d2d {
 
 
     public:
-        template<typename... Ts>
+        template<typename U, typename... Ts>
         constexpr void on_window_insert(basic_window<Ts...>& win, std::uint64_t insertion_key) noexcept;
 
 

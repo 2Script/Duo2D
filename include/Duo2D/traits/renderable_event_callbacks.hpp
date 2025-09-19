@@ -11,7 +11,7 @@ namespace d2d::impl {
         constexpr static void on_swap_chain_update(basic_window<Ts...> const&, std::span<UniformT, N>) noexcept {}
 
     public:
-        template<typename... Ts>
+        template<typename U, typename... Ts>
         constexpr void on_window_insert(basic_window<Ts...>&, std::uint64_t) noexcept {}
 
     public:

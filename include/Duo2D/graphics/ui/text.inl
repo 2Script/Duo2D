@@ -12,10 +12,10 @@
 
 namespace d2d {
     inline text::text(std::size_t reserve) noexcept : 
-        base_type{dynamic_renderable_container<text, glyph>(reserve, make_hybrid<glyph>(renderable<glyph>{}, 0, 0, pt2f{}, true_color{}))}, font_data_map_ptr{}, content_buffer(hb_buffer_create()), content{}, font_key(), starting_pos{}, size_pixels{} {}
+        base_type{dynamic_renderable_container<glyph>(reserve, make_hybrid<glyph>(renderable<glyph>{}, 0, 0, pt2f{}, true_color{}))}, font_data_map_ptr{}, content_buffer(hb_buffer_create()), content{}, font_key(), starting_pos{}, size_pixels{} {}
 
     inline text::text(std::string_view contents, pt2f pos, font const& f, font_size_t font_size, true_color color, std::size_t extra_reserve) noexcept :
-        base_type{dynamic_renderable_container<text, glyph>(contents.size() + extra_reserve, make_hybrid_for_overwrite<glyph>())}, font_data_map_ptr{}, content_buffer(hb_buffer_create()), content{}, font_key(), starting_pos{}, size_pixels{} {
+        base_type{dynamic_renderable_container<glyph>(contents.size() + extra_reserve, make_hybrid_for_overwrite<glyph>())}, font_data_map_ptr{}, content_buffer(hb_buffer_create()), content{}, font_key(), starting_pos{}, size_pixels{} {
         emplace(contents, pos, f, font_size, color, extra_reserve);
     }
 }
@@ -132,9 +132,9 @@ namespace d2d {
 
 
 namespace d2d {
-    template<typename... Ts>
+    template<typename U, typename... Ts>
     constexpr void text::on_window_insert(basic_window<Ts...>& win, std::uint64_t insertion_key) noexcept {
-        base_type::on_window_insert(win, insertion_key);
+        base_type::on_window_insert<U>(win, insertion_key);
 
         bool changes_queued = font_data_map_ptr.expired();
         font_data_map_ptr = win.font_data_map();

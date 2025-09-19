@@ -252,7 +252,7 @@ namespace d2d {
         
         template<typename, std::size_t, template<typename, std::size_t...> typename>
         friend class renderable_container;
-        template<typename, typename, template<typename...> typename>
+        template<typename, template<typename...> typename>
         friend class dynamic_renderable_container;
 
         template<typename WindowT>
