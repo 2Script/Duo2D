@@ -29,6 +29,7 @@ foreach(TEST_TARGET IN LISTS TARGET_LIST)
     target_link_libraries(${TEST_TARGET} PUBLIC msdfgen-core)
     target_link_libraries(${TEST_TARGET} PUBLIC msdfgen-ext)
     target_link_libraries(${TEST_TARGET} PUBLIC harfbuzz)
+    target_link_libraries(${TEST_TARGET} PUBLIC ktx)
 
     foreach(SAN IN LISTS SANITIZERS)
         target_compile_options(${TEST_TARGET} PUBLIC "$<$<CONFIG:DEBUG>:-fsanitize=${SAN}>")

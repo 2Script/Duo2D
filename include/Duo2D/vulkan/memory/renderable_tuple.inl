@@ -1,4 +1,5 @@
 #pragma once
+#include "Duo2D/traits/generic_functor.hpp"
 #include "Duo2D/traits/renderable_constraints.hpp"
 #include "Duo2D/vulkan/memory/renderable_tuple.hpp"
 
@@ -16,11 +17,12 @@
 #include <vulkan/vulkan.h>
 #include <llfio.hpp>
 #include <DuoDecode/decoder.hpp>
+#include <ktx.h>
+#include <ktxvulkan.h>
 #include <msdfgen.h>
 #include <msdfgen/core/DistanceMapping.h>
 #include <msdfgen/core/ShapeDistanceFinder.h>
 #include <msdfgen/core/edge-selectors.h>
-#include <vulkan/vulkan_core.h>
 
 #include "Duo2D/core/error.hpp"
 #include "Duo2D/vulkan/display/texture.hpp"
@@ -344,7 +346,8 @@ namespace d2d::vk {
         
 
         namespace llfio = LLFIO_V2_NAMESPACE;
-        auto mf = llfio::mapped_file({}, llfio::path_view(path));
+        llfio::path_view p = llfio::path_view{path.data(), path.size(), llfio::path_view_component::not_zero_terminated};
+        auto mf = llfio::mapped_file({}, p);
         if(mf.has_error())
             return static_cast<errc>(mf.assume_error().value());
         llfio::mapped_file_handle mh = std::move(mf).assume_value();
@@ -353,6 +356,26 @@ namespace d2d::vk {
         if(extent.has_error())
             return static_cast<errc>(extent.assume_error().value());
         std::size_t length = extent.assume_value();
+
+        constexpr static llfio::path_view ktx_ext{".ktx"};
+        //TODO: use ktxTexture_VkUploadEx_WithSuballocator
+        if(const llfio::path_view_component path_ext = p.extension(); std::memcmp(path_ext._raw_data(), ktx_ext._raw_data(), std::min(ktx_ext.native_size(), path_ext.native_size())) == 0) {
+            ktxTexture* ktx;
+            __D2D_KTX_VERIFY(ktxTexture_CreateFromMemory(reinterpret_cast<ktx_uint8_t const*>(mh.address()), length, KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT, &ktx));
+            std::vector<std::span<const std::byte>> bytes(ktx->numLayers);
+
+            std::byte const* begin = reinterpret_cast<std::byte const*>(ktxTexture_GetData(ktx));
+            const std::size_t layer_size = ktxTexture_GetImageSize(ktx, 0);
+            for(std::size_t i = 0; i < ktx->numLayers; ++i) {
+                std::size_t offset = 0;
+                __D2D_KTX_VERIFY(ktxTexture_GetImageOffset(ktx, 0, i, 0, &offset));
+                bytes[i] = std::span{begin + offset, layer_size};
+            }
+
+            result<texture_idx_t> r = create_texture(emplace_result.first, std::span{bytes}, extent2{ktx->baseWidth, ktx->baseHeight}, ktxTexture_GetVkFormat(ktx));
+            ktxTexture_Destroy(ktx);
+            return r;
+        }
 
         dd::decoder image_decoder(mh.address(), length);
         RESULT_TRY_MOVE_UNSCOPED_CAST_ERR(dd::decoded_video decoded_image, image_decoder.decode_video_only(AV_HWDEVICE_TYPE_VULKAN), di, d2d::errc);
@@ -419,7 +442,7 @@ namespace d2d::vk {
             msdfgen::Shape shape;
             if(!hb_font_draw_glyph_or_fail(font_ptr, glyph_id, draw_funcs, &shape)) [[unlikely]] {
                 //#pragma omp atomic write
-                ret = errc::bad_font_file_format;
+                ret = errc::invalid_font_file_format;
                 break;
                 //#pragma omp cancel taskgroup
             }

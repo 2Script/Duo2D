@@ -1,24 +1,29 @@
 #pragma once
-#include <cerrno>
 #include <cstdint>
 #include <cstring>
+#include <string_view>
+#include <system_error>
+
+#include <ktx.h>
 #include <limits>
 #include <result.hpp>
 #include <GLFW/glfw3.h>
 #include <result/basic_error_category.hpp>
 #include <frozen/unordered_map.h>
-#include <string_view>
-#include <system_error>
 #include <vulkan/vulkan.h>
 
 #include "Duo2D/vulkan/device/queue_family.hpp"
 
-#define __D2D_VKRESULT_TO_ERRC(vkresult) (vkresult >= 0 && vkresult <= 0b111 ? vkresult + 1000000000 : vkresult)
-#define __D2D_FTERR_TO_ERRC(fterr) (fterr | 0x00020000)
-//(vkresult | 1000000000)
-//(vkresult + (vkresult >= 0 && vkresult < 0xFF ? 1000000000 : 0))
 
-namespace d2d::error { using code_int_t = std::int_fast32_t; }
+#define __D2D_VKRESULT_TO_ERRC(vkresult) (vkresult >= 0 && vkresult <= 0b111 ? vkresult + 1000000000 : vkresult)
+#define __D2D_KTX_ERROR_TO_ERRC(ktx_error) (ktx_error + 0x100000)
+#define __D2D_FTERR_TO_ERRC(fterr) (fterr | 0x00020000)
+
+
+namespace d2d::error { 
+    using code_int_t = std::int_fast32_t; 
+}
+
 
 namespace d2d::error {
     enum code : code_int_t {
@@ -51,11 +56,19 @@ namespace d2d::error {
         too_many_files_open_in_system  = static_cast<code_int_t>(std::errc::too_many_files_open_in_system),
         too_many_files_open            = static_cast<code_int_t>(std::errc::too_many_files_open),
 
+        file_too_large                 = static_cast<code_int_t>(std::errc::file_too_large),
+
+        invalid_seek                   = static_cast<code_int_t>(std::errc::invalid_seek),
+
+        broken_pipe                    = static_cast<code_int_t>(std::errc::broken_pipe),
+
         function_not_supported         = static_cast<code_int_t>(std::errc::function_not_supported),
 
-        bad_font_file_format           = EBFONT,
+        invalid_font_file_format       = EBFONT,
 
         value_too_large                = static_cast<code_int_t>(std::errc::value_too_large),
+
+        cannot_access_shared_library   = ELIBACC,
 
         operation_not_supported        = static_cast<code_int_t>(std::errc::operation_not_supported),
 
@@ -102,7 +115,28 @@ namespace d2d::error {
         window_feature_not_yet_implemented = GLFW_FEATURE_UNIMPLEMENTED, //__D2D_GLFW_TO_ERRC(GLFW_FEATURE_UNIMPLEMENTED)
         missing_window_platform            = GLFW_PLATFORM_UNAVAILABLE,  //__D2D_GLFW_TO_ERRC(GLFW_PLATFORM_UNAVAILABLE),
 
-
+        //KTX errors
+        invalid_texture_file_format              = __D2D_KTX_ERROR_TO_ERRC(KTX_FILE_DATA_ERROR),
+        texture_file_is_a_pipe                   = __D2D_KTX_ERROR_TO_ERRC(KTX_FILE_ISPIPE),
+        failed_to_open_texture_file              = __D2D_KTX_ERROR_TO_ERRC(KTX_FILE_OPEN_FAILED),
+        texture_file_too_large                   = __D2D_KTX_ERROR_TO_ERRC(KTX_FILE_OVERFLOW),
+        failed_to_read_texture_file              = __D2D_KTX_ERROR_TO_ERRC(KTX_FILE_READ_ERROR),
+        failed_to_seek_texture_file              = __D2D_KTX_ERROR_TO_ERRC(KTX_FILE_SEEK_ERROR),
+        unexpected_eof_in_texture_file           = __D2D_KTX_ERROR_TO_ERRC(KTX_FILE_UNEXPECTED_EOF),
+        failed_to_write_texture_file             = __D2D_KTX_ERROR_TO_ERRC(KTX_FILE_WRITE_ERROR),
+        invalid_gl_operation                     = __D2D_KTX_ERROR_TO_ERRC(KTX_GL_ERROR),
+        invalid_texture_operation                = __D2D_KTX_ERROR_TO_ERRC(KTX_INVALID_OPERATION),
+        invalid_texture_value                    = __D2D_KTX_ERROR_TO_ERRC(KTX_INVALID_VALUE),
+        texture_function_not_found               = __D2D_KTX_ERROR_TO_ERRC(KTX_NOT_FOUND),
+        out_of_memory_for_texture                = __D2D_KTX_ERROR_TO_ERRC(KTX_OUT_OF_MEMORY),
+        texture_transcode_failed                 = __D2D_KTX_ERROR_TO_ERRC(KTX_TRANSCODE_FAILED),
+        unknown_texture_file_format              = __D2D_KTX_ERROR_TO_ERRC(KTX_UNKNOWN_FILE_FORMAT),
+        texture_type_not_supported               = __D2D_KTX_ERROR_TO_ERRC(KTX_UNSUPPORTED_TEXTURE_TYPE),
+        texture_loading_feature_not_supported    = __D2D_KTX_ERROR_TO_ERRC(KTX_UNSUPPORTED_FEATURE),
+        graphics_library_not_linked              = __D2D_KTX_ERROR_TO_ERRC(KTX_LIBRARY_NOT_LINKED),
+        invalid_texture_size_after_decompression = __D2D_KTX_ERROR_TO_ERRC(KTX_DECOMPRESS_LENGTH_ERROR),
+        invalid_texture_checksum                 = __D2D_KTX_ERROR_TO_ERRC(KTX_DECOMPRESS_CHECKSUM_ERROR),
+        
         //Freetype errors
         // cannot_open_font                 = __D2D_FTERR_TO_ERRC(FT_Err_Cannot_Open_Resource),
         // unknown_font_file_format         = __D2D_FTERR_TO_ERRC(FT_Err_Unknown_File_Format),
@@ -269,7 +303,7 @@ namespace d2d::error {
 
         //Number of codes (cannot be used externally as a size)
         num_duplicate_codes = 1,
-        num_unique_codes = 76,
+        num_unique_codes = 96,
         num_codes = num_unique_codes + num_duplicate_codes
     };
 }
@@ -298,11 +332,33 @@ namespace d2d::error {
         {descriptors_not_initialized,        "The given descriptors have not been initialized yet"},
         {font_not_found,                     "The requested font was not found. Did you forget to insert it into the window?"},
 
+    
+        {invalid_texture_file_format,              "The given KTX texture file contains invalid data"},
+        {texture_file_is_a_pipe,                   "The given KTX texture file is actually a pipe, not a file"},
+        {failed_to_open_texture_file,              "Failed to open the given KTX texture file"},
+        {texture_file_too_large,                   "The given KTX texture file is too large"},
+        {failed_to_read_texture_file,              "Failed to read the given KTX texture file"},
+        {failed_to_seek_texture_file,              "Failed to seek the given KTX texture file"},
+        {unexpected_eof_in_texture_file,           "Unexpected EOF encountered in the given KTX texture file"},
+        {failed_to_write_texture_file,             "Failed to write to the given KTX texture file"},
+        {invalid_gl_operation,                     "A GL operation failed"},
+        {invalid_texture_operation,                "Invalid operation given the given KTX texture file in its current state"},
+        {invalid_texture_value,                    "Invalid KTX texture parameter value encountered"},
+        {texture_function_not_found,               "The requested KTX texture function was not found"},
+        {out_of_memory_for_texture,                "A memory allocation for a KTX texture failed (most likely out of memory)"},
+        {texture_transcode_failed,                 "Failed to transcode a block-compressed KTX texture"},
+        {unknown_texture_file_format,              "Unknown KTX texture file format (i.e. it's not a KTX file)"},
+        {texture_type_not_supported,               "The given KTX texture file specifies an unsupported texture type"},
+        {texture_loading_feature_not_supported,    "The requested texture feature is not supported by KTX texture library"},
+        {graphics_library_not_linked,              "Vulkan graphics library is not linked"},
+        {invalid_texture_size_after_decompression, "Decompressed byte count for the given KTX texture does not match the expected byte count"},
+        {invalid_texture_checksum,                 "Checksum for the given decompressed KTX texture does not match the expected checksum"},
+        
 
         {window_system_not_initialized,      "Window system (GLFW) needs to be initialized first"},
         {invalid_window_enum_argument,       "Invalid enum argument passed to window system function"},
         {invalid_window_argument,            "Invalid argument passed to window system function"},
-        {out_of_memory_for_window,           "A memory allocation for the window system failed"},
+        {out_of_memory_for_window,           "A memory allocation for the window system failed (most likely out of memory)"},
         {vulkan_not_supported,               "Vulkan was not found on the system; It's either not supported or not installed"},
         {os_window_error,                    "A platform-specific error occured within the window system"},
         {missing_pixel_format,               "Either the requested display pixel format is not supported (if specified during window creation), or the clipboard contents could not be converted to the requested format (if specified during clipboard querying)"},
@@ -493,6 +549,28 @@ namespace d2d::error {
         {font_not_found,                     no_such_device_or_address},
 
 
+        {invalid_texture_file_format,              invalid_argument},
+        {texture_file_is_a_pipe,                   broken_pipe},
+        {failed_to_open_texture_file,              no_such_file_or_directory},
+        {texture_file_too_large,                   file_too_large},
+        {failed_to_read_texture_file,              io_error},
+        {failed_to_seek_texture_file,              invalid_seek},
+        {unexpected_eof_in_texture_file,           invalid_argument},
+        {failed_to_write_texture_file,             io_error},
+        {invalid_gl_operation,                     operation_canceled},
+        {invalid_texture_operation,                operation_not_permitted},
+        {invalid_texture_value,                    invalid_argument},
+        {texture_function_not_found,               no_such_process},
+        {out_of_memory_for_texture,                not_enough_memory},
+        {texture_transcode_failed,                 operation_canceled},
+        {unknown_texture_file_format,              invalid_argument},
+        {texture_type_not_supported,               operation_not_supported},
+        {texture_loading_feature_not_supported,    operation_not_supported},
+        {graphics_library_not_linked,              cannot_access_shared_library},
+        {invalid_texture_size_after_decompression, io_error},
+        {invalid_texture_checksum,                 io_error},
+
+
         {window_system_not_initialized,      bad_file_descriptor},
         {invalid_window_enum_argument,       invalid_argument},
         {invalid_window_argument,            invalid_argument},
@@ -573,9 +651,10 @@ namespace d2d {
 #define __D2D_WEAK_PTR_TRY_LOCK(lhs, weak_ptr) auto lhs = weak_ptr.lock(); if(!lhs) return ::d2d::errc::device_not_initialized;
 
 
-#define __D2D_VULKAN_VERIFY(fn) if(VkResult r = fn) [[unlikely]] return static_cast<d2d::errc>(__D2D_VKRESULT_TO_ERRC(r));
-#define __D2D_FT_VERIFY(fn)     if(FT_Error r = fn) [[unlikely]] return static_cast<d2d::errc>(__D2D_FTERR_TO_ERRC(r));
-#define __D2D_GLFW_VERIFY(cond) if(!cond)           [[unlikely]] return static_cast<d2d::errc>(::d2d::error::impl::get_glfw_err());
+#define __D2D_VULKAN_VERIFY(fn) if(VkResult r = fn)       [[unlikely]] return static_cast<d2d::errc>(__D2D_VKRESULT_TO_ERRC(r));
+#define __D2D_KTX_VERIFY(fn)    if(KTX_error_code r = fn) [[unlikely]] return static_cast<d2d::errc>(__D2D_KTX_ERROR_TO_ERRC(r));
+#define __D2D_FT_VERIFY(fn)     if(FT_Error r = fn)       [[unlikely]] return static_cast<d2d::errc>(__D2D_FTERR_TO_ERRC(r));
+#define __D2D_GLFW_VERIFY(cond) if(!cond)                 [[unlikely]] return static_cast<d2d::errc>(::d2d::error::impl::get_glfw_err());
 
 
 namespace d2d::error::impl {

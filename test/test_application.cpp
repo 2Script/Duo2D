@@ -103,7 +103,7 @@ int main(){
     //magenta_ref._texture_paths = {"/home/artin/Repos/Arastais/Test/test_img_alpha.png"};
     //magenta_ref.texture_bounds->pos = {100, 100};
     //magenta_ref.texture_bounds->size = {300, 1044};
-    std::string test_img_alpha_2_path = assets_path / "test_img_alpha_2.png";
+    std::string test_img_alpha_2_path = assets_path / "test_img_alpha_2.ktx2";
     std::string test_img_alpha_3_path = assets_path / "test_img_alpha_3.png";
     magenta_ref._texture_paths = {test_img_alpha_3_path, test_img_alpha_2_path};
     magenta_ref.texture_bounds->pos = {100, 0};
