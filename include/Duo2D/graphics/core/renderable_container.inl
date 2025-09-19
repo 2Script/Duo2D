@@ -6,25 +6,25 @@
 
 
 namespace d2d {
-    template<impl::directly_renderable ChildT, std::size_t N, template<typename, std::size_t...> typename ContainerT>
+    template<typename ChildT, std::size_t N, template<typename, std::size_t...> typename ContainerT>
         template<typename... ChildHybridPtrs>
     constexpr renderable_container<ChildT, N, ContainerT>::renderable_container(ChildHybridPtrs&&... child_hybrid_ptrs) noexcept 
     requires (sizeof...(ChildHybridPtrs) == N && (std::is_constructible_v<hybrid_ptr<ChildT>, ChildHybridPtrs&&> && ...)) : 
         container_type{std::forward<ChildHybridPtrs>(child_hybrid_ptrs)...} {}
 
 
-    template<impl::directly_renderable ChildT, std::size_t N, template<typename, std::size_t...> typename ContainerT>
+    template<typename ChildT, std::size_t N, template<typename, std::size_t...> typename ContainerT>
     constexpr renderable_container<ChildT, N, ContainerT>::renderable_container(container_type const& container) noexcept :
         container_type{container} {}
 
 
-    template<impl::directly_renderable ChildT, std::size_t N, template<typename, std::size_t...> typename ContainerT>
+    template<typename ChildT, std::size_t N, template<typename, std::size_t...> typename ContainerT>
     constexpr renderable_container<ChildT, N, ContainerT>::renderable_container(container_type     && container) noexcept :
         container_type{std::move(container)} {}
 }
 
 namespace d2d {
-    template<impl::directly_renderable ChildT, std::size_t N, template<typename, std::size_t...> typename ContainerT>
+    template<typename ChildT, std::size_t N, template<typename, std::size_t...> typename ContainerT>
     renderable_container<ChildT, N, ContainerT>::~renderable_container() noexcept {
         if(!child_input_data_ptr) return;
         for(auto const& key : child_keys)
@@ -35,13 +35,13 @@ namespace d2d {
 
 
 namespace d2d {
-    template<impl::directly_renderable ChildT, std::size_t N, template<typename, std::size_t...> typename ContainerT>
+    template<typename ChildT, std::size_t N, template<typename, std::size_t...> typename ContainerT>
     template<typename U, typename... Ts>
     constexpr void renderable_container<ChildT, N, ContainerT>::on_window_insert(basic_window<Ts...>&, input_map_key_type insertion_key) noexcept {
         self_key = insertion_key;
     }
 
-    template<impl::directly_renderable ChildT, std::size_t N, template<typename, std::size_t...> typename ContainerT>
+    template<typename ChildT, std::size_t N, template<typename, std::size_t...> typename ContainerT>
     template<typename U, typename... Ts>
     constexpr void renderable_container<ChildT, N, ContainerT>::on_window_insert_child_renderable(basic_window<Ts...>& win, typename basic_window<Ts...>::template iterator<U> inserted_renderable_iter, std::size_t container_idx) noexcept {
         (*this)[container_idx] = hybrid_ptr<ChildT>(std::ref(inserted_renderable_iter->second));
@@ -53,12 +53,12 @@ namespace d2d {
 
 
 namespace d2d {
-    template<impl::directly_renderable ChildT, template<typename...> typename ContainerT>
+    template<typename ChildT, template<typename...> typename ContainerT>
     constexpr dynamic_renderable_container<ChildT, ContainerT>::dynamic_renderable_container(dynamic_renderable_container&& other) noexcept :
         container_type(std::move(other)), child_keys(std::move(other.child_keys)), child_input_data_ptr(std::exchange(other.child_input_data_ptr, nullptr)),
         window_ptr(std::exchange(other.window_ptr, nullptr)), self_key(std::move(other.self_key)), apply_changes_fn(std::exchange(other.apply_changes_fn, nullptr)), insert_children_fn(std::exchange(other.insert_children_fn, nullptr)), live(std::exchange(other.live, false)) {}
     
-    template<impl::directly_renderable ChildT, template<typename...> typename ContainerT>
+    template<typename ChildT, template<typename...> typename ContainerT>
     constexpr dynamic_renderable_container<ChildT, ContainerT>& dynamic_renderable_container<ChildT, ContainerT>::operator=(dynamic_renderable_container&& other) noexcept {
         container_type::operator=(std::move(other)); child_keys = std::move(other.child_keys); child_input_data_ptr = std::exchange(other.child_input_data_ptr, nullptr);
         window_ptr = std::exchange(other.window_ptr, nullptr); self_key = std::move(other.self_key); apply_changes_fn = std::exchange(other.apply_changes_fn, nullptr); insert_children_fn = std::exchange(other.insert_children_fn, nullptr); live = std::exchange(other.live, false);
@@ -66,12 +66,12 @@ namespace d2d {
     }
 
 
-    template<impl::directly_renderable ChildT, template<typename...> typename ContainerT>
+    template<typename ChildT, template<typename...> typename ContainerT>
     constexpr dynamic_renderable_container<ChildT, ContainerT>::dynamic_renderable_container(dynamic_renderable_container const& other) noexcept : 
         container_type(other), child_keys(other.child_keys), child_input_data_ptr(other.child_input_data_ptr), 
         window_ptr{}, self_key(), apply_changes_fn{}, insert_children_fn{}, live(false) {}
         
-    template<impl::directly_renderable ChildT, template<typename...> typename ContainerT>
+    template<typename ChildT, template<typename...> typename ContainerT>
     constexpr dynamic_renderable_container<ChildT, ContainerT>& dynamic_renderable_container<ChildT, ContainerT>::operator=(dynamic_renderable_container const& other) noexcept {
         container_type::operator=(other); child_keys = other.child_keys; child_input_data_ptr = other.child_input_data_ptr; 
         window_ptr = {}, self_key = decltype(self_key)(), apply_changes_fn = {}, insert_children_fn = {}; live = false;
@@ -80,28 +80,28 @@ namespace d2d {
 }
 
 namespace d2d {
-    template<impl::directly_renderable ChildT, template<typename...> typename ContainerT>
+    template<typename ChildT, template<typename...> typename ContainerT>
     constexpr dynamic_renderable_container<ChildT, ContainerT>::dynamic_renderable_container(allocator_type const& alloc) noexcept :
         container_type(alloc), child_keys(), child_input_data_ptr{},
         window_ptr{}, self_key(), apply_changes_fn{}, insert_children_fn{}, live(false) {}
 
-    template<impl::directly_renderable ChildT, template<typename...> typename ContainerT>
+    template<typename ChildT, template<typename...> typename ContainerT>
     template<impl::when_decayed_different_from<std::size_t> Comp>
     constexpr dynamic_renderable_container<ChildT, ContainerT>::dynamic_renderable_container(Comp const& comp, allocator_type const& alloc) noexcept requires std::is_constructible_v<container_type, Comp const&, allocator_type const&> : 
         container_type(comp, alloc), child_keys(), child_input_data_ptr{},
         window_ptr{}, self_key(), apply_changes_fn{}, insert_children_fn{}, live(false) {}
 
-    template<impl::directly_renderable ChildT, template<typename...> typename ContainerT>
+    template<typename ChildT, template<typename...> typename ContainerT>
     constexpr dynamic_renderable_container<ChildT, ContainerT>::dynamic_renderable_container(std::size_t count, allocator_type const& alloc) noexcept requires std::is_constructible_v<container_type, std::size_t, allocator_type const&> :
         container_type(count, alloc), child_keys(), child_input_data_ptr{},
         window_ptr{}, self_key(), apply_changes_fn{}, insert_children_fn{}, live(false) { child_keys.reserve(count); }
 
-    template<impl::directly_renderable ChildT, template<typename...> typename ContainerT>
+    template<typename ChildT, template<typename...> typename ContainerT>
     constexpr dynamic_renderable_container<ChildT, ContainerT>::dynamic_renderable_container(std::size_t count, const hybrid_ptr<ChildT>& value, allocator_type const& alloc) noexcept requires std::is_constructible_v<container_type, std::size_t, const hybrid_ptr<ChildT>&, allocator_type const&> :
         container_type(count, value, alloc), child_keys(), child_input_data_ptr{}, 
         window_ptr{}, self_key(), apply_changes_fn{}, insert_children_fn{}, live(false) { child_keys.reserve(count); }
 
-    template<impl::directly_renderable ChildT, template<typename...> typename ContainerT>
+    template<typename ChildT, template<typename...> typename ContainerT>
     template<typename InputIt, typename Arg1, typename... Args>
     constexpr dynamic_renderable_container<ChildT, ContainerT>::dynamic_renderable_container(InputIt first, InputIt last, Arg1 const& arg1, Args const&... args) noexcept requires std::is_constructible_v<container_type, InputIt, InputIt, Arg1 const&, Args const&...> :
         container_type(first, last, arg1, args...), child_keys(), child_input_data_ptr{}, 
@@ -109,7 +109,7 @@ namespace d2d {
 }
 
 namespace d2d {
-    template<impl::directly_renderable ChildT, template<typename...> typename ContainerT>
+    template<typename ChildT, template<typename...> typename ContainerT>
     dynamic_renderable_container<ChildT, ContainerT>::~dynamic_renderable_container() noexcept {
         if(!child_input_data_ptr) return;
         for(auto const& key : child_keys)
@@ -119,7 +119,7 @@ namespace d2d {
 
 
 namespace d2d {
-    template<impl::directly_renderable ChildT, template<typename...> typename ContainerT>
+    template<typename ChildT, template<typename...> typename ContainerT>
     template<typename... ChildArgs>
     result<void> dynamic_renderable_container<ChildT, ContainerT>::resize(std::size_t count, ChildArgs&&... child_args) noexcept {
         if constexpr(sizeof...(ChildArgs) == 0)
@@ -139,7 +139,7 @@ namespace d2d {
     
 
 namespace d2d {
-    template<impl::directly_renderable ChildT, template<typename...> typename ContainerT>
+    template<typename ChildT, template<typename...> typename ContainerT>
     template<typename U, typename... Ts>
     constexpr void dynamic_renderable_container<ChildT, ContainerT>::on_window_insert(basic_window<Ts...>& win, input_map_key_type insertion_key) noexcept {
         window_ptr = static_cast<void*>(&win);
@@ -148,7 +148,7 @@ namespace d2d {
         apply_changes_fn = [](void* win_ptr){ return static_cast<basic_window<Ts...>*>(win_ptr)->template apply_changes<U>(); };
     }
 
-    template<impl::directly_renderable ChildT, template<typename...> typename ContainerT>
+    template<typename ChildT, template<typename...> typename ContainerT>
     template<typename U , typename... Ts>
     constexpr void dynamic_renderable_container<ChildT, ContainerT>::on_window_insert_child_renderable(basic_window<Ts...>& win, typename basic_window<Ts...>::template iterator<U> inserted_child_iter, std::size_t container_idx) noexcept {
         (*this)[container_idx] = hybrid_ptr<ChildT>(std::ref(inserted_child_iter->second));
@@ -156,7 +156,7 @@ namespace d2d {
         child_input_data_ptr = &(win.template renderable_data_of<ChildT>());
     }
 
-    template<impl::directly_renderable ChildT, template<typename...> typename ContainerT>
+    template<typename ChildT, template<typename...> typename ContainerT>
     template<typename... Ts>
     constexpr result<void> dynamic_renderable_container<ChildT, ContainerT>::after_changes_applied(basic_window<Ts...> const&) noexcept {
         live = true;
@@ -166,19 +166,19 @@ namespace d2d {
 
 
 namespace d2d {
-    template<impl::directly_renderable ChildT, template<typename...> typename ContainerT>
+    template<typename ChildT, template<typename...> typename ContainerT>
     result<void> dynamic_renderable_container<ChildT, ContainerT>::apply_changes_to_last_window() const noexcept {
         if(!apply_changes_fn) return {};
         return apply_changes_fn(window_ptr);
     }
 
-    template<impl::directly_renderable ChildT, template<typename...> typename ContainerT>
+    template<typename ChildT, template<typename...> typename ContainerT>
     constexpr bool dynamic_renderable_container<ChildT, ContainerT>::insert_children_into_last_window() noexcept {
         if(!insert_children_fn) return false;
         return insert_children_fn(window_ptr, self_key, this);
     }
 
-    template<impl::directly_renderable ChildT, template<typename...> typename ContainerT>
+    template<typename ChildT, template<typename...> typename ContainerT>
     inline void dynamic_renderable_container<ChildT, ContainerT>::erase_children_from_last_window() noexcept {
         if(!child_input_data_ptr) return;
         for(std::size_t i = 0; i < std::min(child_keys.size(), this->size()); ++i) {

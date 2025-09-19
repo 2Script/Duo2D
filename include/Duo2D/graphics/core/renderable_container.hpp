@@ -19,17 +19,7 @@
 
 namespace d2d {
     template<typename ChildT, std::size_t N, template<typename, std::size_t...> typename ContainerT = std::array>
-    class renderable_container {};
-
-    template<typename ChildT, template<typename...> typename ContainerT = std::vector>
-    class dynamic_renderable_container {};
-}
-
-
-
-namespace d2d {
-    template<impl::directly_renderable ChildT, std::size_t N, template<typename, std::size_t...> typename ContainerT>
-    struct renderable_container<ChildT, N, ContainerT> : public ContainerT<hybrid_ptr<ChildT>, N>, public impl::renderable_event_callbacks {
+    struct renderable_container : public ContainerT<hybrid_ptr<ChildT>, N>, public impl::renderable_event_callbacks {
         using container_type = ContainerT<hybrid_ptr<ChildT>, N>;
         using renderable_type = ChildT;
         using input_map_key_type = typename vk::impl::renderable_input_map<ChildT>::key_type;
@@ -80,14 +70,14 @@ namespace d2d {
 
 
 namespace d2d {
-    template<impl::directly_renderable ChildT, template<typename...> typename ContainerT>
-    class dynamic_renderable_container<ChildT, ContainerT> : public ContainerT<hybrid_ptr<ChildT>>, public impl::renderable_event_callbacks {
+    template<typename ChildT, template<typename...> typename ContainerT = std::vector>
+    class dynamic_renderable_container : public ContainerT<hybrid_ptr<ChildT>>, public impl::renderable_event_callbacks {
         //TODO: implement an alternative to this
         //static_assert(std::is_base_of_v<dynamic_renderable_container<T, ChildT, ContainerT>, T>, "dynamic_renderable_container<T, ...> must be a base class of T");
     public:
-        using input_map_key_type = typename vk::impl::renderable_input_map<ChildT>::key_type;
+        using input_map_type = vk::impl::renderable_input_map<ChildT>;
+        using input_map_key_type = typename input_map_type::key_type;
         using key_vector_type = std::vector<input_map_key_type>;
-        using input_data_type = vk::impl::renderable_input_data<ChildT>;
     public:
         using container_type = ContainerT<hybrid_ptr<ChildT>>;
         using renderable_type = ChildT;
@@ -158,7 +148,7 @@ namespace d2d {
     private:
         //TODO user iterators (e.g. an iterator_wrapper class) in the main child container so that this vector isn't needed anymore
         key_vector_type child_keys;
-        input_data_type* child_input_data_ptr;
+        input_map_type* child_input_data_ptr;
 
     private:
         void* window_ptr;
