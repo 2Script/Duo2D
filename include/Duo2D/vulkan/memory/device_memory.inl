@@ -1,7 +1,7 @@
 #pragma once
 #include "Duo2D/vulkan/memory/device_memory.hpp"
 
-#include "Duo2D/vulkan/display/texture.hpp"
+#include "Duo2D/vulkan/display/sampled_image.hpp"
 #include "Duo2D/vulkan/memory/buffer.hpp"
 #include "Duo2D/core/error.hpp"
 #include "Duo2D/vulkan/device/physical_device.hpp"

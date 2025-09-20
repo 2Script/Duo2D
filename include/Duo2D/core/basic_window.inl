@@ -727,7 +727,7 @@ namespace d2d {
     template<impl::renderable_container_like T> 
     constexpr bool basic_window<Ts...>::insert_children(key_type<T> key, T& container) noexcept {
         bool emplaced = false;
-        key_type<T> k = key + (static_cast<std::uint64_t>(0b1) << ((sizeof(std::uint64_t) - sizeof(std::uint8_t)) * CHAR_BIT));
+        key_type<T> k = (key & 0xFF00'0000'0000'0000) + (key << (sizeof(std::uint8_t) * CHAR_BIT));
         for(std::size_t i = 0; i < container.size(); ++i) {
             auto insert_result = this->insert_or_assign<typename T::renderable_type>(k + i, std::move(*(container[i])));
             container.template on_window_insert_child_renderable<typename T::renderable_type>(*this, insert_result.first, i);
@@ -740,7 +740,7 @@ namespace d2d {
     template<typename... Ts>
     template<impl::renderable_container_tuple_like T> 
     constexpr bool basic_window<Ts...>::insert_children(key_type<T> key, T& tuple) noexcept {
-        key_type<T> k = key + (static_cast<std::uint64_t>(0b1) << ((sizeof(std::uint64_t) - sizeof(std::uint8_t)) * CHAR_BIT));
+        key_type<T> k = (key & 0xFF00'0000'0000'0000) + (key << (sizeof(std::uint8_t) * CHAR_BIT));
         auto insert_child = [&, this]<std::size_t I>(std::integral_constant<std::size_t, I>) noexcept -> bool {
             auto insert_result = this->insert_or_assign<typename T::template container_type<I>>(k + I, std::move(*(tuple.template get_container<I>())));
             tuple.template on_window_insert_child_container<I>(*this, insert_result.first);

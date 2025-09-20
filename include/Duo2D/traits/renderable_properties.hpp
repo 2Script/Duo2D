@@ -1,6 +1,6 @@
 #pragma once
 #include "Duo2D/graphics/core/font.hpp"
-#include "Duo2D/vulkan/display/texture.hpp"
+#include "Duo2D/vulkan/display/sampled_image.hpp"
 #include "Duo2D/traits/aggregate_traits.hpp"
 #include "Duo2D/traits/renderable_constraints.hpp"
 #include "Duo2D/traits/renderable_traits.hpp"

@@ -1,7 +1,7 @@
 #pragma once
 #include <span>
 #include <vulkan/vulkan_core.h>
-#include "Duo2D/vulkan/display/texture.hpp"
+#include "Duo2D/vulkan/display/sampled_image.hpp"
 #include "Duo2D/vulkan/memory/buffer.hpp"
 #include "Duo2D/vulkan/device/logical_device.hpp"
 #include "Duo2D/vulkan/core/vulkan_ptr.hpp"

@@ -7,7 +7,7 @@
 #include <string>
 #include <vulkan/vulkan.h>
 #include "Duo2D/core/contiguous_map.hpp"
-#include "Duo2D/vulkan/display/texture.hpp"
+#include "Duo2D/vulkan/display/sampled_image.hpp"
 #include "Duo2D/vulkan/traits/attribute_traits.hpp"
 #include "Duo2D/traits/directly_renderable.hpp"
 #include "Duo2D/vulkan/memory/buffer.hpp"

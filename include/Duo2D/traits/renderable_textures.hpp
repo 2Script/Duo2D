@@ -4,7 +4,7 @@
 #include <string_view>
 #include "Duo2D/traits/renderable_traits.hpp"
 #include "Duo2D/graphics/core/font.hpp"
-#include "Duo2D/vulkan/display/texture.hpp"
+#include "Duo2D/vulkan/display/sampled_image.hpp"
 
 namespace d2d::impl {
     template<typename T, typename TextureT>
@@ -17,7 +17,7 @@ namespace d2d::impl {
     template<typename T>
     struct renderable_textures {};
 
-    template<has_texture_type<vk::texture> T>
+    template<has_texture_type<vk::sampled_image> T>
     struct renderable_textures<T> {
         std::array<std::string_view, renderable_traits<T>::max_texture_count> _texture_paths{};
 

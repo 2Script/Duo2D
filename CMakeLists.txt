@@ -21,7 +21,7 @@ set(CPP_FILES
     vulkan/display/render_pass.cpp
     vulkan/display/surface.cpp
     vulkan/display/swap_chain.cpp
-    vulkan/display/texture.cpp
+    vulkan/display/sampled_image.cpp
     
     vulkan/memory/buffer.cpp
     vulkan/memory/image.cpp

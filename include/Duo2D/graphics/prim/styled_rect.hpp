@@ -30,7 +30,7 @@ namespace d2d {
         using uniform_type = extent2;
         using push_constant_types = std::tuple<extent2&>;
         using attribute_types = vk::make_attribute_types_t<true_color, transform2, std::uint32_t, rect<std::uint32_t>>;
-        using texture_type = vk::texture;
+        using texture_type = vk::sampled_image;
         using index_type = std::uint16_t;
         struct instance_type {
             pt2<float> pos;

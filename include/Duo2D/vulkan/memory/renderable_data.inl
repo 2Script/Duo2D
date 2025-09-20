@@ -1,6 +1,6 @@
 #pragma once
 #include "Duo2D/arith/size.hpp"
-#include "Duo2D/vulkan/display/texture.hpp"
+#include "Duo2D/vulkan/display/sampled_image.hpp"
 #include "Duo2D/vulkan/device/logical_device.hpp"
 #include "Duo2D/vulkan/memory/descriptor_pool.hpp"
 #include "Duo2D/vulkan/memory/renderable_allocator.hpp"

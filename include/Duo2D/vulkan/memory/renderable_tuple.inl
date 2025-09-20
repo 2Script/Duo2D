@@ -25,7 +25,7 @@
 #include <msdfgen/core/edge-selectors.h>
 
 #include "Duo2D/core/error.hpp"
-#include "Duo2D/vulkan/display/texture.hpp"
+#include "Duo2D/vulkan/display/sampled_image.hpp"
 #include "Duo2D/vulkan/sync/semaphore.hpp"
 #include "Duo2D/vulkan/traits/buffer_traits.hpp"
 #include "Duo2D/traits/renderable_properties.hpp"
@@ -508,8 +508,8 @@ namespace d2d::vk {
 
     template<std::size_t FiF, ::d2d::impl::directly_renderable... Ts> //requires (sizeof...(Ts) > 0)
     result<texture_idx_t> renderable_tuple<FiF, std::tuple<Ts...>>::create_texture(typename texture_map::iterator tex_iter, std::span<std::span<const std::byte>> textures_as_bytes, extent2 texture_size, VkFormat format) noexcept {
-        texture& tex = tex_iter->second;
-        RESULT_TRY_MOVE(tex, make<texture>(
+        sampled_image& tex = tex_iter->second;
+        RESULT_TRY_MOVE(tex, make<sampled_image>(
             logi_device_ptr,
             texture_size.width(), texture_size.height(), format, 
             VK_IMAGE_TILING_OPTIMAL, 
@@ -529,7 +529,7 @@ namespace d2d::vk {
          
         //Re-create all other textures
         RESULT_VERIFY(allocator.gpu_alloc_begin());
-        std::vector<texture> new_texs;
+        std::vector<sampled_image> new_texs;
         new_texs.resize(textures.size());
         RESULT_VERIFY(allocator.realloc(new_texs, textures, texture_mem, std::distance(textures.begin(), tex_iter)));
         RESULT_VERIFY(allocator.gpu_alloc_end());
