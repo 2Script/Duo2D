@@ -13,11 +13,12 @@
 namespace d2d::vk {
     template<::d2d::impl::directly_renderable T, std::size_t FiF, typename TupleT>
     result<void> command_buffer::draw(const renderable_tuple<FiF, TupleT>& renderables) const noexcept {
-        if(renderables.template empty<T>())
-            return {};
-
         if(renderables.template has_changes<T>())
             return error::buffer_needs_changes_applied;
+        
+        if(renderables.template empty<T>() || renderables.template draw_count<T>() == 0)
+            return {};
+
         
         //Set pipeline
         vkCmdBindPipeline(handle, VK_PIPELINE_BIND_POINT_GRAPHICS, renderables.template associated_pipeline<T>());
