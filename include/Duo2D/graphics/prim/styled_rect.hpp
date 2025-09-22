@@ -4,6 +4,7 @@
 #include "Duo2D/arith/vector.hpp"
 #include "Duo2D/graphics/core/color.hpp"
 #include "Duo2D/graphics/core/renderable.hpp"
+#include "Duo2D/graphics/core/texture.hpp"
 #include "Duo2D/traits/renderable_traits.hpp"
 #include "Duo2D/vulkan/traits/attribute_traits.hpp"
 #include "Duo2D/arith/size.hpp"
@@ -30,7 +31,7 @@ namespace d2d {
         using uniform_type = extent2;
         using push_constant_types = std::tuple<extent2&>;
         using attribute_types = vk::make_attribute_types_t<true_color, transform2, std::uint32_t, rect<std::uint32_t>>;
-        using texture_type = vk::sampled_image;
+        using asset_type = texture;
         using index_type = std::uint16_t;
         struct instance_type {
             pt2<float> pos;

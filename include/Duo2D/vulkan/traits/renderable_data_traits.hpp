@@ -6,6 +6,7 @@
 
 #include <llfio.hpp>
 
+#include "Duo2D/traits/asset_like.hpp"
 #include "Duo2D/traits/directly_renderable.hpp"
 #include "Duo2D/traits/interactable_like.hpp"
 #include "Duo2D/traits/renderable_container_like.hpp"
@@ -39,6 +40,15 @@ namespace d2d::vk::impl {
     struct unique_tuple_cat_result<std::tuple<TupleT1s...>, std::tuple<TupleT2s...>, RemainingTuples...> : 
         unique_tuple_cat_result<std::tuple<TupleT1s...>, std::tuple<TupleT2s>..., RemainingTuples...> {};
 }
+
+
+
+
+namespace d2d::impl {
+    template<asset_like A>
+    using asset_path_map = std::map<A, std::filesystem::path>;
+}
+
 
 
 namespace d2d::vk {   
@@ -80,12 +90,12 @@ namespace d2d::vk {
         using interactable_map_tuple_type = typename input_ref_map_tuple<interactable_tuple_type>::type;
         
         template<typename T, std::size_t FiF> struct map_traits {};
-        template<::d2d::impl::when_decayed_same_as<::d2d::font> F, std::size_t FiF> struct map_traits<F, FiF> {
-            using key_type       = typename ::d2d::impl::font_path_map::key_type      ;
-            using mapped_type    = typename ::d2d::impl::font_path_map::mapped_type   ;
-            using value_type     = typename ::d2d::impl::font_path_map::value_type    ;
-            using iterator       = typename ::d2d::impl::font_path_map::iterator      ;
-            using const_iterator = typename ::d2d::impl::font_path_map::const_iterator;
+        template<::d2d::impl::asset_like A, std::size_t FiF> struct map_traits<A, FiF> {
+            using key_type       = typename ::d2d::impl::asset_path_map<A>::key_type      ;
+            using mapped_type    = typename ::d2d::impl::asset_path_map<A>::mapped_type   ;
+            using value_type     = typename ::d2d::impl::asset_path_map<A>::value_type    ;
+            using iterator       = typename ::d2d::impl::asset_path_map<A>::iterator      ;
+            using const_iterator = typename ::d2d::impl::asset_path_map<A>::const_iterator;
         };
         template<::d2d::impl::directly_renderable R, std::size_t FiF> struct map_traits<R, FiF> {
             using key_type       = typename renderable_tuple<FiF, data_tuple_type>::template key_type<R>      ;

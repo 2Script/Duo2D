@@ -19,7 +19,6 @@
 #include "Duo2D/graphics/core/color.hpp"
 #include "Duo2D/input/category.hpp"
 #include "Duo2D/input/code.hpp"
-#include "Duo2D/input/modifier_flags.hpp"
 #include <Duo2D/graphics/prim/debug_rect.hpp>
 #include <Duo2D/graphics/prim/styled_rect.hpp>
 #include <Duo2D/graphics/ui/text.hpp>
@@ -79,7 +78,14 @@ int main(){
     
     //s.texture_bounds->size = {1200, 675};
     std::string test_img_alpha_path = assets_path / "test_img_alpha.png";
-    s._texture_paths = {test_img_alpha_path, ""};
+    std::string test_img_alpha_2_path = assets_path / "test_img_alpha_2.ktx2";
+    std::string test_img_alpha_3_path = assets_path / "test_img_alpha_3.png";
+    if(!win->try_emplace<d2d::texture>("test_img_alpha", test_img_alpha_path).second) return -69;
+    if(!win->try_emplace<d2d::texture>("test_img_alpha_2", test_img_alpha_2_path).second) return -69;
+    if(!win->try_emplace<d2d::texture>("test_img_alpha_3", test_img_alpha_3_path).second) return -69;
+    RESULT_VERIFY(win->apply_changes<d2d::texture>());
+
+    s._textures = {"test_img_alpha", ""};
     //s.texture_bounds->pos = {350, 100};
     //s.texture_bounds->size = {300, 1044-100};
     std::pair<std::uint64_t, d2d::styled_rect> p = {test_key{0, std::bit_cast<std::uint32_t>(s.color.get_ref())}, s};
@@ -103,9 +109,7 @@ int main(){
     //magenta_ref._texture_paths = {"/home/artin/Repos/Arastais/Test/test_img_alpha.png"};
     //magenta_ref.texture_bounds->pos = {100, 100};
     //magenta_ref.texture_bounds->size = {300, 1044};
-    std::string test_img_alpha_2_path = assets_path / "test_img_alpha_2.ktx2";
-    std::string test_img_alpha_3_path = assets_path / "test_img_alpha_3.png";
-    magenta_ref._texture_paths = {test_img_alpha_3_path, test_img_alpha_2_path};
+    magenta_ref._textures = {"test_img_alpha_3", "test_img_alpha_2"};
     magenta_ref.texture_bounds->pos = {100, 0};
     magenta_ref.texture_bounds->size = {1100, 675};
     magenta_ref.border_width = 10;

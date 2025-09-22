@@ -97,6 +97,7 @@ namespace d2d::error {
         invalid_image_initialization,
         descriptors_not_initialized,
         font_not_found,
+        texture_not_found,
 
         d2d_custom_end = 0xFFF,
 
@@ -303,7 +304,7 @@ namespace d2d::error {
 
         //Number of codes (cannot be used externally as a size)
         num_duplicate_codes = 1,
-        num_unique_codes = 96,
+        num_unique_codes = 97,
         num_codes = num_unique_codes + num_duplicate_codes
     };
 }
@@ -331,6 +332,7 @@ namespace d2d::error {
         {invalid_image_initialization,       "Invalid arguments passed when initializing the given image"},
         {descriptors_not_initialized,        "The given descriptors have not been initialized yet"},
         {font_not_found,                     "The requested font was not found. Did you forget to insert it into the window?"},
+        {texture_not_found,                  "The requested texture was not found. Did you forget to insert it into the window?"},
 
     
         {invalid_texture_file_format,              "The given KTX texture file contains invalid data"},
@@ -547,6 +549,7 @@ namespace d2d::error {
         {invalid_image_initialization,       invalid_argument},
         {descriptors_not_initialized,        bad_file_descriptor},
         {font_not_found,                     no_such_device_or_address},
+        {texture_not_found,                  no_such_device_or_address},
 
 
         {invalid_texture_file_format,              invalid_argument},

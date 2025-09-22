@@ -11,6 +11,7 @@
 #include "Duo2D/core/moveable_atomic.hpp"
 #include "Duo2D/core/unique_mutex.hpp"
 #include "Duo2D/graphics/core/font.hpp"
+#include "Duo2D/graphics/core/texture.hpp"
 #include "Duo2D/vulkan/core/command_buffer.hpp"
 #include "Duo2D/vulkan/memory/renderable_data_tuple_wrapper.hpp"
 #include "Duo2D/vulkan/traits/buffer_traits.hpp"
@@ -72,7 +73,7 @@ namespace d2d::vk {
 
     protected:
         //TODO (HIGH PRIO): Split this into (multithreaded) loading/decoding the file | allocating multiple files into image buffers
-        result<texture_idx_t> load(std::string_view path) noexcept;
+        result<texture_idx_t> load(texture_view t, std::string_view path = "") noexcept;
         result<texture_idx_t> load(font_view f, std::string_view path = "") noexcept;
     private:
         result<texture_idx_t> create_texture(typename texture_map::iterator tex_iter, std::span<std::span<const std::byte>> textures_as_bytes, extent2 texture_size, VkFormat format) noexcept;

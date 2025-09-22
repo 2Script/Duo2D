@@ -1,4 +1,5 @@
 #pragma once
+#include "Duo2D/graphics/core/texture.hpp"
 #include "Duo2D/traits/generic_functor.hpp"
 #include "Duo2D/traits/renderable_constraints.hpp"
 #include "Duo2D/vulkan/memory/renderable_tuple.hpp"
@@ -340,9 +341,13 @@ namespace d2d::vk {
 
 namespace d2d::vk {
     template<std::size_t FiF, ::d2d::impl::directly_renderable... Ts> //requires (sizeof...(Ts) > 0)
-    result<texture_idx_t> renderable_tuple<FiF, std::tuple<Ts...>>::load(std::string_view path) noexcept {
-        std::pair<typename texture_map::iterator, bool> emplace_result = textures.emplace(std::piecewise_construct, std::forward_as_tuple(path), std::forward_as_tuple());
+    result<texture_idx_t> renderable_tuple<FiF, std::tuple<Ts...>>::load(texture_view t, std::string_view path) noexcept {
+        std::pair<typename texture_map::iterator, bool> emplace_result = textures.emplace(std::piecewise_construct, std::forward_as_tuple(t), std::forward_as_tuple());
         if(!emplace_result.second) return emplace_result.first->second.index();
+        if(path.empty()) [[unlikely]] {
+            textures.erase(emplace_result.first);
+            return errc::texture_not_found;
+        }
         
 
         namespace llfio = LLFIO_V2_NAMESPACE;

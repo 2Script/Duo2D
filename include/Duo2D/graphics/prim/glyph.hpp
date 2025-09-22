@@ -27,7 +27,7 @@ namespace d2d {
         };
         using push_constant_types = std::tuple<extent2&>;
         using attribute_types = vk::make_attribute_types_t<glyph_idx_t, std::uint_least16_t, pt2<float>, true_color>;
-        using texture_type = font;
+        using asset_type = font;
         using index_type = std::uint16_t;
 
         constexpr static std::size_t index_count = 6;

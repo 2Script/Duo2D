@@ -23,19 +23,11 @@ namespace d2d {
     public:
         using std::string_view::basic_string_view;
     };
+}
 
+namespace d2d {
     class font : public std::string {
-    public:
-        constexpr font() noexcept = default;
-        
-    public:
-        [[gnu::nonnull]] constexpr font(char const* s) noexcept : std::string(std::format(font_key_format_string, s)) {}
-        [[gnu::nonnull]] constexpr font(char const* s, std::size_t count) noexcept : std::string(std::format(font_key_format_string, std::string_view(s, count))) {}
-        
-        template<typename StringViewLike> requires (std::is_convertible_v<StringViewLike const&, std::string_view> && !std::is_convertible_v<StringViewLike const&, char const*>)
-        constexpr explicit font(StringViewLike const& s) noexcept : std::string(std::format(font_key_format_string, std::string_view(s))) {}
-        template<typename StringViewLike> requires std::is_convertible_v<StringViewLike const&, std::string_view>
-        constexpr font(StringViewLike const& s, std::size_t pos, std::size_t count) noexcept : std::string(std::format(font_key_format_string, std::string_view(s).substr(pos, count))) {}
+        using std::string::basic_string;
     public:
         constexpr operator font_view() const noexcept { return font_view{data(), size()}; }
 
@@ -45,15 +37,13 @@ namespace d2d {
         constexpr static unsigned char total_ascii_count = std::numeric_limits<char>::max() + 1;
         constexpr static unsigned char printable_ascii_count = total_ascii_count - nonprintable_ascii_count;
         constexpr static std::uint_fast32_t unicode_count = 0x1FFFFF + 1;
-    private:
-        constexpr static std::string_view font_key_format_string = "font::{}";
     };
 }
+
 
 namespace d2d {
     using font_size_t = std::uint_fast32_t;
 }
-
 
 
 namespace d2d::impl {
@@ -77,9 +67,4 @@ namespace d2d::impl {
     };
 
     using font_data_map = std::unordered_map<std::string, font_data>;
-}
-
-
-namespace d2d::impl {
-    using font_path_map = std::map<font, std::filesystem::path>;
 }

@@ -245,13 +245,13 @@ namespace d2d::vk::impl {
         input_bytes.reserve(this->size());
         for(const auto& input_pair : *this) {
             for(std::size_t i = 0; i < renderable_traits<T>::max_texture_count; ++i) {
-                const auto& key = input_pair.second.texture_keys()[i];
+                const auto& key = input_pair.second.texture_names()[i];
                 if(key.empty()) continue;
                 RESULT_VERIFY(std::forward<LoadTextureFn>(load_texture_fn)(key));
             }
             std::array<texture_idx_t, renderable_traits<T>::max_texture_count> texture_idxs;
             for(std::size_t i = 0; i < renderable_traits<T>::max_texture_count; ++i) {
-                const auto& key = input_pair.second.texture_keys()[i];
+                const auto& key = input_pair.second.texture_names()[i];
                 if(key.empty()) {
                     texture_idxs[i] = std::numeric_limits<texture_idx_t>::max();
                     continue;

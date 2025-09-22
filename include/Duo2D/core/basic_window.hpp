@@ -24,6 +24,7 @@
 #include "Duo2D/input/map_types.hpp"
 #include "Duo2D/input/modifier_flags.hpp"
 #include "Duo2D/input/window_info.hpp"
+#include "Duo2D/traits/asset_like.hpp"
 #include "Duo2D/traits/generic_functor.hpp"
 #include "Duo2D/traits/directly_renderable.hpp"
 #include "Duo2D/traits/interactable_like.hpp"
@@ -80,7 +81,7 @@ namespace d2d {
         //TODO check that T is within container_data_tuple_type
         template<typename T>
         result<void> apply_changes() noexcept;
-        template<impl::when_decayed_same_as<font> T>
+        template<impl::asset_like T>
         result<void> apply_changes() noexcept;
     private:
         template<typename T>
@@ -95,12 +96,12 @@ namespace d2d {
         template<impl::directly_renderable             T> constexpr bool has_changes() const noexcept;
         template<impl::renderable_container_like       T> constexpr bool has_changes() const noexcept;
         template<impl::renderable_container_tuple_like T> constexpr bool has_changes() const noexcept;
-        template<impl::when_decayed_same_as<font>      T> constexpr bool has_changes() const noexcept;
+        template<impl::asset_like                      T> constexpr bool has_changes() const noexcept;
     private:
         template<impl::directly_renderable             T> constexpr bool has_changes(bool value) noexcept;
         template<impl::renderable_container_like       T> constexpr bool has_changes(bool value) noexcept;
         template<impl::renderable_container_tuple_like T> constexpr bool has_changes(bool value) noexcept;
-        template<impl::when_decayed_same_as<font>      T> constexpr bool has_changes(bool value) noexcept;
+        template<impl::asset_like                      T> constexpr bool has_changes(bool value) noexcept;
 
 
     public:
@@ -223,8 +224,8 @@ namespace d2d {
         template<impl::renderable_container_like       T> constexpr vk::impl::renderable_input_map<T>        const& renderable_data_of() const noexcept;
         template<impl::renderable_container_tuple_like T> constexpr vk::impl::renderable_input_map<T>             & renderable_data_of()       noexcept;
         template<impl::renderable_container_tuple_like T> constexpr vk::impl::renderable_input_map<T>        const& renderable_data_of() const noexcept;
-        template<impl::when_decayed_same_as<font>      T> constexpr impl::font_path_map                           & renderable_data_of()       noexcept;
-        template<impl::when_decayed_same_as<font>      T> constexpr impl::font_path_map                      const& renderable_data_of() const noexcept;
+        template<impl::asset_like                      T> constexpr impl::asset_path_map<T>                       & renderable_data_of()       noexcept;
+        template<impl::asset_like                      T> constexpr impl::asset_path_map<T>                  const& renderable_data_of() const noexcept;
 
         template<impl::interactable_like T> constexpr vk::impl::renderable_input_map<std::pair<std::reference_wrapper<T>, bool>>      & interactables_of()       noexcept;
         template<impl::interactable_like T> constexpr vk::impl::renderable_input_map<std::pair<std::reference_wrapper<T>, bool>> const& interactables_of() const noexcept;
@@ -241,7 +242,7 @@ namespace d2d {
         basic_window(GLFWwindow* w) noexcept : base_tuple_type(), 
             category_flags(static_cast<input::category_flags_t>(0b1) << input::category::system),
             active_bindings(), inactive_bindings(), event_fns(), text_input_fn(), modifier_flags{},
-            renderable_container_datas(), interactable_refs(), font_paths(), font_paths_outdated(false),
+            renderable_container_datas(), interactable_refs(), asset_paths_tuple(),
             handle(w, {}), command_pool_ptr(),
             _surface(), _swap_chain(), _render_pass(), _size{},
             command_buffers{}, render_fences{}, frame_operation_semaphores{}, rendering_complete_semaphores(),
@@ -275,8 +276,7 @@ namespace d2d {
         typename vk::renderable_data_traits<Ts...>::container_data_map_tuple_type renderable_container_datas;
         //std::vector<interactable*> interactable_ptrs;
         typename vk::renderable_data_traits<Ts...>::interactable_map_tuple_type interactable_refs;
-        impl::font_path_map font_paths;
-        bool font_paths_outdated;
+        std::tuple<std::pair<impl::asset_path_map<font>, bool>, std::pair<impl::asset_path_map<texture>, bool>> asset_paths_tuple;
 
         std::unique_ptr<GLFWwindow, generic_functor<glfwDestroyWindow>> handle;
         std::shared_ptr<vk::command_pool> command_pool_ptr;

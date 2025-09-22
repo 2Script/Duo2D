@@ -39,6 +39,7 @@
 #include "Duo2D/core/make.hpp"
 #include "Duo2D/vulkan/sync/semaphore.hpp"
 #include "Duo2D/vulkan/device/queue_family.hpp"
+#include "Duo2D/vulkan/traits/renderable_data_traits.hpp"
 
 namespace d2d {
     template<typename... Ts>
@@ -135,10 +136,10 @@ namespace d2d {
     }
 
     template<typename... Ts>
-    template<impl::when_decayed_same_as<font> T>
+    template<impl::asset_like T>
     result<void> basic_window<Ts...>::apply_changes() noexcept {
-        for(auto const& font_path_pair : font_paths)
-            RESULT_VERIFY(this->load(font_path_pair.first, font_path_pair.second.generic_string()));
+        for(auto const& asset_path_pair : renderable_data_of<T>())
+            RESULT_VERIFY(this->load(asset_path_pair.first, asset_path_pair.second.generic_string()));
         has_changes<T>(false);
         return {};
     }
@@ -245,9 +246,9 @@ namespace d2d {
     }
 
     template<typename... Ts>
-    template<impl::when_decayed_same_as<font> T>
+    template<impl::asset_like T>
     constexpr bool basic_window<Ts...>::has_changes() const noexcept {
-        return font_paths_outdated;
+        return std::get<std::pair<impl::asset_path_map<T>, bool>>(asset_paths_tuple).second;
     }
 
     
@@ -272,9 +273,9 @@ namespace d2d {
     }
 
     template<typename... Ts>
-    template<impl::when_decayed_same_as<font> T>
+    template<impl::asset_like T>
     constexpr bool basic_window<Ts...>::has_changes(bool value) noexcept {
-        return font_paths_outdated = value;
+        return std::get<std::pair<impl::asset_path_map<T>, bool>>(asset_paths_tuple).second = value;
     }
 }
 
@@ -310,7 +311,7 @@ namespace d2d {
         RESULT_VERIFY(command_buffers[frame_idx].reset());
 
         RESULT_VERIFY(command_buffers[frame_idx].begin(false));
-        VkMemoryBarrier2 global_barrier {
+        constexpr static VkMemoryBarrier2 global_barrier {
             .sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER_2,
             .pNext = nullptr,
             .srcStageMask = VK_PIPELINE_STAGE_2_HOST_BIT,
@@ -378,7 +379,7 @@ namespace d2d {
         auto ins = renderable_data_of<T>().insert(value);
         if(!ins.second) return ins;
         this->template has_changes<T>(true);
-        if constexpr(!impl::when_decayed_same_as<T, font>)
+        if constexpr(!impl::asset_like<T>)
             apply_insertion<T>(ins.first->first, ins.first->second);
         return ins;
     }
@@ -390,7 +391,7 @@ namespace d2d {
         auto ins = renderable_data_of<T>().insert(std::move(value));
         if(!ins.second) return ins;
         this->template has_changes<T>(true);
-        if constexpr(!impl::when_decayed_same_as<T, font>)
+        if constexpr(!impl::asset_like<T>)
             apply_insertion<T>(ins.first->first, ins.first->second);
         return ins;
     }
@@ -403,7 +404,7 @@ namespace d2d {
         auto ins = renderable_data_of<T>().insert(std::forward<P>(value));
         if(!ins.second) return ins;
         this->template has_changes<T>(true);
-        if constexpr(!impl::when_decayed_same_as<T, font>)
+        if constexpr(!impl::asset_like<T>)
             apply_insertion<T>(ins.first->first, ins.first->second);
         return ins;
     }
@@ -415,7 +416,7 @@ namespace d2d {
     std::pair<typename basic_window<Ts...>::template iterator<T>, bool> basic_window<Ts...>::insert_or_assign(const key_type<T>& key, V&& value) noexcept {
         auto ins = renderable_data_of<T>().insert_or_assign(key, std::forward<V>(value));
         this->template has_changes<T>(true);
-        if constexpr(!impl::when_decayed_same_as<T, font>)
+        if constexpr(!impl::asset_like<T>)
             apply_insertion<T>(ins.first->first, ins.first->second);
         return ins;
     }
@@ -425,7 +426,7 @@ namespace d2d {
     std::pair<typename basic_window<Ts...>::template iterator<T>, bool> basic_window<Ts...>::insert_or_assign(key_type<T>&& key, V&& value) noexcept {
         auto ins = renderable_data_of<T>().insert_or_assign(std::move(key), std::forward<V>(value));
         this->template has_changes<T>(true);
-        if constexpr(!impl::when_decayed_same_as<T, font>)
+        if constexpr(!impl::asset_like<T>)
             apply_insertion<T>(ins.first->first, ins.first->second);
         return ins;
     }
@@ -438,7 +439,7 @@ namespace d2d {
         auto ins = renderable_data_of<T>().emplace(std::forward<Args>(args)...);
         if(!ins.second) return ins;
         this->template has_changes<T>(true);
-        if constexpr(!impl::when_decayed_same_as<T, font>)
+        if constexpr(!impl::asset_like<T>)
             apply_insertion<T>(ins.first->first, ins.first->second);
         return ins;
     }
@@ -450,7 +451,7 @@ namespace d2d {
         auto ins = renderable_data_of<T>().try_emplace(std::forward<S>(str), std::forward<Args>(args)...);
         if(!ins.second) return ins;
         this->template has_changes<T>(true);
-        if constexpr(!impl::when_decayed_same_as<T, font>)
+        if constexpr(!impl::asset_like<T>)
             apply_insertion<T>(ins.first->first, ins.first->second);
         return ins;
     }
@@ -471,57 +472,27 @@ namespace d2d {
     template<typename... Ts>
     template<typename T>
     basic_window<Ts...>::iterator<T> basic_window<Ts...>::erase(basic_window<Ts...>::iterator<T> pos) noexcept {
-        if constexpr(impl::interactable_like<T>) {
-            interactables_of<T>().erase(pos->first);
-            ////TODO: improve this after using a vector for renderable inputs
-            //auto it = std::remove(interactable_ptrs.begin(), interactable_ptrs.end(), static_cast<interactable*>(&pos->second));
-            //std::size_t erase_idx = std::distance(interactable_ptrs.begin(), it);
-            //focus_idx.compare_exchange_strong(erase_idx, static_cast<std::size_t>(-1), std::memory_order_relaxed);
-            //interactable_ptrs.erase(it, interactable_ptrs.end());
-        }
-
+        if constexpr(impl::interactable_like<T>) interactables_of<T>().erase(pos->first);
         return renderable_data_of<T>().erase(pos);
     }
     template<typename... Ts>
     template<typename T>
     basic_window<Ts...>::iterator<T> basic_window<Ts...>::erase(basic_window<Ts...>::const_iterator<T> pos) noexcept {
-        if constexpr(impl::interactable_like<T>){
-            interactables_of<T>().erase(pos->first);
-            ////TODO: improve this after using a vector for renderable inputs
-            //auto it = std::remove(interactable_ptrs.begin(), interactable_ptrs.end(), static_cast<interactable*>(&pos->second));
-            //std::size_t erase_idx = std::distance(interactable_ptrs.begin(), it);
-            //focus_idx.compare_exchange_strong(erase_idx, static_cast<std::size_t>(-1), std::memory_order_relaxed);
-            //interactable_ptrs.erase(it, interactable_ptrs.end());
-        }
-
+        if constexpr(impl::interactable_like<T>) interactables_of<T>().erase(pos->first);
         return renderable_data_of<T>().erase(pos);
     }
     template<typename... Ts>
     template<typename T>
     basic_window<Ts...>::iterator<T> basic_window<Ts...>::erase(basic_window<Ts...>::const_iterator<T> first, basic_window<Ts...>::const_iterator<T> last) noexcept {
-        if constexpr(impl::interactable_like<T>) {
-            for(auto map_it = first; map_it != last; ++map_it){
+        if constexpr(impl::interactable_like<T>)
+            for(auto map_it = first; map_it != last; ++map_it)
                 interactables_of<T>().erase(map_it->first);
-                ////TODO: improve this after using a vector for renderable inputs
-                //auto it = std::remove(interactable_ptrs.begin(), interactable_ptrs.end(), static_cast<interactable*>(&map_it->second));
-                //std::size_t erase_idx = std::distance(interactable_ptrs.begin(), it);
-                //focus_idx.compare_exchange_strong(erase_idx, static_cast<std::size_t>(-1), std::memory_order_relaxed);
-                //interactable_ptrs.erase(it, interactable_ptrs.end());
-            }
-        }
         return renderable_data_of<T>().erase(first, last);
     }
     template<typename... Ts>
     template<typename T>
     std::size_t basic_window<Ts...>::erase(key_type<T> const& key) noexcept {
-        if constexpr(impl::interactable_like<T>){
-            interactables_of<T>().erase(key);
-            ////TODO: improve this after using a vector for renderable inputs
-            //auto it = std::remove(interactable_ptrs.begin(), interactable_ptrs.end(), static_cast<interactable*>(&renderable_data_of<T>().find(key)->second));
-            //std::size_t erase_idx = std::distance(interactable_ptrs.begin(), it);
-            //focus_idx.compare_exchange_strong(erase_idx, static_cast<std::size_t>(-1), std::memory_order_relaxed);
-            //interactable_ptrs.erase(it, interactable_ptrs.end());
-        }
+        if constexpr(impl::interactable_like<T>) interactables_of<T>().erase(key);
         return renderable_data_of<T>().erase(key);
     }
 }
@@ -700,14 +671,14 @@ namespace d2d {
     }
 
     template<typename... Ts>
-    template<impl::when_decayed_same_as<font> T>
-    constexpr impl::font_path_map& basic_window<Ts...>::renderable_data_of() noexcept {
-        return font_paths;
+    template<impl::asset_like T>
+    constexpr impl::asset_path_map<T>& basic_window<Ts...>::renderable_data_of() noexcept {
+        return std::get<std::pair<impl::asset_path_map<T>, bool>>(asset_paths_tuple).first;
     }
     template<typename... Ts>
-    template<impl::when_decayed_same_as<font> T>
-    constexpr impl::font_path_map const& basic_window<Ts...>::renderable_data_of() const noexcept {
-        return font_paths;
+    template<impl::asset_like T>
+    constexpr impl::asset_path_map<T> const& basic_window<Ts...>::renderable_data_of() const noexcept {
+        return std::get<std::pair<impl::asset_path_map<T>, bool>>(asset_paths_tuple).first;
     }
 
 
