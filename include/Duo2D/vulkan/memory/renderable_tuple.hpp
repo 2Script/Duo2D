@@ -76,7 +76,8 @@ namespace d2d::vk {
         result<texture_idx_t> load(texture_view t, std::string_view path = "") noexcept;
         result<texture_idx_t> load(font_view f, std::string_view path = "") noexcept;
     private:
-        result<texture_idx_t> create_texture(typename texture_map::iterator tex_iter, std::span<std::span<const std::byte>> textures_as_bytes, extent2 texture_size, VkFormat format) noexcept;
+        result<texture_idx_t> create_texture_default(typename texture_map::iterator tex_iter, std::span<std::span<const std::byte>> textures_as_bytes, extent2 texture_size, VkFormat format) noexcept;
+        result<texture_idx_t> create_texture_ktx2(typename texture_map::iterator tex_iter, std::span<ktx_uint8_t const> bytes) noexcept;
 
 
     private:

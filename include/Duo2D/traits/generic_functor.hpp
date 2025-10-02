@@ -12,6 +12,17 @@ namespace d2d {
     };
 }
 
+
+namespace d2d {
+    template<auto Func>
+    struct generic_pointer_functor {
+        template<typename... Ptrs>
+        constexpr decltype(auto) operator()(Ptrs&&... ptrs) { 
+            return Func(*std::forward<Ptrs>(ptrs)...); 
+        }
+    };
+}
+
 /*
 namespace d2d {
     template<typename C, auto MemFunc>

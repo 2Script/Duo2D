@@ -4,6 +4,8 @@
 #include "Duo2D/traits/renderable_constraints.hpp"
 #include "Duo2D/vulkan/memory/renderable_tuple.hpp"
 
+#include <array>
+#include <cstdint>
 #include <cstring>
 #include <limits>
 #include <memory>
@@ -24,6 +26,7 @@
 #include <msdfgen/core/DistanceMapping.h>
 #include <msdfgen/core/ShapeDistanceFinder.h>
 #include <msdfgen/core/edge-selectors.h>
+#include <vulkan/vulkan_core.h>
 
 #include "Duo2D/core/error.hpp"
 #include "Duo2D/vulkan/display/sampled_image.hpp"
@@ -362,32 +365,19 @@ namespace d2d::vk {
             return static_cast<errc>(extent.assume_error().value());
         std::size_t length = extent.assume_value();
 
-        constexpr static llfio::path_view ktx_ext{".ktx"};
+        constexpr static std::array ktx2_identifier{'\xAB', 'K', 'T', 'X', ' ', '2', '0', '\xBB', '\r', '\n', '\x1A', '\n'};
         //TODO: use ktxTexture_VkUploadEx_WithSuballocator
-        if(const llfio::path_view_component path_ext = p.extension(); std::memcmp(path_ext._raw_data(), ktx_ext._raw_data(), std::min(ktx_ext.native_size(), path_ext.native_size())) == 0) {
-            ktxTexture* ktx;
-            __D2D_KTX_VERIFY(ktxTexture_CreateFromMemory(reinterpret_cast<ktx_uint8_t const*>(mh.address()), length, KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT, &ktx));
-            std::vector<std::span<const std::byte>> bytes(ktx->numLayers);
+        if(length < ktx2_identifier.size()) goto create_default;
+        if(std::memcmp(ktx2_identifier.data(), mh.address(), ktx2_identifier.size()) == 0) 
+            return create_texture_ktx2(emplace_result.first, std::span{reinterpret_cast<ktx_uint8_t const*>(mh.address()), length});
 
-            std::byte const* begin = reinterpret_cast<std::byte const*>(ktxTexture_GetData(ktx));
-            const std::size_t layer_size = ktxTexture_GetImageSize(ktx, 0);
-            for(std::size_t i = 0; i < ktx->numLayers; ++i) {
-                std::size_t offset = 0;
-                __D2D_KTX_VERIFY(ktxTexture_GetImageOffset(ktx, 0, i, 0, &offset));
-                bytes[i] = std::span{begin + offset, layer_size};
-            }
-
-            result<texture_idx_t> r = create_texture(emplace_result.first, std::span{bytes}, extent2{ktx->baseWidth, ktx->baseHeight}, ktxTexture_GetVkFormat(ktx));
-            ktxTexture_Destroy(ktx);
-            return r;
-        }
-
+    create_default:
         dd::decoder image_decoder(mh.address(), length);
         RESULT_TRY_MOVE_UNSCOPED_CAST_ERR(dd::decoded_video decoded_image, image_decoder.decode_video_only(AV_HWDEVICE_TYPE_VULKAN), di, d2d::errc);
         std::array<std::span<const std::byte>, 1> bytes_arr{std::span{decoded_image.bytes}};
 
 
-        return create_texture(emplace_result.first, std::span{bytes_arr}, {decoded_image.width, decoded_image.height}, pixel_format_mapping[decoded_image.format]);
+        return create_texture_default(emplace_result.first, std::span{bytes_arr}, {decoded_image.width, decoded_image.height}, pixel_format_mapping[decoded_image.format]);
     }
 
     template<std::size_t FiF, ::d2d::impl::directly_renderable... Ts> //requires (sizeof...(Ts) > 0)
@@ -507,12 +497,12 @@ namespace d2d::vk {
             glyph_spans[i] = std::span{reinterpret_cast<std::byte const*>(glyphs[i].data()), glyphs[i].size()};
 
 
-        return create_texture(emplace_result.first, std::span{glyph_spans}, {texture_map::font_texture_length_pixels, texture_map::font_texture_length_pixels}, VK_FORMAT_R8G8B8A8_UNORM);
+        return create_texture_default(emplace_result.first, std::span{glyph_spans}, {texture_map::font_texture_length_pixels, texture_map::font_texture_length_pixels}, VK_FORMAT_R8G8B8A8_UNORM);
     }
 
 
     template<std::size_t FiF, ::d2d::impl::directly_renderable... Ts> //requires (sizeof...(Ts) > 0)
-    result<texture_idx_t> renderable_tuple<FiF, std::tuple<Ts...>>::create_texture(typename texture_map::iterator tex_iter, std::span<std::span<const std::byte>> textures_as_bytes, extent2 texture_size, VkFormat format) noexcept {
+    result<texture_idx_t> renderable_tuple<FiF, std::tuple<Ts...>>::create_texture_default(typename texture_map::iterator tex_iter, std::span<std::span<const std::byte>> textures_as_bytes, extent2 texture_size, VkFormat format) noexcept {
         sampled_image& tex = tex_iter->second;
         RESULT_TRY_MOVE(tex, make<sampled_image>(
             logi_device_ptr,
@@ -567,6 +557,71 @@ namespace d2d::vk {
         //Clear copy command buffer
         RESULT_VERIFY(allocator.gpu_alloc_end());
 
+        RESULT_VERIFY(tex.initialize(logi_device_ptr, phys_device_ptr, format));
+        return tex.index();
+    }
+    
+    //TODO?: use ktxTexture2_VkUploadEx_WithSuballocator?
+    template<std::size_t FiF, ::d2d::impl::directly_renderable... Ts> //requires (sizeof...(Ts) > 0)
+    result<texture_idx_t> renderable_tuple<FiF, std::tuple<Ts...>>::create_texture_ktx2(typename texture_map::iterator tex_iter, std::span<ktx_uint8_t const> bytes) noexcept {
+        std::unique_ptr<ktxTexture2*, generic_pointer_functor<ktxTexture2_Destroy>> ktx(new (ktxTexture2*));
+        __D2D_KTX_VERIFY(ktxTexture2_CreateFromMemory(bytes.data(), bytes.size_bytes(), KTX_TEXTURE_CREATE_NO_FLAGS, ktx.get()));
+
+
+        //TODO: compressed format transcoding
+        const bool transcoded = ktxTexture2_NeedsTranscoding(*ktx);
+        if (transcoded) __D2D_KTX_VERIFY(ktxTexture2_TranscodeBasis(*ktx, KTX_TTF_RGBA32, 0));
+
+
+        //Create texture (TODO: allow manually specifying size in bytes)
+        sampled_image& tex = tex_iter->second;
+        const VkFormat format = ktxTexture2_GetVkFormat(*ktx);
+        RESULT_TRY_MOVE(tex, make<sampled_image>(
+            logi_device_ptr,
+            (*ktx)->baseWidth, (*ktx)->baseHeight, format,
+            VK_IMAGE_TILING_OPTIMAL, 
+            VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, 
+            (*ktx)->numLayers
+        ));
+
+
+        //Create staging buffer
+        const std::size_t total_buffer_size = ktxTexture_GetDataSizeUncompressed(reinterpret_cast<ktxTexture*>(*ktx));
+        std::array<buffer, 1> staging_buffs;
+        RESULT_TRY_MOVE(staging_buffs[0], make<buffer>(logi_device_ptr, total_buffer_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT));
+        RESULT_TRY_MOVE_UNSCOPED(device_memory<1> staging_mem, 
+            make<device_memory<1>>(logi_device_ptr, phys_device_ptr, staging_buffs, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT), sm);
+        RESULT_VERIFY(staging_mem.bind(logi_device_ptr, staging_buffs[0], 0));
+
+        //Fill staging buffer with image data
+        RESULT_TRY_COPY_UNSCOPED(void* mapped_data, staging_mem.map(logi_device_ptr, total_buffer_size), smm);
+        if(transcoded)
+            std::memcpy(mapped_data, ktxTexture_GetData(reinterpret_cast<ktxTexture*>(*ktx)), total_buffer_size);
+        else
+            __D2D_KTX_VERIFY(ktxTexture2_LoadImageData(*ktx, static_cast<ktx_uint8_t*>(mapped_data), total_buffer_size));
+        RESULT_VERIFY(staging_mem.unmap(logi_device_ptr));
+        
+        //Re-allocate the memory
+        device_memory<std::dynamic_extent> old_mem = std::move(texture_mem); //Make sure old memory used for the rest of the buffers stays alive until after bind
+        RESULT_TRY_MOVE(texture_mem, make<device_memory<std::dynamic_extent>>(logi_device_ptr, phys_device_ptr, textures, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT));
+         
+        //Re-create all other textures
+        renderable_allocator allocator(logi_device_ptr, phys_device_ptr, copy_cmd_pool_ptr);
+        RESULT_VERIFY(allocator.gpu_alloc_begin());
+        std::vector<sampled_image> new_texs;
+        new_texs.resize(textures.size());
+        RESULT_VERIFY(allocator.realloc(new_texs, textures, texture_mem, std::distance(textures.begin(), tex_iter)));
+        RESULT_VERIFY(allocator.gpu_alloc_end());
+
+        //Replace the old textures with the new ones
+        allocator.move(textures, new_texs);
+
+        //Copy staging buffer data to texture
+        RESULT_VERIFY(allocator.gpu_alloc_begin());
+        allocator.copy_command_buffer().copy_buffer_to_image(tex, staging_buffs[0], VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, {(*ktx)->baseWidth, (*ktx)->baseHeight}, 0, 0, (*ktx)->numLayers);
+        RESULT_VERIFY(allocator.gpu_alloc_end());
+
+        //Initialize texture and return with its index
         RESULT_VERIFY(tex.initialize(logi_device_ptr, phys_device_ptr, format));
         return tex.index();
     }

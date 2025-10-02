@@ -12,8 +12,8 @@ namespace d2d::vk {
         return ret;
     }
 
-    result<void> sampled_image::initialize(std::shared_ptr<logical_device> logi_device, std::weak_ptr<physical_device> phys_device, VkFormat format, pt3<VkSamplerAddressMode> address_modes) noexcept {
-        RESULT_TRY_MOVE(img_view, make<image_view>(logi_device, *this, format, image_count));
+    result<void> sampled_image::initialize(std::shared_ptr<logical_device> logi_device, std::weak_ptr<physical_device> phys_device, VkFormat view_format, pt3<VkSamplerAddressMode> address_modes) noexcept {
+        RESULT_TRY_MOVE(img_view, make<image_view>(logi_device, *this, view_format == VK_FORMAT_UNDEFINED ? image_format : view_format, image_count));
         RESULT_TRY_MOVE(img_sampler, make<image_sampler>(logi_device, phys_device, address_modes));
         initialized = true;
         return {};

@@ -9,7 +9,7 @@ namespace d2d::vk {
     class sampled_image : public image {
     public:
         static result<sampled_image> create(std::shared_ptr<logical_device> logi_device, std::uint32_t width, std::uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, std::uint32_t array_count = 1) noexcept;
-        result<void> initialize(std::shared_ptr<logical_device> logi_device, std::weak_ptr<physical_device> phys_device, VkFormat format, pt3<VkSamplerAddressMode> address_modes = {image_sampler::clamp_to_border, image_sampler::clamp_to_border, image_sampler::clamp_to_border}) noexcept;
+        result<void> initialize(std::shared_ptr<logical_device> logi_device, std::weak_ptr<physical_device> phys_device, VkFormat view_format = VK_FORMAT_UNDEFINED, pt3<VkSamplerAddressMode> address_modes = {image_sampler::clamp_to_border, image_sampler::clamp_to_border, image_sampler::clamp_to_border}) noexcept;
 
         result<sampled_image> clone(std::shared_ptr<logical_device> logi_device, std::weak_ptr<physical_device> phys_device) const noexcept;
     public:
