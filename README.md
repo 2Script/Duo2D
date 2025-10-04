@@ -110,10 +110,9 @@ int main(){
     return 0;
 }
 ```
-
 <br/>
 
-Alternatively, here's the same example without the result verification macros:
+<details><summary>Alternatively, here's the same example without the result verification macros</summary>
 
 ```cpp
 #include <Duo2D.hpp>
@@ -177,6 +176,7 @@ int main(){
     return 0;
 }
 ```
+</details>
 
 <h2>Dependencies</h2>
 
