@@ -13,7 +13,7 @@ It handles windowing, UI, 2D and 3D graphics, 2D animations, inputs, and graphic
 <br/>
 It's written in C++ and it natively supports Windows, Linux, BSD, *Android* and Nintendo Switch 1 & 2.
 
-Duo2D was created due to a lack of a similarly-comprehensive graphics engine - other graphics engines tend to lack significant performance/efficiency improvements or not give enough control to the developer; Duo2D uses a variety of optimizations, while still offering a rich, well-documented API.
+Duo2D was developed as a **no-compromises** engine - it uses modern optimization techniques rarely used (especially in graphics engines) and gives complete control of therendering process to the developer while still having a straightforward, easy-to-use API.
 
 <h2>Features</h2>
 
