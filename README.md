@@ -186,13 +186,15 @@ int main(){
 | Name | Minimum Version | Purpose | License | Primary Author(s) |
 | ---- | --------------- | ------- | ------- | ----------------- |
 | Vulkan | 1.3 | Graphics API | N/A (graphics driver dependent) | [Khronos Group](https://www.khronos.org/) |
-| [GLFW](https://github.com/glfw/glfw)              | 3.4.0  | Window system | `Zlib` | [GLFW Team](https://www.glfw.org/) |
-| [DuoDecode](https://github.com/2Script/DuoDecode) | master branch | Image loading (except KTX2) | `LGPL-3.0-or-later` | [2Script](https://github.com/2Script) [Artin Alavi ([Arastais](https://github.com/Arastais))] |
-| [FFmpeg](https://github.com/FFmpeg/FFmpeg)        | -      | Image decoding (except KTX2) | `LGPL-2.1-or-later` | [FFmpeg Team](https://ffmpeg.org/) |
-| [llfio](https://github.com/ned14/llfio)           | develop branch (c94d2e0) | File I/O | `Apache-2.0 OR BSL-1.0` | Niall Douglas ([ned14](https://github.com/ned14)) |
-| [msdfgen](https://github.com/Chlumsky/msdfgen)    | 1.12.1 | MTSDF font generation | `MIT` | Viktor Chlumsky ([Chlumsky](https://github.com/Chlumsky)) | 
-| [harfbuzz](https://github.com/harfbuzz/harfbuzz)  | 12.0.0 | Font file loading | `MIT-Modern-Variant` | Behdad Esfahbod ([behdad](https://github.com/behdad)) |
-| [libktx][ktx-software]                            | 1.3    | Image loading and decoding (KTX2 only) | `Apache-2.0` | [Khronos Group](https://www.khronos.org/) [Mark Callow ([MarkCallow](https://github.com/MarkCallow))] |
+| [GLFW](https://github.com/glfw/glfw)                        | 3.4.0  | Window system | `Zlib` | [GLFW Team](https://www.glfw.org/) |
+| [DuoDecode](https://github.com/2Script/DuoDecode)           | master branch | Image loading (except KTX2) | `LGPL-3.0-or-later` | [2Script](https://github.com/2Script) [Artin Alavi ([Arastais](https://github.com/Arastais))] |
+| [FFmpeg](https://github.com/FFmpeg/FFmpeg)                  | -      | Image decoding (except KTX2) | `LGPL-2.1-or-later` | [FFmpeg Team](https://ffmpeg.org/) |
+| [llfio](https://github.com/ned14/llfio)                     | develop branch (c94d2e0) | File I/O | `Apache-2.0 OR BSL-1.0` | Niall Douglas ([ned14](https://github.com/ned14)) |
+| [msdfgen](https://github.com/Chlumsky/msdfgen)              | 1.12.1 | MTSDF font generation | `MIT` | Viktor Chlumsky ([Chlumsky](https://github.com/Chlumsky)) | 
+| [harfbuzz](https://github.com/harfbuzz/harfbuzz)            | 12.0.0 | Font file loading | `MIT-Modern-Variant` | Behdad Esfahbod ([behdad](https://github.com/behdad)) |
+| [libktx][ktx-software]                                      | 1.3    | Image loading and decoding (KTX2 only) | `Apache-2.0` | [Khronos Group](https://www.khronos.org/) [Mark Callow ([MarkCallow](https://github.com/MarkCallow))] |
+| [frozen](https://github.com/serge-sans-paille/frozen)       | 1.2.0  | Compile-time containers | `Apache-2.0` | [serge-sans-paille](https://github.com/serge-sans-paille) |
+| [BS::thread_pool](https://github.com/bshoshany/thread-pool) | 5.0.0  | Generalized multi-threading | `MIT` | Barak Shoshany ([bshoshany](https://github.com/bshoshany)) |
 
 <h3>Compile Time</h3>
 
