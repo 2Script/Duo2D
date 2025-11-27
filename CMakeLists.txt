@@ -107,6 +107,8 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 
 ### shader compiliation ###
+file(MAKE_DIRECTORY ${PROJECT_BINARY_DIR}/shaders)
+
 foreach(shader ${SHADER_INPUT_FILES})
     set(shader_in ${PROJECT_SOURCE_DIR}/${shader})
     set(spv_out ${shader}.spv)
