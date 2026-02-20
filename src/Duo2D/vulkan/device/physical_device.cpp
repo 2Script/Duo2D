@@ -1,6 +1,8 @@
 #include "Duo2D/vulkan/device/physical_device.hpp"
 
 #include <cstring>
+#include <streamline/functional/functor/construct_using.hpp>
+#include <streamline/universal/make.hpp>
 
 namespace d2d::vk {
     result<physical_device> physical_device::create(VkPhysicalDevice& device_handle, surface const& dummy_surface) noexcept {
@@ -13,8 +15,13 @@ namespace d2d::vk {
 
 
         //Get device queue family indicies
-        sl::array<command_family::num_families, queue_family_info> device_queue_family_infos = sl::make_deduced<sl::array>(queue_family_info{false, static_cast<std::uint32_t>(-1) >> 1}, sl::in_place_repeat_tag<command_family::num_families>);
-        {
+        auto device_queue_family_infos = sl::universal::make<sl::array<command_family::num_families, queue_family_info>>(
+			sl::in_place_tag,
+			false, 
+			(static_cast<std::uint32_t>(sl::npos) >> 1)
+		);
+        
+		{
         std::uint32_t family_count = 0;
         vkGetPhysicalDeviceQueueFamilyProperties(device_handle, &family_count, nullptr);
 
@@ -43,7 +50,7 @@ namespace d2d::vk {
 		//Check for queue family support
 		//TODO: only check for queues that we actually need (based on graphics timeline)
 		for(std::size_t i = 0; i < command_family::num_families; ++i)
-			if(device_queue_family_infos[i].index == (static_cast<std::uint32_t>(-1) >> 1))
+			if(device_queue_family_infos[i].index == (static_cast<std::uint32_t>(sl::npos) >> 1))
 				return static_cast<errc>(error::device_lacks_necessary_queue_base + i);
 		
 		}
