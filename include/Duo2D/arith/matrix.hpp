@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <type_traits>
 #include <utility>
+#include <streamline/metaprogramming/constant.hpp>
 
 #include "Duo2D/arith/point.hpp"
 #include "Duo2D/arith/vector.hpp"
@@ -60,33 +61,33 @@ namespace d2d {
     public:
         //TODO use SIMD (i.e. target_clones)
         friend constexpr column_type operator*(matrix<M, N, T> lhs, const column_type& rhs) noexcept {
-            return mult(lhs, rhs, std::make_index_sequence<M>{}, std::integral_constant<std::size_t, N>{}); 
+            return mult(lhs, rhs, std::make_index_sequence<M>{}, sl::size_constant<N>); 
         }
         friend constexpr row_type operator*(row_type lhs, const matrix<M, N, T>& rhs) noexcept {
-            return mult(lhs, rhs, std::integral_constant<std::size_t, M>{}, std::make_index_sequence<N>{});
+            return mult(lhs, rhs, sl::size_constant<M>, std::make_index_sequence<N>{});
         }
         template<std::size_t P>
         friend constexpr matrix<M, P, T> operator*(matrix<M, N, T> lhs, const matrix<N, P, T>& rhs) noexcept {
-            return mult(lhs, rhs, std::make_index_sequence<M>{}, std::integral_constant<std::size_t, N>{}, std::make_index_sequence<P>{});
+            return mult(lhs, rhs, std::make_index_sequence<M>{}, sl::size_constant<N>, std::make_index_sequence<P>{});
         }
 
     private:
         template<typename Mat, typename Vec, std::size_t I, std::size_t... Js>
-        constexpr static T mult_row(Mat&& m, Vec&& v, std::integral_constant<std::size_t, I>, std::index_sequence<Js...>) noexcept;
+        constexpr static T mult_row(Mat&& m, Vec&& v, sl::size_constant_type<I>, std::index_sequence<Js...>) noexcept;
         template<typename Mat, typename Vec, std::size_t... Is, std::size_t J>
-        constexpr static column_type mult(Mat&& m, Vec&& v, std::index_sequence<Is...>, std::integral_constant<std::size_t, J>) noexcept;
+        constexpr static column_type mult(Mat&& m, Vec&& v, std::index_sequence<Is...>, sl::size_constant_type<J>) noexcept;
 
         template<typename Vec, typename Mat, std::size_t... Is, std::size_t J>
-        constexpr static T mult_col(Vec&& v, Mat&& m, std::index_sequence<Is...>, std::integral_constant<std::size_t, J>) noexcept;
+        constexpr static T mult_col(Vec&& v, Mat&& m, std::index_sequence<Is...>, sl::size_constant_type<J>) noexcept;
         template<typename Vec, typename Mat, std::size_t I, std::size_t... Js>
-        constexpr static row_type mult(Vec&& v, Mat&& m, std::integral_constant<std::size_t, I>, std::index_sequence<Js...>) noexcept;
+        constexpr static row_type mult(Vec&& v, Mat&& m, sl::size_constant_type<I>, std::index_sequence<Js...>) noexcept;
 
         template<typename MatA, typename MatB,  std::size_t I, std::size_t... Ks, std::size_t J>
-        constexpr static T mult_mat(MatA&& m_a, MatB&& m_b, std::integral_constant<std::size_t, I>, std::index_sequence<Ks...>, std::integral_constant<std::size_t, J>) noexcept;
+        constexpr static T mult_mat(MatA&& m_a, MatB&& m_b, sl::size_constant_type<I>, std::index_sequence<Ks...>, sl::size_constant_type<J>) noexcept;
         template<typename MatA, typename MatB, std::size_t I, std::size_t K, std::size_t... Js>
-        constexpr static row_type mult_mat_cols(MatA&& m_a, MatB&& m_b, std::integral_constant<std::size_t, I> i, std::integral_constant<std::size_t, K>, std::index_sequence<Js...>) noexcept;
+        constexpr static row_type mult_mat_cols(MatA&& m_a, MatB&& m_b, sl::size_constant_type<I> i, sl::size_constant_type<K>, std::index_sequence<Js...>) noexcept;
         template<typename MatA, typename MatB, std::size_t... Is, std::size_t K, std::size_t... Js>
-        constexpr static matrix<sizeof...(Is), sizeof...(Js), T> mult(MatA&& m_a, MatB&& m_b, std::index_sequence<Is...>, std::integral_constant<std::size_t, K>, std::index_sequence<Js...>) noexcept;
+        constexpr static matrix<sizeof...(Is), sizeof...(Js), T> mult(MatA&& m_a, MatB&& m_b, std::index_sequence<Is...>, sl::size_constant_type<K>, std::index_sequence<Js...>) noexcept;
     };
 }
 

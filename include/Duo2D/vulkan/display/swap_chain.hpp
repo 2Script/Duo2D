@@ -23,20 +23,12 @@ namespace d2d::vk {
         static result<swap_chain> create(std::shared_ptr<logical_device> logi_deivce, std::weak_ptr<physical_device> phys_device, std::span<const pixel_format_info> pixel_format_priority, color_space_info color_space, std::span<const present_mode> present_mode_priority, surface& window_surface, GLFWwindow* w) noexcept;
 
     public:
-        constexpr extent2 const& extent() const noexcept { return _extent; }
-        constexpr extent2      & extent()       noexcept { return _extent; }
-
-        constexpr vk::display_format const& format() const noexcept { return _display_format; }
-        constexpr vk::display_format      & format()       noexcept { return _display_format; }
-
-        constexpr vk::present_mode const& mode() const noexcept { return _present_mode; }
-        constexpr vk::present_mode      & mode()       noexcept { return _present_mode; }
-
-        constexpr std::uint32_t const& image_count() const noexcept { return _image_count; }
-        constexpr std::uint32_t      & image_count()       noexcept { return _image_count; }
-
-        constexpr std::vector<image_view> const& image_views() const noexcept { return _image_views; }
-        constexpr std::vector<image_view>      & image_views()       noexcept { return _image_views; }
+        constexpr auto&& extent     (this auto&& self) noexcept { return sl::forward_like<decltype(self)>(self._extent); }
+        constexpr auto&& image_count(this auto&& self) noexcept { return sl::forward_like<decltype(self)>(self._image_count); }
+        constexpr auto&& format     (this auto&& self) noexcept { return sl::forward_like<decltype(self)>(self._display_format); }
+        constexpr auto&& mode       (this auto&& self) noexcept { return sl::forward_like<decltype(self)>(self._present_mode); }
+        constexpr auto&& image_views(this auto&& self) noexcept { return sl::forward_like<decltype(self)>(self._image_views); }
+        constexpr auto&& images     (this auto&& self) noexcept { return sl::forward_like<decltype(self)>(self._images); }
 
     private:
         extent2 _extent{};
@@ -44,6 +36,6 @@ namespace d2d::vk {
         vk::display_format _display_format;
         vk::present_mode _present_mode;
         std::vector<image_view> _image_views;
-        std::vector<VkImage> images;
+        std::vector<VkImage> _images;
     };
 }

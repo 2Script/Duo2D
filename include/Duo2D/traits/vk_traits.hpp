@@ -4,7 +4,7 @@
 #include <type_traits>
 #include <utility>
 #include <vulkan/vulkan.h>
-#include <vulkan/vulkan_core.h>
+
 
 namespace d2d::vk::impl { 
     template<typename VkTy> struct vk_traits{
@@ -18,7 +18,7 @@ namespace d2d::vk::impl {
     concept dependent_vulkan_like = vulkan_like<VkTy> && requires { typename vk_traits<VkTy>::dependent_type; };
 
     template<typename VkTy>
-    concept multiple_dependent_vulkan_like = dependent_vulkan_like<VkTy> && requires { typename vk_traits<VkTy>::auxilary_type; };
+    concept multiple_dependent_vulkan_like = dependent_vulkan_like<VkTy> && requires { typename vk_traits<VkTy>::auxiliary_type; };
 }
 
 
@@ -34,8 +34,8 @@ namespace d2d::vk::impl { \
 namespace d2d::vk::impl { \
     template<> struct vk_traits<type>{ \
         using dependent_type = vk::logical_device; \
-        using auxilary_type = aux_dependent_type; \
-        using deleter_type = void(typename dependent_type::pointer, typename auxilary_type::pointer, std::uint32_t, type const*); \
+        using auxiliary_type = aux_dependent_type; \
+        using deleter_type = void(typename dependent_type::pointer, typename auxiliary_type::pointer, std::uint32_t, type const*); \
     }; \
 }
 

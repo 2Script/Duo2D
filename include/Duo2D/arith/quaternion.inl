@@ -1,7 +1,6 @@
 #pragma once
 #include "Duo2D/arith/quaternion.hpp"
 #include "Duo2D/arith/vector.hpp"
-#include "Duo2D/traits/aggregate_traits.hpp"
 #include <concepts>
 
 

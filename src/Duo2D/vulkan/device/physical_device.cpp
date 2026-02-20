@@ -13,7 +13,7 @@ namespace d2d::vk {
 
 
         //Get device queue family indicies
-        queue_family_idxs_t device_idxs{};
+        sl::array<command_family::num_families, queue_family_info> device_queue_family_infos = sl::make_deduced<sl::array>(queue_family_info{false, static_cast<std::uint32_t>(-1) >> 1}, sl::in_place_repeat_tag<command_family::num_families>);
         {
         std::uint32_t family_count = 0;
         vkGetPhysicalDeviceQueueFamilyProperties(device_handle, &family_count, nullptr);
@@ -21,25 +21,33 @@ namespace d2d::vk {
         std::vector<VkQueueFamilyProperties> families(family_count);
         vkGetPhysicalDeviceQueueFamilyProperties(device_handle, &family_count, families.data());
 
-        for(std::size_t idx = 0; idx < families.size(); ++idx) {
-            for(std::size_t family_id = 0; family_id < queue_family::num_families - 1; ++family_id) {
-                if(families[idx].queueFlags & queue_family::flag_bit[family_id]) {
-                    device_idxs[family_id] = idx;
-                    goto next_family;
-                }
-            }
+        constexpr std::array<VkQueueFlagBits, command_family::num_distinct_families> flag_bit = {
+            VK_QUEUE_GRAPHICS_BIT,
+			VK_QUEUE_COMPUTE_BIT,
+			VK_QUEUE_TRANSFER_BIT,
+        }; 
 
-            {
+
+        for(std::uint32_t idx = 0; idx < family_count; ++idx) {
             VkBool32 supports_present = false;
             vkGetPhysicalDeviceSurfaceSupportKHR(device_handle, idx, dummy_surface, &supports_present);
-            if(supports_present)
-                device_idxs[queue_family::present] = idx;
+			if(supports_present) 
+				device_queue_family_infos[command_family::present] = queue_family_info{true, idx};
+
+            for(std::size_t family_id = 0; family_id < command_family::num_distinct_families; ++family_id) {    
+				if(!(families[idx].queueFlags & flag_bit[family_id])) continue;
+				device_queue_family_infos[family_id] = queue_family_info{static_cast<bool>(supports_present), idx};
             }
-
-            next_family:;
-        }
         }
 
+		//Check for queue family support
+		//TODO: only check for queues that we actually need (based on graphics timeline)
+		for(std::size_t i = 0; i < command_family::num_families; ++i)
+			if(device_queue_family_infos[i].index == (static_cast<std::uint32_t>(-1) >> 1))
+				return static_cast<errc>(error::device_lacks_necessary_queue_base + i);
+		
+		}
+		
 
         //Get device extensions
         extensions_t device_extensions{};
@@ -67,7 +75,7 @@ namespace d2d::vk {
             .name = device_properties.deviceName,
             .type = static_cast<device_type>(device_properties.deviceType),
             .limits = device_properties.limits,
-            .queue_family_idxs = device_idxs,
+            .queue_family_infos = device_queue_family_infos,
             .extensions = device_extensions,
             .features = std::bit_cast<features_t>(device_features),
         };

@@ -1,4 +1,5 @@
 #pragma once
+#include "Duo2D/core/command_family.hpp"
 #include "Duo2D/vulkan/device/physical_device.hpp"
 #include "Duo2D/vulkan/core/vulkan_ptr.hpp"
 #include "Duo2D/traits/vk_traits.hpp"
@@ -14,6 +15,6 @@ namespace d2d::vk {
 
     public:
         //May need to be per-window instead of per-device?
-        std::array<VkQueue, queue_family::num_families> queues;
+        std::array<VkQueue, command_family::num_families> queues;
     };
 }

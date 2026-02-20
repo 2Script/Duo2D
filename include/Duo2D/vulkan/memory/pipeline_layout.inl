@@ -2,42 +2,26 @@
 #include "Duo2D/vulkan/memory/pipeline_layout.hpp"
 
 namespace d2d::vk {
-    template<::d2d::impl::directly_renderable T>
-    result<pipeline_layout<T>> pipeline_layout<T>::create(std::shared_ptr<logical_device> device, descriptor_set_layout& set_layout) noexcept {
+    template<typename T, sl::size_t N, resource_table<N> Resources>
+    result<pipeline_layout<T, N, Resources>> pipeline_layout<T, N, Resources>::create(std::shared_ptr<logical_device> device) noexcept {
         pipeline_layout ret{};
         ret.dependent_handle = device;
 
-        VkPipelineLayoutCreateInfo pipeline_layout_create_info{
-            .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-            .setLayoutCount = 1,
-            .pSetLayouts = &set_layout,
-        };
-        if constexpr (renderable_constraints<T>::has_push_constants) {
-            constexpr static std::array ranges = T::push_constant_ranges();
-            pipeline_layout_create_info.pushConstantRangeCount = ranges.size();
-            pipeline_layout_create_info.pPushConstantRanges = ranges.data();
-        }
 
-        __D2D_VULKAN_VERIFY(vkCreatePipelineLayout(*device, &pipeline_layout_create_info, nullptr, &ret.handle));
+		using push_constant_usage_filtered_sequence = sl::filtered_sequence_t<sl::index_sequence_of_length_type<N>, []<sl::index_t I>(sl::index_constant_type<I>){ 
+			return sl::universal::get<sl::second_constant>(*std::next(Resources.begin(), I)).usage == usage_policy::push_constant;
+		}>;
+		constexpr auto push_constant_ranges = sl::make<sl::array<push_constant_usage_filtered_sequence::size(), VkPushConstantRange>>(Resources, [](auto pair, auto) noexcept -> VkPushConstantRange {
+			const resource_config cfg = pair[sl::second_constant];
+			return {cfg.stages, 0, static_cast<std::uint32_t>(cfg.initial_capacity_bytes)};
+		}, push_constant_usage_filtered_sequence{});
 
-        return ret;
-    }
-
-    template<::d2d::impl::directly_renderable T>
-    result<pipeline_layout<T>> pipeline_layout<T>::create(std::shared_ptr<logical_device> device) noexcept {
-        pipeline_layout ret{};
-        ret.dependent_handle = device;
-
-        VkPipelineLayoutCreateInfo pipeline_layout_create_info{
+		VkPipelineLayoutCreateInfo pipeline_layout_create_info{
             .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
             .setLayoutCount = 0,
+			.pushConstantRangeCount = push_constant_ranges.size(),
+			.pPushConstantRanges = push_constant_ranges.data(),
         };
-        if constexpr (renderable_constraints<T>::has_push_constants) {
-            constexpr static std::array ranges = T::push_constant_ranges();
-            pipeline_layout_create_info.pushConstantRangeCount = ranges.size();
-            pipeline_layout_create_info.pPushConstantRanges = ranges.data();
-        }
-
         __D2D_VULKAN_VERIFY(vkCreatePipelineLayout(*device, &pipeline_layout_create_info, nullptr, &ret.handle));
 
         return ret;

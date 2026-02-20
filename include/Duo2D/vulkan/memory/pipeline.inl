@@ -7,24 +7,24 @@
 #include <vulkan/vulkan_core.h>
 
 namespace d2d::vk {
-    template<::d2d::impl::directly_renderable T>
-    result<pipeline<T>> pipeline<T>::create(std::shared_ptr<logical_device> device, render_pass& associated_render_pass, pipeline_layout<T>& layout) noexcept {
+    template<typename T, sl::size_t N, resource_table<N> Resources>
+    result<pipeline<T, N, Resources>> pipeline<T, N, Resources>::create(std::shared_ptr<logical_device> device, std::span<const VkFormat> color_attachment_formats, VkFormat depth_attachment_format) noexcept {
         pipeline ret{};
         ret.dependent_handle = device;
 
+		RESULT_TRY_MOVE(ret._layout, (make<pipeline_layout<T, N, Resources>>(device)))
+
 
         //Specify vertex input state
-        constexpr static auto vertex_bindings = renderable_properties<T>::binding_descs();
-        constexpr static auto vertex_attributes = renderable_properties<T>::attribute_descs();
         VkPipelineVertexInputStateCreateInfo vertex_input_info {
             .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
-            .vertexBindingDescriptionCount = vertex_bindings.size(),
-            .pVertexBindingDescriptions = vertex_bindings.data(),
-            .vertexAttributeDescriptionCount = vertex_attributes.size(),
-            .pVertexAttributeDescriptions = vertex_attributes.data(),
+            .vertexBindingDescriptionCount = 0,
+            .pVertexBindingDescriptions = nullptr,
+            .vertexAttributeDescriptionCount = 0,
+            .pVertexAttributeDescriptions = nullptr,
         };
 
-        //Specify input assembly (TEMP: specify no stripping)
+        //Specify input assembly
         VkPipelineInputAssemblyStateCreateInfo input_assembly_info{
             .sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
             .topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
@@ -52,8 +52,8 @@ namespace d2d::vk {
             .depthClampEnable = VK_FALSE,
             .rasterizerDiscardEnable = VK_FALSE,
             .polygonMode = VK_POLYGON_MODE_FILL,
-            .cullMode = renderable_properties<T>::cull_mode,
-            .frontFace = renderable_properties<T>::front_face,
+            .cullMode = VK_CULL_MODE_BACK_BIT,//T::cull_mode,
+            .frontFace = VK_FRONT_FACE_CLOCKWISE,//T::front_face,
             .depthBiasEnable = VK_FALSE,
             .depthBiasConstantFactor = 0.0f,
             .depthBiasClamp = 0.0f,
@@ -104,14 +104,23 @@ namespace d2d::vk {
             .maxDepthBounds = 1.0f
         };
 
+		//Specify rendering info
+		VkPipelineRenderingCreateInfo rendering_info {
+    		.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO,
+    		.colorAttachmentCount = static_cast<std::uint32_t>(color_attachment_formats.size()),
+    		.pColorAttachmentFormats = color_attachment_formats.data(),
+    		.depthAttachmentFormat = depth_attachment_format
+		};
 
-        RESULT_TRY_MOVE_UNSCOPED(shader_module vert_shader, make<shader_module>(device, renderable_properties<T>::vert_shader_data, VK_SHADER_STAGE_VERTEX_BIT), vs);
-        RESULT_TRY_MOVE_UNSCOPED(shader_module frag_shader, make<shader_module>(device, renderable_properties<T>::frag_shader_data, VK_SHADER_STAGE_FRAGMENT_BIT), fs);
+
+        RESULT_TRY_MOVE_UNSCOPED(shader_module vert_shader, make<shader_module>(device, T::vert_shader_data, VK_SHADER_STAGE_VERTEX_BIT), vs);
+        RESULT_TRY_MOVE_UNSCOPED(shader_module frag_shader, make<shader_module>(device, T::frag_shader_data, VK_SHADER_STAGE_FRAGMENT_BIT), fs);
         std::array<VkPipelineShaderStageCreateInfo, 2> shader_stages = {vert_shader.stage_info(), frag_shader.stage_info()};
 
         
         VkGraphicsPipelineCreateInfo pipeline_create_info{
             .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
+			.pNext = &rendering_info,
             .stageCount = shader_stages.size(),
             .pStages = shader_stages.data(),
             .pVertexInputState = &vertex_input_info,
@@ -123,8 +132,8 @@ namespace d2d::vk {
             .pDepthStencilState = &depth_and_stencil_info,
             .pColorBlendState = &color_blend_info,
             .pDynamicState = &dynamic_state_info,
-            .layout = layout,
-            .renderPass = associated_render_pass,
+            .layout = ret._layout,
+            .renderPass = VK_NULL_HANDLE,
             .subpass = 0,
             .basePipelineHandle = VK_NULL_HANDLE,
             .basePipelineIndex = -1,

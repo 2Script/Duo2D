@@ -146,8 +146,8 @@ namespace d2d {
     constexpr typename impl::result_vector<2, LeftT, RightT, std::multiplies<>>::value_type cross(vector<2, LeftT> lhs, const vector<2, RightT>& rhs) noexcept { 
         return lhs[0] * rhs[1] - lhs[1] * rhs[0];
     }
-    template<typename T, typename U> 
-    constexpr impl::result_vector<3, T, U, std::multiplies<>> cross(vector<3, T> lhs, const vector<3, U>& rhs) noexcept { 
+    template<typename LeftT, typename RightT> 
+    constexpr impl::result_vector<3, LeftT, RightT, std::multiplies<>> cross(vector<3, LeftT> lhs, const vector<3, RightT>& rhs) noexcept { 
         return {(lhs[1] * rhs[2] - lhs[2] * rhs[1]), (lhs[2] * rhs[0] - lhs[0] * rhs[2]), (lhs[0] * rhs[1] - lhs[1] * rhs[0])};
     }
 }

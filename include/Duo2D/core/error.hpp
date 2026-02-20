@@ -3,6 +3,7 @@
 #include <cstring>
 #include <string_view>
 #include <system_error>
+#include <exception>
 
 #include <ktx.h>
 #include <limits>
@@ -12,7 +13,7 @@
 #include <frozen/unordered_map.h>
 #include <vulkan/vulkan.h>
 
-#include "Duo2D/vulkan/device/queue_family.hpp"
+#include "Duo2D/core/command_family.hpp"
 
 
 #define __D2D_VKRESULT_TO_ERRC(vkresult) (vkresult >= 0 && vkresult <= 0b111 ? vkresult + 1000000000 : vkresult)
@@ -88,7 +89,7 @@ namespace d2d::error {
         device_not_selected,
         device_not_initialized,
         device_lacks_necessary_queue_base,
-        device_lacks_necessary_queue_last = device_lacks_necessary_queue_base + vk::queue_family::num_families - 1,
+        device_lacks_necessary_queue_last = device_lacks_necessary_queue_base + command_family::num_families - 1,
         
         window_not_found,
         window_already_exists,
@@ -304,7 +305,7 @@ namespace d2d::error {
 
         //Number of codes (cannot be used externally as a size)
         num_duplicate_codes = 1,
-        num_unique_codes = 97,
+        num_unique_codes = 99,
         num_codes = num_unique_codes + num_duplicate_codes
     };
 }
@@ -316,14 +317,16 @@ namespace d2d::error {
         {no_such_file_or_directory, "Requested file or directory does not exist"},
 
 
-        {no_vulkan_devices,                                                                       "Could not find a graphics device with vulkan support"},
-        {device_lacks_display_format,                                                             "The given device lacks the requested display format"},
-        {device_lacks_present_mode,                                                               "The given device lacks a suitable present mode"},
-        {device_lacks_suitable_mem_type,                                                          "The given device lacks the requested memory type"},
-        {device_not_selected,                                                                     "A graphics device has not been selected"},
-        {device_not_initialized,                                                                  "The selected device has not been initialized yet"},
-        {device_lacks_necessary_queue_base + static_cast<code_int_t>(vk::queue_family::graphics), "The given device lacks a (required) graphics queue"},
-        {device_lacks_necessary_queue_base + static_cast<code_int_t>(vk::queue_family::present),  "The given device lacks a (required) present queue"},
+        {no_vulkan_devices,                                                                     "Could not find a graphics device with vulkan support"},
+        {device_lacks_display_format,                                                           "The given device lacks the requested display format"},
+        {device_lacks_present_mode,                                                             "The given device lacks a suitable present mode"},
+        {device_lacks_suitable_mem_type,                                                        "The given device lacks the requested memory type"},
+        {device_not_selected,                                                                   "A graphics device has not been selected"},
+        {device_not_initialized,                                                                "The selected device has not been initialized yet"},
+        {device_lacks_necessary_queue_base + static_cast<code_int_t>(command_family::graphics), "The selected device lacks a (required) graphics queue"},
+        {device_lacks_necessary_queue_base + static_cast<code_int_t>(command_family::compute),  "The selected device lacks a compute queue"},
+        {device_lacks_necessary_queue_base + static_cast<code_int_t>(command_family::transfer), "The selected device lacks a transfer queue"},
+        {device_lacks_necessary_queue_base + static_cast<code_int_t>(command_family::present),  "The selected device lacks a (required) present queue"},
         
         {window_not_found,                   "The requested window was not found."},
         {window_already_exists,              "A window with the requested name already exists"},
@@ -533,14 +536,16 @@ namespace d2d::error {
         {no_such_file_or_directory, no_such_file_or_directory},
 
 
-        {no_vulkan_devices,                                                                       no_such_device},
-        {device_lacks_display_format,                                                             no_such_device_or_address},
-        {device_lacks_present_mode,                                                               no_such_device_or_address},
-        {device_lacks_suitable_mem_type,                                                          no_such_device_or_address},
-        {device_not_selected,                                                                     bad_file_descriptor},
-        {device_not_initialized,                                                                  bad_file_descriptor},
-        {device_lacks_necessary_queue_base + static_cast<code_int_t>(vk::queue_family::graphics), no_such_device_or_address},
-        {device_lacks_necessary_queue_base + static_cast<code_int_t>(vk::queue_family::present),  no_such_device_or_address},
+        {no_vulkan_devices,                                                                     no_such_device},
+        {device_lacks_display_format,                                                           no_such_device_or_address},
+        {device_lacks_present_mode,                                                             no_such_device_or_address},
+        {device_lacks_suitable_mem_type,                                                        no_such_device_or_address},
+        {device_not_selected,                                                                   bad_file_descriptor},
+        {device_not_initialized,                                                                bad_file_descriptor},
+        {device_lacks_necessary_queue_base + static_cast<code_int_t>(command_family::graphics), no_such_device_or_address},
+        {device_lacks_necessary_queue_base + static_cast<code_int_t>(command_family::compute),  no_such_device_or_address},
+        {device_lacks_necessary_queue_base + static_cast<code_int_t>(command_family::transfer), no_such_device_or_address},
+        {device_lacks_necessary_queue_base + static_cast<code_int_t>(command_family::present),  no_such_device_or_address},
         
         {window_not_found,                   no_such_device_or_address},
         {window_already_exists,              invalid_argument},

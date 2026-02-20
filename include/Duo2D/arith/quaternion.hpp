@@ -10,9 +10,12 @@
 #include "Duo2D/arith/axis.hpp"
 #include "Duo2D/arith/matrix.hpp"
 #include "Duo2D/arith/vector.hpp"
-#include "Duo2D/traits/aggregate_traits.hpp"
 
 
+namespace d2d::impl {
+	template<typename T>
+	concept arithmetic = std::is_arithmetic_v<T>;
+}
 
 namespace d2d {
     template<impl::arithmetic T>

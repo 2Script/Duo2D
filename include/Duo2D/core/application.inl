@@ -78,7 +78,7 @@ namespace d2d {
         __D2D_VULKAN_VERIFY(vkEnumeratePhysicalDevices(*instance_ptr, &device_count, devices.data()));
 
         //Create dummy window
-        RESULT_TRY_MOVE_UNSCOPED(window dummy, make<window>("dummy", 1600, 900, instance_ptr), win);
+        RESULT_TRY_MOVE_UNSCOPED(WindowT dummy, make<WindowT>("dummy", 1600, 900, instance_ptr), win);
 
 
         std::set<vk::physical_device> ret{};
@@ -113,11 +113,11 @@ namespace d2d {
         
         result<WindowT> w = make<WindowT>(title, 1600, 900, instance_ptr);
         if(!w.has_value()) return w.error();
-        RESULT_VERIFY(w->initialize(logi_device_ptr, phys_device_ptr, font_data_map_ptr));
+        RESULT_VERIFY(w->initialize(logi_device_ptr, phys_device_ptr));
 
         auto new_window = windows.emplace(title, *std::move(w));
-        WindowT* new_window_ptr = &(new_window.first->second);
-        input::impl::glfw_window_map().try_emplace(static_cast<GLFWwindow*>(*new_window_ptr), input::combination{}, new_window_ptr);
+        WindowT* new_window_ptr = std::addressof(new_window.first->second);
+        input::impl::glfw_window_map().try_emplace(new_window_ptr->window_handle.get(), input::combination{}, new_window_ptr);
 
         if(!new_window.second) 
             return error::window_already_exists;
@@ -161,7 +161,7 @@ namespace d2d {
         glfwPollEvents();
 
         for (auto& w : windows)
-            if(!glfwWindowShouldClose(w.second))
+            if(!glfwWindowShouldClose(w.second.window_handle.get()))
                 return;
         should_be_open.store(false, std::memory_order_relaxed);
     }
@@ -187,17 +187,17 @@ namespace d2d {
 
     template<typename WindowT>
     result<void> application<WindowT>::join() const noexcept {
-        for (auto const& w : windows) {
-            VkSemaphoreWaitInfo wait_info {
-                .sType = VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO,
-                .pNext = nullptr,
-                .flags = 0,
-                .semaphoreCount = 1,
-                .pSemaphores = &w.second.draw_cmd_update_semaphore,
-                .pValues = &w.second.draw_cmd_update_count,
-            };
-            __D2D_VULKAN_VERIFY(vkWaitSemaphores(*logi_device_ptr, &wait_info, 3 * std::nano::den));
-        }
+        // for (auto const& w : windows) {
+            // VkSemaphoreWaitInfo wait_info {
+                // .sType = VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO,
+                // .pNext = nullptr,
+                // .flags = 0,
+                // .semaphoreCount = 1,
+                // .pSemaphores = &w.second.draw_cmd_update_semaphore,
+                // .pValues = &w.second.draw_cmd_update_count,
+            // };
+            // __D2D_VULKAN_VERIFY(vkWaitSemaphores(*logi_device_ptr, &wait_info, 3 * std::nano::den));
+        // }
         
         __D2D_VULKAN_VERIFY(vkDeviceWaitIdle(*logi_device_ptr));
 

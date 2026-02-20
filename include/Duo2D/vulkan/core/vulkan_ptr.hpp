@@ -14,11 +14,12 @@ namespace d2d::vk {
         using pointer = VkTy;
     public:
         constexpr vulkan_ptr_base() noexcept = default;
-        ~vulkan_ptr_base() noexcept = default;
+        constexpr ~vulkan_ptr_base() noexcept = default;
 
-        constexpr VkTy* operator&() noexcept { return &handle; }
-        constexpr VkTy const* operator&() const noexcept { return &handle; }
-        constexpr operator VkTy() const noexcept { return handle; }
+        constexpr VkTy      * operator&()      & noexcept { return &handle; }
+        constexpr VkTy const* operator&() const& noexcept { return &handle; }
+        constexpr operator VkTy      &()      & noexcept { return handle; }
+        constexpr operator VkTy const&() const& noexcept { return handle; }
         constexpr explicit operator bool() const noexcept { return handle != VK_NULL_HANDLE; }
 
     
@@ -42,7 +43,7 @@ namespace d2d::vk {
     class vulkan_ptr : public vulkan_ptr_base<VkTy> {
     public:
         constexpr vulkan_ptr() noexcept = default;
-        ~vulkan_ptr() noexcept { if(this->handle) DeleterFn(this->handle, nullptr); };
+        constexpr ~vulkan_ptr() noexcept { if(this->handle) DeleterFn(this->handle, nullptr); };
     
     public:
         constexpr vulkan_ptr(vulkan_ptr&& other) noexcept = default;
@@ -61,7 +62,9 @@ namespace d2d::vk {
     class vulkan_ptr<VkTy, DeleterFn> : public vulkan_ptr_base<VkTy> {
     public:
         constexpr vulkan_ptr() noexcept = default;
-        ~vulkan_ptr() noexcept { if(this->handle) DeleterFn(*dependent_handle, this->handle, nullptr); };
+        constexpr vulkan_ptr(std::shared_ptr<typename impl::vk_traits<VkTy>::dependent_type> dependent_ptr) noexcept :
+			dependent_handle(dependent_ptr) {}
+        constexpr ~vulkan_ptr() noexcept { if(this->handle) DeleterFn(*dependent_handle, this->handle, nullptr); };
     
     public:
         constexpr vulkan_ptr(vulkan_ptr&& other) noexcept = default;
@@ -85,7 +88,9 @@ namespace d2d::vk {
     class vulkan_ptr<VkTy, DeleterFn> : public vulkan_ptr_base<VkTy> {
     public:
         constexpr vulkan_ptr() noexcept = default;
-        ~vulkan_ptr() noexcept { if(this->handle) DeleterFn(*dependent_handle, *aux_handle, 1, &this->handle); };
+        constexpr vulkan_ptr(std::shared_ptr<typename impl::vk_traits<VkTy>::dependent_type> dependent_ptr, std::shared_ptr<typename impl::vk_traits<VkTy>::auxiliary_type> aux_ptr) noexcept :
+			dependent_handle(dependent_ptr), aux_handle(aux_ptr) {}
+        constexpr ~vulkan_ptr() noexcept { if(this->handle) DeleterFn(*dependent_handle, *aux_handle, 1, &this->handle); };
     
     public:
         constexpr vulkan_ptr(vulkan_ptr&& other) noexcept = default;
@@ -104,6 +109,6 @@ namespace d2d::vk {
 
     protected:
         std::shared_ptr<typename impl::vk_traits<VkTy>::dependent_type> dependent_handle;
-        std::shared_ptr<typename impl::vk_traits<VkTy>::auxilary_type> aux_handle;
+        std::shared_ptr<typename impl::vk_traits<VkTy>::auxiliary_type> aux_handle;
     };
 }

@@ -1,24 +1,21 @@
 #pragma once
 #include <string_view>
-#include <array>
-#include <set>
 #include <compare>
 #include <vulkan/vulkan.h>
 #include <vulkan/vulkan_core.h>
+#include <streamline/containers/array.hpp>
 
+#include "Duo2D/core/command_family.hpp"
 #include "Duo2D/core/error.hpp"
 #include "Duo2D/vulkan/core/vulkan_ptr.hpp"
 #include "Duo2D/vulkan/device/device_query.hpp"
-#include "Duo2D/vulkan/device/queue_family.hpp"
+#include "Duo2D/vulkan/device/device_query_traits.hpp"
+#include "Duo2D/vulkan/device/queue_family_info.hpp"
 #include "Duo2D/vulkan/device/extension.hpp"
 #include "Duo2D/vulkan/device/feature.hpp"
 #include "Duo2D/vulkan/device/device_type.hpp"
 #include "Duo2D/vulkan/display/surface.hpp"
-#include "Duo2D/vulkan/traits/device_query_traits.hpp"
 
-namespace d2d {
-    template<typename... Ts> struct basic_window;
-}
 
 namespace d2d::vk {
     struct physical_device : vulkan_ptr_base<VkPhysicalDevice> {
@@ -36,7 +33,7 @@ namespace d2d::vk {
         device_type type = device_type::unknown;
 
         VkPhysicalDeviceLimits limits{};
-        queue_family_idxs_t queue_family_idxs{};
+        sl::array<command_family::num_families, queue_family_info> queue_family_infos{};
         extensions_t extensions{};
         features_t features{};
 

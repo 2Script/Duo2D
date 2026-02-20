@@ -86,25 +86,15 @@ namespace d2d::vk {
             .imageExtent = static_cast<VkExtent2D>(ret._extent),
             .imageArrayLayers = 1,
             .imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+			.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE,
+			.queueFamilyIndexCount = 0,
+			.pQueueFamilyIndices = VK_NULL_HANDLE,
             .preTransform = device_capabilities.currentTransform,
             .compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
             .presentMode = static_cast<VkPresentModeKHR>(ret._present_mode),
             .clipped = VK_TRUE,
             .oldSwapchain = VK_NULL_HANDLE,
         };
-
-        const std::array<std::uint32_t, queue_family::present + 1> core_queue_family_idxs = {
-            *(phys_device_ptr->queue_family_idxs[queue_family::graphics]), *(phys_device_ptr->queue_family_idxs[queue_family::present])
-        };
-        if(core_queue_family_idxs[queue_family::graphics] != core_queue_family_idxs[queue_family::present]){
-            swap_chain_create_info.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
-            swap_chain_create_info.queueFamilyIndexCount = core_queue_family_idxs.size();
-            swap_chain_create_info.pQueueFamilyIndices = core_queue_family_idxs.data();
-        } else {
-            swap_chain_create_info.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
-            swap_chain_create_info.queueFamilyIndexCount = 0;
-            swap_chain_create_info.pQueueFamilyIndices = nullptr;
-        }
 
         __D2D_VULKAN_VERIFY(vkCreateSwapchainKHR(*logi_device, &swap_chain_create_info, nullptr, &ret));
         }
@@ -113,14 +103,14 @@ namespace d2d::vk {
         {
         ret._image_count = 0;
         vkGetSwapchainImagesKHR(*logi_device, ret.handle, &ret._image_count, nullptr);
-        ret.images.resize(ret._image_count);
-        vkGetSwapchainImagesKHR(*logi_device, ret.handle, &ret._image_count, ret.images.data());
+        ret._images.resize(ret._image_count);
+        vkGetSwapchainImagesKHR(*logi_device, ret.handle, &ret._image_count, ret._images.data());
         }
 
         //Create swap chain image views
         ret._image_views.resize(ret._image_count);
         for (size_t i = 0; i < ret._image_count; i++) {
-            RESULT_TRY_MOVE(ret._image_views[i], make<image_view>(logi_device, ret.images[i], ret._display_format.pixel_format.id));
+            RESULT_TRY_MOVE(ret._image_views[i], make<image_view>(logi_device, ret._images[i], ret._display_format.pixel_format.id));
         }
 
         return ret;

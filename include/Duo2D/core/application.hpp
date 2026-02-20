@@ -1,5 +1,6 @@
 #pragma once
 #include <atomic>
+#include <future>
 #include <map>
 #include <memory>
 #include <string_view>
@@ -19,7 +20,7 @@
 
 
 namespace d2d {
-    template<typename WindowT = window>
+    template<typename WindowT>
     class application {
     public:
         application() noexcept = default;
@@ -75,6 +76,14 @@ namespace d2d::impl {
         return count;
     }
 }
+
+
+namespace d2d {
+    inline std::uintmax_t nanoseconds() noexcept {
+        return static_cast<std::uintmax_t>(glfwGetTime() * std::nano::den);
+    }
+}
+
 
 
 #include "Duo2D/core/application.inl"

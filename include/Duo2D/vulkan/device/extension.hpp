@@ -7,8 +7,7 @@ namespace d2d::vk {
     namespace extension {
     enum id { 
         swap_chain,
-
-        descriptor_indexing,
+		descriptor_buffer,
 
         num_extensions
     };
@@ -19,8 +18,7 @@ namespace d2d::vk {
     namespace extension {
         constexpr std::array<std::string_view, extension::num_extensions> name = {
             VK_KHR_SWAPCHAIN_EXTENSION_NAME,
-            
-            VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME,
+            VK_EXT_DESCRIPTOR_BUFFER_EXTENSION_NAME,
         }; 
     }
 }
