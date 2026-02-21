@@ -35,6 +35,7 @@ namespace d2d::vk::impl {
 	template<sl::index_t I, sl::size_t N, resource_table<N> Resources>
 	struct device_allocation_segment_properties {
 		constexpr static resource_config config = sl::universal::get<sl::second_constant>(*std::next(Resources.begin(), I));
+		constexpr static bool c = sl::universal::get<0>(sl::key_value_pair<int, int>{});
 		constexpr static sl::size_t allocation_count = allocation_counts[config.buffering];
 
 	protected:

@@ -89,7 +89,7 @@ namespace d2d::impl {
 	public:
 		constexpr static sl::size_t frames_in_flight = D2D_FRAMES_IN_FLIGHT;
 		constexpr static sl::size_t command_buffer_count = frames_in_flight;// + 1;
-		constexpr static sl::lookup_table<N, resource_key_t, sl::index_t> resource_key_indices = sl::universal::make_deduced<sl::generic_lookup_table>(
+		constexpr static sl::lookup_table<N, resource_key_t, sl::index_t> resource_key_indices = sl::universal::make_deduced<sl::generic::lookup_table>(
 			Resources, sl::functor::subscript<0>{}, sl::functor::identity_index{}
 		);
 	

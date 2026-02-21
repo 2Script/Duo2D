@@ -35,7 +35,7 @@ namespace d2d::vk {
             RESULT_TRY_MOVE(segment, (make<segment_type<Is>>(logi_device, buff_capacity_bytes, 0)));
 			return {};
 		}) && ...)));
-		constexpr static sl::array<allocation_count, sl::index_t> alloc_indices = sl::universal::make_deduced<sl::generic_array>(sl::index_sequence_of_length<allocation_count>);
+		constexpr static sl::array<allocation_count, sl::index_t> alloc_indices = sl::universal::make_deduced<sl::generic::array>(sl::index_sequence_of_length<allocation_count>);
 		RESULT_VERIFY(ret.initialize_buffers(alloc_indices));
         return ret;
     }
@@ -91,7 +91,7 @@ namespace d2d::vk {
 			{Is, (calc_offset(allocation_size, sl::index_constant<Is>))}...
 		}}};
 		
-		const sl::lookup_table<buffer_count, sl::index_t, sl::size_t> segment_sizes = sl::universal::make_deduced<sl::generic_lookup_table>(
+		const sl::lookup_table<buffer_count, sl::index_t, sl::size_t> segment_sizes = sl::universal::make_deduced<sl::generic::lookup_table>(
 			sl::index_sequence<Is...>, sl::functor::identity{}, [segment_offsets]<sl::index_t J>(auto, sl::index_constant_type<J>){
 				if constexpr (J == buffer_count - 1)
 					return sl::universal::get<sl::second_constant>(*std::next(mem_reqs.begin(), J)).size;

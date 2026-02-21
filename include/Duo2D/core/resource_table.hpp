@@ -43,10 +43,10 @@ namespace d2d::vk::impl {
 }
 
 using filter_index = sl::filtered_sequence_t<sl::index_sequence_of_length_type<d2d::vk::impl::resource_table_defaults.size()>, []<sl::index_t I>(sl::index_constant_type<I>){
-    return sl::get<sl::second_constant>(*std::next(d2d::vk::impl::resource_table_defaults.begin(), I)).memory == d2d::memory_policy::gpu_local;
+    return sl::universal::get<sl::second_constant>(*std::next(d2d::vk::impl::resource_table_defaults.begin(), I)).memory == d2d::memory_policy::gpu_local;
 }>;
-constexpr auto d2d_y = sl::universal::make_deduced<sl::generic_lookup_table>(d2d::vk::impl::resource_table_defaults, sl::functor::subscript<0>{}, sl::functor::subscript<1>{}, filter_index{});
+constexpr auto d2d_y = sl::universal::make_deduced<sl::generic::lookup_table>(d2d::vk::impl::resource_table_defaults, sl::functor::subscript<0>{}, sl::functor::subscript<1>{}, filter_index{});
 
 
-constexpr auto d2d_c = sl::get<sl::second_constant>(*std::next(d2d::vk::impl::resource_table_defaults.begin(), 0)).usage;
-constexpr auto d2d_d = sl::get<sl::second_constant>(*std::next(d2d::vk::impl::resource_table_defaults.begin(), 1)).usage;
+constexpr auto d2d_c = sl::universal::get<sl::second_constant>(*std::next(d2d::vk::impl::resource_table_defaults.begin(), 0)).usage;
+constexpr auto d2d_d = sl::universal::get<sl::second_constant>(*std::next(d2d::vk::impl::resource_table_defaults.begin(), 1)).usage;

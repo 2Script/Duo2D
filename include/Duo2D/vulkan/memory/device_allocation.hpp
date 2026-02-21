@@ -36,7 +36,7 @@ namespace d2d::vk {
 	private:
 		constexpr static sl::size_t allocation_count = impl::allocation_counts[BufferingPolicy];
 		constexpr static sl::size_t buffer_count = sizeof...(Is); 
-		constexpr static sl::array<N, resource_key_t> resource_keys = sl::universal::make_deduced<sl::generic_array>(Resources, sl::functor::subscript<0>{});
+		constexpr static sl::array<N, resource_key_t> resource_keys = sl::universal::make_deduced<sl::generic::array>(Resources, sl::functor::subscript<0>{});
 	public:
 		template<sl::index_t I>
 		using segment_type = device_allocation_segment<I, render_process<N, Resources>>;
