@@ -9,6 +9,7 @@
 #include <streamline/functional/functor/subscript.hpp>
 #include <streamline/functional/functor/default_construct.hpp>
 #include <streamline/functional/functor/invoke_each_result.hpp>
+#include <streamline/functional/functor/forward_construct.hpp>
 
 #include <GLFW/glfw3.h>
 #include <result/verify.h>
@@ -87,9 +88,9 @@ namespace d2d {
 		RESULT_TRY_MOVE(this->_swap_chain, make<vk::swap_chain>(
 			logi_device, 
 			phys_device,
-			render_process<Resources.size(), Resources>::pixel_format_priority,
-			render_process<Resources.size(), Resources>::default_color_space,
-			render_process<Resources.size(), Resources>::present_mode_priority,
+			render_process<Resources.size(), Resources, command_group_count>::pixel_format_priority,
+			render_process<Resources.size(), Resources, command_group_count>::default_color_space,
+			render_process<Resources.size(), Resources, command_group_count>::present_mode_priority,
 			this->_surface,
 			this->window_handle.get()
 		));
@@ -106,17 +107,39 @@ namespace d2d {
 		//	RESULT_TRY_MOVE(_framebuffers[i], make<vk::framebuffer>(logi_device, _swap_chain.image_views()[i], _depth_image.view(), _render_pass, _swap_chain.extent()));
 		//}
 
-
+		constexpr static sl::size_t dedicated_cmd_buff_count = timeline::impl::dedicated_command_group::num_dedicated_command_groups;
 		for(sl::index_t i = 0; i < this->frames_in_flight; ++i) {
 			//Create command buffers
-			for(command_family_t j = 0; j < command_family::num_families; ++j) {
-				RESULT_TRY_MOVE(this->_command_buffers[i][j], make<vk::command_buffer<Resources.size()>>(logi_device, phys_device, this->_command_pool_ptrs[j]));
+			for(sl::index_t j = 0; j < dedicated_cmd_buff_count; ++j) {
+				RESULT_TRY_MOVE(this->_command_buffers[i][j], make<vk::command_buffer<Resources.size()>>(
+					logi_device, 
+					phys_device, 
+					this->_command_pool_ptrs[command_family::transfer]
+				));
+			}
+			for(sl::index_t j = 0; j < command_traits_type::group_count; ++j) {
+				if(command_traits_type::group_families[j] == command_family::none) continue;
+				RESULT_TRY_MOVE(this->_command_buffers[i][j + dedicated_cmd_buff_count], make<vk::command_buffer<Resources.size()>>(
+					logi_device, 
+					phys_device, 
+					this->_command_pool_ptrs[command_traits_type::group_families[j]]
+				));
+			}
+			
+			//Create commadn buffer semaphores
+			for(sl::index_t j = 0; j < command_group_count; ++j) {
 				RESULT_TRY_MOVE(this->_command_buffer_semaphores[i][j], make<vk::semaphore>(logi_device, VK_SEMAPHORE_TYPE_TIMELINE));
-				this->_command_buffer_semaphore_values[i][j] = std::make_unique<std::atomic<sl::uint64_t>>(0);
+				this->_command_buffer_semaphore_values[i][j] = 0;
 			}
 
-			//Create fences & sempahores
-			RESULT_TRY_MOVE(this->_graphics_fences[i], make<vk::fence>(logi_device));
+
+			//Create generic semaphores
+			for(sl::index_t j = 0; j < command_family::num_families; ++j) {
+				RESULT_TRY_MOVE(this->_generic_timeline_sempahores[i][j], make<vk::semaphore>(logi_device, VK_SEMAPHORE_TYPE_TIMELINE));
+				this->_command_family_semaphore_values[i][j] = 0;
+			}
+
+			//Create image acquire semaphore
 			RESULT_TRY_MOVE(this->_acquisition_semaphores[i], make<vk::semaphore>(logi_device));
 		}
 		
@@ -130,25 +153,17 @@ namespace d2d {
 			this->_pre_present_semaphores.push_back(*std::move(pre_present_semaphore));
 		}
 
-		//Create generic semaphores
-		for(std::size_t i = 0; i < command_family::num_families; ++i) {
-			RESULT_TRY_MOVE(this->_generic_timeline_sempahores[i], make<vk::semaphore>(logi_device, VK_SEMAPHORE_TYPE_TIMELINE));
-			this->_generic_semaphore_values[i] = 0;
-		}
-
 
 		//Create auxiliary objects
-		auto create_aux = [this]<sl::index_t... Is>(sl::index_sequence_type<Is...>) -> result<void> {
-			return ol::to_result((([this]() noexcept -> result<void> {
-				if constexpr (std::is_same_v<typename sl::tuple_traits<decltype(auxiliary)>::template type_of_element<Is>, sl::empty_t>) {
-					//_auxiliary[sl::index_constant<I>] = sl::empty_t{};
-					return {};
-				}
-				RESULT_TRY_MOVE(auxiliary[sl::index_constant<Is>], (sl::type_of_pack_element_t<Is, timeline::setup<Ts>...>{}(*this)));
+		constexpr auto init_aux = []<sl::index_t I>(window& win, sl::index_constant_type<I>) noexcept -> result<void> {
+			if constexpr (std::is_same_v<typename sl::tuple_traits<decltype(win.auxiliary)>::template type_of_element<I>, sl::empty_t>) {
+				//_auxiliary[sl::index_constant<I>] = sl::empty_t{};
 				return {};
-			}) && ...));
+			}
+			RESULT_TRY_MOVE(win.auxiliary[sl::index_constant<I>], (sl::type_of_pack_element_t<I, timeline::setup<Ts>...>{}(win)));
+			return {};
 		};
-		RESULT_VERIFY(create_aux(sl::index_sequence_for_pack<timeline::setup<Ts>...>));
+		RESULT_VERIFY((sl::functor::invoke_each_result<result<void>, init_aux>{}(sl::index_sequence_for_pack<Ts...>, *this)));
 		
 		D2D_INVOKE_ALL(this->timeline_callbacks(), on_swap_chain_updated_fn, *this);
 			
@@ -159,26 +174,46 @@ namespace d2d {
 namespace d2d {
 	template<typename... Ts, auto Resources> requires impl::is_resource_table_v<decltype(Resources)>
     result<void> window<sl::tuple<Ts...>, Resources>::render() noexcept {
+		using filter_dedicated_command_groups_sequence = sl::filtered_sequence_t<
+			sl::index_sequence_of_length_type<command_group_count>,
+			[]<sl::index_t I>(sl::index_constant_type<I>) noexcept { return I >= d2d::timeline::impl::dedicated_command_group::num_dedicated_command_groups; }
+		>;
         //wait for rendering to finish last frame
 		const sl::index_t frame_idx = this->frame_index();
-        RESULT_VERIFY(this->graphics_fences()[frame_idx].wait());
-        RESULT_VERIFY(this->graphics_fences()[frame_idx].reset());
+		const sl::array<command_traits_type::group_count, VkSemaphore> wait_semaphores = sl::universal::make_deduced<sl::generic::array>(
+			this->_command_buffer_semaphores[frame_idx], 
+			sl::functor::forward_construct<VkSemaphore>{},
+			filter_dedicated_command_groups_sequence{}
+		);
+		const sl::array<command_traits_type::group_count, sl::uint64_t> wait_semaphores_values = sl::universal::make_deduced<sl::generic::array>(
+			this->_command_buffer_semaphore_values[frame_idx], 
+			sl::functor::forward_construct<sl::uint64_t>{},
+			filter_dedicated_command_groups_sequence{}
+		);
+
+		VkSemaphoreWaitInfo wait_info{
+			.sType = VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO,
+			.flags = 0,
+			.semaphoreCount = command_traits_type::group_count,
+			.pSemaphores = wait_semaphores.data(),
+			.pValues = wait_semaphores_values.data(),
+		};
+		__D2D_VULKAN_VERIFY(vkWaitSemaphores(*this->logical_device_ptr(), &wait_info, std::numeric_limits<std::uint64_t>::max()));
 
 		D2D_INVOKE_ALL(this->timeline_callbacks(), on_frame_begin_fn, *this);
 
-		timeline::state<Resources.size(), Resources> timeline_state{
-			//.draw_buffer_offsets = sl::universal::make<typename timeline::state<Resources.size(), Resources>::draw_buffer_offsets_type>(
+		timeline::state<Resources.size(), Resources, command_group_count> timeline_state{
+			//.draw_buffer_offsets = sl::universal::make<typename timeline::state<Resources.size(), Resources, command_group_count>::draw_buffer_offsets_type>(
 			//	Resources, 
 			//	sl::functor::subscript<0>{}, 
-			//	sl::functor::default_construct<sl::index_t>{}, 
-			//	impl::draw_command_buffer_filtered_index_sequence<Resources.size(), Resources>{}
+			//	sl::functor::default_construct<sl::index_t>{},
+			//	impl::draw_command_buffer_filtered_index_sequence<Resources.size(), Resources, command_group_count>{}
 			//),
 
-			.image_index = 0,
-			.current_command_buffer_semaphore_values{}
+			.image_index = 0
 		};
 		
-		constexpr auto exec = []<sl::index_t I>(window& win, timeline::state<Resources.size(), Resources>& state, sl::index_constant_type<I>) noexcept -> result<void> {
+		constexpr auto exec = []<sl::index_t I>(window& win, timeline::state<Resources.size(), Resources, command_group_count>& state, sl::index_constant_type<I>) noexcept -> result<void> {
 			return win.template execute_command<I>(state);
 		};
 		RESULT_VERIFY((sl::functor::invoke_each_result<result<void>, exec>{}(sl::index_sequence_for_pack<Ts...>, *this, timeline_state)));
@@ -196,17 +231,22 @@ namespace d2d {
 
 	template<typename... Ts, auto Resources> requires impl::is_resource_table_v<decltype(Resources)>
 	template<sl::index_t I>
-    result<void> window<sl::tuple<Ts...>, Resources>::execute_command(timeline::state<Resources.size(), Resources>& state) noexcept {
+    result<void> window<sl::tuple<Ts...>, Resources>::execute_command(timeline::state<Resources.size(), Resources, command_group_count>& state) noexcept {
 		using timeline_type = typename sl::tuple_traits<sl::tuple<Ts...>>::template type_of_element<I>;
-		return d2d::timeline::command<timeline_type>{}(*this, state, sl::universal::get<I>(auxiliary));
+		return d2d::timeline::command<timeline_type>{}(
+			*this,
+			state,
+			sl::universal::get<I>(auxiliary), 
+			sl::index_constant<command_traits_type::group_indices[I] + timeline::impl::dedicated_command_group::num_dedicated_command_groups>
+		);
 	}
 }
 
 namespace d2d {
 	template<typename... Ts, auto Resources> requires impl::is_resource_table_v<decltype(Resources)>
 	template<typename TimelineCommandT>
-    result<void> window<sl::tuple<Ts...>, Resources>::execute_command(timeline::state<Resources.size(), Resources>& state) noexcept {
-		return d2d::timeline::command<TimelineCommandT>{}(*this, state, sl::empty_t{});
+    result<void> window<sl::tuple<Ts...>, Resources>::execute_command(timeline::state<Resources.size(), Resources, command_group_count>& state) noexcept {
+		return d2d::timeline::command<TimelineCommandT>{}(*this, state, sl::empty_t{}, timeline::impl::dedicated_command_group::out_of_timeline_execute);
 	}
 
 	template<typename... Ts, auto Resources> requires impl::is_resource_table_v<decltype(Resources)>

@@ -1,18 +1,16 @@
 #pragma once
 #include "Duo2D/vulkan/memory/device_allocation.hpp"
-#include "Duo2D/vulkan/sync/fence.hpp"
 
-#include <mutex>
-
-#include <numeric>
 #include <streamline/algorithm/aligned_to.hpp>
 #include <streamline/functional/functor/default_construct.hpp>
 
+#include "Duo2D/timeline/dedicated_command_group.hpp"
+
 
 namespace d2d::vk {
-    template<sl::size_t FiF, sl::index_t... Is, buffering_policy_t BP, memory_policy_t MP, sl::size_t N, resource_table<N> Resources>
-    result<device_allocation<FiF, sl::index_sequence_type<Is...>, BP, MP, render_process<N, Resources>>>
-		device_allocation<FiF, sl::index_sequence_type<Is...>, BP, MP, render_process<N, Resources>>::
+    template<sl::size_t FiF, sl::index_t... Is, buffering_policy_t BP, memory_policy_t MP, sl::size_t N, resource_table<N> Resources, sl::size_t CommandGroupCount>
+    result<device_allocation<FiF, sl::index_sequence_type<Is...>, BP, MP, render_process<N, Resources, CommandGroupCount>>>
+		device_allocation<FiF, sl::index_sequence_type<Is...>, BP, MP, render_process<N, Resources, CommandGroupCount>>::
 	create(std::shared_ptr<logical_device> logi_device, std::shared_ptr<physical_device> phys_device) noexcept {
         device_allocation ret{}; 
         ret.mems = sl::universal::make<sl::array<allocation_count, memory_ptr_type>>(
@@ -43,10 +41,10 @@ namespace d2d::vk {
 
 
 namespace d2d::vk {
-    template<sl::size_t FiF, sl::index_t... Is, buffering_policy_t BP, memory_policy_t MP, sl::size_t N, resource_table<N> Resources>
+    template<sl::size_t FiF, sl::index_t... Is, buffering_policy_t BP, memory_policy_t MP, sl::size_t N, resource_table<N> Resources, sl::size_t CommandGroupCount>
 	template<sl::size_t AllocIdxCount>
     result<void>
-		device_allocation<FiF, sl::index_sequence_type<Is...>, BP, MP, render_process<N, Resources>>::
+		device_allocation<FiF, sl::index_sequence_type<Is...>, BP, MP, render_process<N, Resources, CommandGroupCount>>::
 	initialize_buffers(sl::array<AllocIdxCount, sl::index_t> alloc_indices) noexcept {
 		//Get the memory requirements for each buffer
 		//We assume that duplicate buffers have the same memory requirements, so we only check the first buffer
@@ -159,8 +157,8 @@ namespace d2d::vk {
 }
 
 namespace d2d::vk{
-    template<sl::size_t FiF, sl::index_t... Is, buffering_policy_t BP, memory_policy_t MP, sl::size_t N, resource_table<N> Resources>
-    result<void>    device_allocation<FiF, sl::index_sequence_type<Is...>, BP, MP, render_process<N, Resources>>::
+    template<sl::size_t FiF, sl::index_t... Is, buffering_policy_t BP, memory_policy_t MP, sl::size_t N, resource_table<N> Resources, sl::size_t CommandGroupCount>
+    result<void>    device_allocation<FiF, sl::index_sequence_type<Is...>, BP, MP, render_process<N, Resources, CommandGroupCount>>::
 	realloc(sl::uint64_t timeout) noexcept {
 		const sl::index_t i = allocation_index();
 
@@ -203,25 +201,25 @@ namespace d2d::vk{
 			std::addressof(segment_type<Is>::buffs[i])...
 		}};
 
-		render_process<N, Resources>& proc = static_cast<render_process<N, Resources>&>(*this);
-		vk::command_buffer<N> const& transfer_command_buffer = proc.command_buffers()[proc.frame_index()][command_family::transfer];
+		render_process<N, Resources, CommandGroupCount>& proc = static_cast<render_process<N, Resources, CommandGroupCount>&>(*this);
+		const sl::index_t frame_idx = proc.frame_index();
+		vk::command_buffer<N> const& transfer_command_buffer = proc.command_buffers()[frame_idx][timeline::impl::dedicated_command_group::realloc];
 
-		const sl::uint64_t semaphore_pre_value = proc.command_buffer_semaphore_values()[proc.frame_index()][command_family::transfer]->fetch_add(1, std::memory_order::relaxed);
+		const sl::uint64_t semaphore_pre_value = proc.command_buffer_semaphore_values()[frame_idx][timeline::impl::dedicated_command_group::realloc]++;
 		const sl::uint64_t semaphore_post_value = semaphore_pre_value + 1;
 
 		VkSemaphoreWaitInfo semaphore_pre_wait_info{
 			.sType = VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO,
 			.flags = 0,
 			.semaphoreCount = 1,
-			.pSemaphores = &proc.command_buffer_semaphores()[proc.frame_index()][command_family::transfer],
+			.pSemaphores = &proc.command_buffer_semaphores()[frame_idx][timeline::impl::dedicated_command_group::realloc],
 			.pValues = &semaphore_pre_value
 		};
 		vk::semaphore_submit_info semaphore_signal_info{
-			proc.command_buffer_semaphores()[proc.frame_index()][command_family::transfer],
+			proc.command_buffer_semaphores()[frame_idx][timeline::impl::dedicated_command_group::realloc],
 			render_stage::group::all_transfer,
 			semaphore_post_value,
 		};
-
 		__D2D_VULKAN_VERIFY(vkWaitSemaphores(*logi_device_ptr, &semaphore_pre_wait_info, timeout));
 		
 		RESULT_VERIFY(transfer_command_buffer.reset());
@@ -243,7 +241,7 @@ namespace d2d::vk{
 			.sType = VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO,
 			.flags = 0,
 			.semaphoreCount = 1,
-			.pSemaphores = &proc.command_buffer_semaphores()[proc.frame_index()][command_family::transfer],
+			.pSemaphores = &proc.command_buffer_semaphores()[frame_idx][timeline::impl::dedicated_command_group::realloc],
 			.pValues = &semaphore_post_value
 		};
 		__D2D_VULKAN_VERIFY(vkWaitSemaphores(*logi_device_ptr, &semaphore_post_wait_info, timeout));

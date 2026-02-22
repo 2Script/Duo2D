@@ -37,10 +37,31 @@ using window = d2d::window<d2d::test::basic_timeline, resource_configs>;
 using application = d2d::application<window>;
 
 constexpr sl::size_t N = resource_configs.size();
-using filter_sequence = d2d::impl::device_allocation_filter_sequence<N, resource_configs, d2d::buffering_policy::multi, d2d::memory_policy::push_constant>;
+using command_traits_type = d2d::timeline::impl::command_traits<
+	d2d::test::basic_timeline, 
+	0, 
+	sl::index_sequence_type<>, 
+	sl::integer_sequence_type<d2d::command_family_t>
+>;
+constexpr sl::size_t command_group_count = command_traits_type::group_count + d2d::timeline::impl::dedicated_command_group::num_dedicated_command_groups;
+using filter_sequence = d2d::impl::device_allocation_filter_sequence<N, resource_configs, command_group_count, d2d::buffering_policy::multi, d2d::memory_policy::push_constant>;
 
-using render_process_type = d2d::render_process<N, resource_configs>;
-using device_allocation_group_type = d2d::impl::device_allocation_group<N, resource_configs, d2d::buffering_policy::multi, sl::index_sequence_of_length_type<d2d::memory_policy::num_memory_policies>>;
+static_assert(command_traits_type::group_indices[0] == 0);
+static_assert(command_traits_type::group_indices[1] == 1);
+static_assert(command_traits_type::group_indices[2] == 1);
+static_assert(command_traits_type::group_indices[3] == 1);
+static_assert(command_traits_type::group_indices[4] == 1);
+static_assert(command_traits_type::group_indices[5] == 1);
+static_assert(command_traits_type::group_indices[6] == 2);
+static_assert(command_traits_type::group_indices[7] == 2);
+
+static_assert(command_traits_type::group_families[0] == d2d::command_family::none);
+static_assert(command_traits_type::group_families[1] == d2d::command_family::graphics);
+static_assert(command_traits_type::group_families[2] == d2d::command_family::present);
+
+
+using render_process_type = d2d::render_process<N, resource_configs, command_group_count>;
+using device_allocation_group_type = d2d::impl::device_allocation_group<N, resource_configs, command_group_count, d2d::buffering_policy::multi, sl::index_sequence_of_length_type<d2d::memory_policy::num_memory_policies>>;
 using device_allocation_type = d2d::vk::device_allocation<
 	D2D_FRAMES_IN_FLIGHT, 
 	filter_sequence,

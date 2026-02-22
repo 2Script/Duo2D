@@ -6,6 +6,7 @@
 #include <memory>
 #include <string_view>
 
+#include "Duo2D/timeline/command_traits.hpp"
 #include "Duo2D/timeline/setup.hpp"
 #include "Duo2D/input/category.hpp"
 #include "Duo2D/input/code.hpp"
@@ -13,6 +14,7 @@
 #include "Duo2D/input/map_types.hpp"
 #include "Duo2D/input/modifier_flags.hpp"
 #include "Duo2D/timeline/state.hpp"
+#include "Duo2D/timeline/dedicated_command_group.hpp"
 #include "Duo2D/vulkan/core/instance.hpp"
 #include "Duo2D/core/render_process.hpp"
 #include "Duo2D/vulkan/device/logical_device.hpp"
@@ -21,14 +23,19 @@
 
 namespace d2d {
     template<typename... Ts, auto Resources> requires impl::is_resource_table_v<decltype(Resources)>
-    struct window<sl::tuple<Ts...>, Resources> : public render_process<Resources.size(), Resources> {
-		using render_process_type = render_process<Resources.size(), Resources>;
+    struct window<sl::tuple<Ts...>, Resources> : public render_process<
+		Resources.size(), Resources, 
+		timeline::command_traits<Ts...>::group_count + timeline::impl::dedicated_command_group::num_dedicated_command_groups
+	> {
+		using command_traits_type = timeline::command_traits<Ts...>;
+		constexpr static sl::size_t command_group_count = command_traits_type::group_count + timeline::impl::dedicated_command_group::num_dedicated_command_groups;
+		using render_process_type = render_process<Resources.size(), Resources, command_group_count>;
 	public:
         static result<window> create(std::string_view title, unsigned int width, unsigned int height, std::shared_ptr<vk::instance> i) noexcept;
 		result<void> initialize(std::shared_ptr<vk::logical_device> logi_device, std::shared_ptr<vk::physical_device> phys_device) noexcept;
 
         window() noexcept :
-			render_process_type(), 
+			render_process_type(),
 			_external_timeline_state{}, auxiliary{},
             category_flags(static_cast<input::category_flags_t>(0b1) << input::category::system),
             active_bindings(), inactive_bindings(), event_fns(), text_input_fn(), modifier_flags{} {}
@@ -37,12 +44,12 @@ namespace d2d {
         result<void> render() noexcept;
 	public:
 		template<typename TimelineCommandT>
-		result<void> execute_command(timeline::state<Resources.size(), Resources>& state) noexcept;
+		result<void> execute_command(timeline::state<Resources.size(), Resources, command_group_count>& state) noexcept;
 		template<typename TimelineCommandT>
 		result<void> execute_command() noexcept;
 	private:
 		template<sl::index_t I>
-		result<void> execute_command(timeline::state<Resources.size(), Resources>& state) noexcept;
+		result<void> execute_command(timeline::state<Resources.size(), Resources, command_group_count>& state) noexcept;
 
 	public:
 		constexpr auto&& external_timeline_state(this auto&& self) noexcept { return sl::forward_like<decltype(self)>(self._external_timeline_state); }
@@ -68,14 +75,15 @@ namespace d2d {
     public:
 
     private:
+		friend render_process_type;
         friend vk::physical_device;
 
         template<typename WindowT>
         friend class application;
  
 	private:
-		timeline::state<Resources.size(), Resources> _external_timeline_state;
-		sl::tuple<typename std::invoke_result_t<timeline::setup<Ts>, render_process<Resources.size(), Resources> const&>::value_type...> auxiliary;
+		timeline::state<Resources.size(), Resources, command_group_count> _external_timeline_state;
+		sl::tuple<typename sl::invoke_return_type_t<timeline::setup<Ts>, render_process_type&>::value_type...> auxiliary;
 
     private:
         input::category_flags_t category_flags;

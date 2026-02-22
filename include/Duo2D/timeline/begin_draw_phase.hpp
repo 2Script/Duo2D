@@ -7,18 +7,21 @@
 #include "Duo2D/timeline/state.hpp"
 #include "Duo2D/vulkan/core/command_buffer.hpp"
 #include "Duo2D/core/resource_table.hpp"
+#include "Duo2D/timeline/event.hpp"
 
 
 namespace d2d {
-	struct begin_draw_phase {};
+	struct begin_draw_phase : timeline::event {
+		constexpr static command_family_t family = command_family::graphics;
+	};
 }
 
 namespace d2d::timeline {
 	template<>
 	struct command<begin_draw_phase> {
-		template<sl::size_t N, resource_table<N> Resources>
-		constexpr result<void> operator()(render_process<N, Resources> const& proc, timeline::state<N, Resources>& timeline_state, sl::empty_t) const noexcept {
-			vk::command_buffer<N> const& graphics_buffer = proc.command_buffers()[proc.frame_index()][command_family::graphics];
+		template<sl::size_t N, resource_table<N> Resources, sl::size_t CommandGroupCount, sl::index_t CommandGroupIdx>
+		constexpr result<void> operator()(render_process<N, Resources, CommandGroupCount> const& proc, timeline::state<N, Resources, CommandGroupCount>& timeline_state, sl::empty_t, sl::index_constant_type<CommandGroupIdx>) const noexcept {
+			vk::command_buffer<N> const& graphics_buffer = proc.command_buffers()[proc.frame_index()][CommandGroupIdx];
 			
 			std::array<VkImageMemoryBarrier2, 2> pre_render_transitions{{
 				VkImageMemoryBarrier2{

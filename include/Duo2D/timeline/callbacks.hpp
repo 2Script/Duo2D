@@ -7,9 +7,9 @@
 
 
 namespace d2d::timeline {
-	template<sl::size_t N, resource_table<N> Resources>
+	template<sl::size_t N, resource_table<N> Resources, sl::size_t CommandGroupCount>
 	struct callbacks {
-		using render_process_type = render_process<N, Resources>;
+		using render_process_type = render_process<N, Resources, CommandGroupCount>;
 		using result_type = result<void>;
 	public:
 		result_type(*on_frame_begin_fn)(render_process_type&) noexcept;

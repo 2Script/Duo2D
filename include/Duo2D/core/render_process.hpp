@@ -31,44 +31,44 @@
 
 
 namespace d2d::impl {
-	template<sl::size_t N, resource_table<N> Resources, buffering_policy_t BP, memory_policy_t MP>
+	template<sl::size_t N, resource_table<N> Resources, sl::size_t CommandGroupCount, buffering_policy_t BP, memory_policy_t MP>
 	using device_allocation_filter_sequence = sl::filtered_sequence_t<
 		sl::index_sequence_of_length_type<N>,
 		[]<sl::index_t I>(sl::index_constant_type<I>){
 			return 
-				vk::device_allocation_segment<I, ::d2d::render_process<N, Resources>>::config.memory == MP &&
-				vk::device_allocation_segment<I, ::d2d::render_process<N, Resources>>::config.buffering == BP;
+				vk::device_allocation_segment<I, ::d2d::render_process<N, Resources, CommandGroupCount>>::config.memory == MP &&
+				vk::device_allocation_segment<I, ::d2d::render_process<N, Resources, CommandGroupCount>>::config.buffering == BP;
 		}
 	>;
 }
 
 
 namespace d2d::impl {
-	template<sl::size_t N, resource_table<N> Resources, buffering_policy_t BufferingPolicy, memory_policy_t... MemoryPolicyIs>
-	class device_allocation_group<N, Resources, BufferingPolicy, sl::index_sequence_type<MemoryPolicyIs...>> : 
+	template<sl::size_t N, resource_table<N> Resources, sl::size_t CommandGroupCount, buffering_policy_t BufferingPolicy, memory_policy_t... MemoryPolicyIs>
+	class device_allocation_group<N, Resources, CommandGroupCount, BufferingPolicy, sl::index_sequence_type<MemoryPolicyIs...>> : 
 		public vk::device_allocation<
 			D2D_FRAMES_IN_FLIGHT, 
-			device_allocation_filter_sequence<N, Resources, BufferingPolicy, MemoryPolicyIs>,
+			device_allocation_filter_sequence<N, Resources, CommandGroupCount, BufferingPolicy, MemoryPolicyIs>,
 			BufferingPolicy, MemoryPolicyIs,
-			::d2d::render_process<N, Resources>
+			::d2d::render_process<N, Resources, CommandGroupCount>
 		>... 
 	{};
 }
 
 
 namespace d2d::impl {
-	template<sl::size_t N, resource_table<N> Resources, buffering_policy_t... BufferingPolicyIs>
-	class render_process<N, Resources, sl::index_sequence_type<BufferingPolicyIs...>> : 
+	template<sl::size_t N, resource_table<N> Resources, sl::size_t CommandGroupCount, buffering_policy_t... BufferingPolicyIs>
+	class render_process<N, Resources, CommandGroupCount, sl::index_sequence_type<BufferingPolicyIs...>> : 
 		public device_allocation_group<
-			N, Resources, BufferingPolicyIs, sl::index_sequence_of_length_type<memory_policy::num_memory_policies>
+			N, Resources, CommandGroupCount, BufferingPolicyIs, sl::index_sequence_of_length_type<memory_policy::num_memory_policies>
 		>... 
 	{
 		template<buffering_policy_t BP, memory_policy_t MP>
 		using allocation_type = vk::device_allocation<
 			D2D_FRAMES_IN_FLIGHT,
-			device_allocation_filter_sequence<N, Resources, BP, MP>,
+			device_allocation_filter_sequence<N, Resources, CommandGroupCount, BP, MP>,
 			BP, MP,
-			::d2d::render_process<N, Resources>
+			::d2d::render_process<N, Resources, CommandGroupCount>
 		>;
 	private:
 		template<sl::index_t, typename>
@@ -79,16 +79,16 @@ namespace d2d::impl {
 		template<buffering_policy_t BP, memory_policy_t MP>
 		using memory_type = vk::device_allocation<
 			D2D_FRAMES_IN_FLIGHT, 
-			device_allocation_filter_sequence<N, Resources, BP, MP>,
+			device_allocation_filter_sequence<N, Resources, CommandGroupCount, BP, MP>,
 			BP, MP,
-			::d2d::render_process<N, Resources>
+			::d2d::render_process<N, Resources, CommandGroupCount>
 		>;
 	protected:
 		template<memory_policy_t... MPs>
 		result<void> initialize_allocations(sl::integer_sequence_type<memory_policy_t, MPs...>) noexcept;
 	public:
 		constexpr static sl::size_t frames_in_flight = D2D_FRAMES_IN_FLIGHT;
-		constexpr static sl::size_t command_buffer_count = frames_in_flight;// + 1;
+		constexpr static sl::size_t command_buffer_count = CommandGroupCount;
 		constexpr static sl::lookup_table<N, resource_key_t, sl::index_t> resource_key_indices = sl::universal::make_deduced<sl::generic::lookup_table>(
 			Resources, sl::functor::subscript<0>{}, sl::functor::identity_index{}
 		);
@@ -97,37 +97,42 @@ namespace d2d::impl {
 		result<bool> verify_swap_chain(VkResult fn_result, bool even_if_suboptimal) noexcept;
 
 	public:
-		using timeline_callbacks_type = timeline::callbacks<N, Resources>;
+		using timeline_callbacks_type = timeline::callbacks<N, Resources, CommandGroupCount>;
 
-	public:    
+	public:
 		constexpr std::shared_ptr<vk::logical_device>  logical_device_ptr()  const noexcept { return logi_device_ptr; }
 		constexpr std::shared_ptr<vk::physical_device> physical_device_ptr() const noexcept { return phys_device_ptr; }
 
-		constexpr sl::array<command_family::num_families, std::shared_ptr<vk::command_pool>>                     const& command_pool_ptrs()         const& noexcept { return _command_pool_ptrs; }
-		constexpr std::array<std::array<vk::command_buffer<N>, command_family::num_families>, frames_in_flight>     const& command_buffers()           const& noexcept { return _command_buffers; }
-		constexpr std::array<std::array<vk::semaphore, command_family::num_families>, frames_in_flight>          const& command_buffer_semaphores() const& noexcept { return _command_buffer_semaphores; }
-		constexpr std::array<vk::fence, frames_in_flight>                                                        const& graphics_fences()           const& noexcept { return _graphics_fences; }
-		constexpr std::array<vk::semaphore, command_family::num_families>                                        const& generic_semaphores()        const& noexcept { return _generic_timeline_sempahores; }
-		constexpr std::vector<vk::semaphore>                                                                     const& graphics_semaphores()       const& noexcept { return _graphics_semaphores; }
-		constexpr std::vector<vk::semaphore>                                                                     const& pre_present_semaphores()    const& noexcept { return _pre_present_semaphores; }
-		constexpr std::array<vk::semaphore, frames_in_flight>                                                    const& acquisition_semaphores()    const& noexcept { return _acquisition_semaphores; }
-		constexpr vk::surface                                                                                    const& surface()                   const& noexcept { return _surface; }
-		constexpr vk::swap_chain                                                                                 const& swap_chain()                const& noexcept { return _swap_chain; }
-		constexpr vk::depth_image                                                                                const& depth_image()               const& noexcept { return _depth_image; }
-		constexpr std::vector<timeline_callbacks_type>                                                           const& timeline_callbacks()        const& noexcept { return _timeline_callbacks; }
-		
+		constexpr sl::size_t  frame_count() const noexcept { return _frame_count; }
+		constexpr sl::index_t frame_index() const noexcept { return frame_count() % frames_in_flight; }
 
-		constexpr auto&& generic_semaphore_values(this auto&& self) noexcept { return sl::forward_like<decltype(self)>(self._generic_semaphore_values); } 
-		constexpr auto&& command_buffer_semaphore_values(this auto&& self) noexcept { return sl::forward_like<decltype(self)>(self._command_buffer_semaphore_values); } 
+		constexpr extent2 screen_size() const noexcept { return _size; }
 
-
-		constexpr sl::size_t  frame_count()                 const noexcept { return _frame_count; }
-		constexpr sl::index_t frame_index()                 const noexcept { return frame_count() % frames_in_flight; }
-		//consteval sl::index_t outside_of_rendering_index()  const noexcept { return frames_in_flight; }
-		constexpr extent2     screen_size()                 const noexcept { return _size; }
-		constexpr bool        has_dedicated_present_queue() const noexcept {
-			return phys_device_ptr->queue_family_infos[command_family::graphics].index != phys_device_ptr->queue_family_infos[command_family::present].index;
+		constexpr bool has_dedicated_present_queue() const noexcept {
+			return 
+				phys_device_ptr->queue_family_infos[command_family::graphics].index != 
+				phys_device_ptr->queue_family_infos[command_family::present].index;
 		}
+
+
+		constexpr vk::surface                                                                         const& surface           (this auto const& self) noexcept { return self._surface; }
+		constexpr vk::swap_chain                                                                      const& swap_chain        (this auto const& self) noexcept { return self._swap_chain; }
+		constexpr vk::depth_image                                                                     const& depth_image       (this auto const& self) noexcept { return self._depth_image; }
+		constexpr sl::array<command_family::num_families, std::shared_ptr<vk::command_pool>>          const& command_pool_ptrs (this auto const& self) noexcept { return self._command_pool_ptrs; }
+		constexpr sl::array<frames_in_flight, sl::array<command_buffer_count, vk::command_buffer<N>>> const& command_buffers   (this auto const& self) noexcept { return self._command_buffers; }
+		
+		constexpr sl::array<frames_in_flight, sl::array<command_family::num_families, vk::semaphore>> const& command_family_semaphores(this auto const& self) noexcept { return self._generic_timeline_sempahores; }
+		constexpr sl::array<frames_in_flight, sl::array<command_buffer_count, vk::semaphore>>         const& command_buffer_semaphores(this auto const& self) noexcept { return self._command_buffer_semaphores; }
+		constexpr std::vector<vk::semaphore>                                                          const& graphics_semaphores      (this auto const& self) noexcept { return self._graphics_semaphores; }
+		constexpr std::vector<vk::semaphore>                                                          const& pre_present_semaphores   (this auto const& self) noexcept { return self._pre_present_semaphores; }
+		constexpr std::array<vk::semaphore, frames_in_flight>                                         const& acquisition_semaphores   (this auto const& self) noexcept { return self._acquisition_semaphores; }
+		
+		constexpr std::vector<timeline_callbacks_type> const& timeline_callbacks(this auto const& self) noexcept { return self._timeline_callbacks; }
+
+
+		constexpr auto&& command_family_semaphore_values        (this auto&& self) noexcept { return sl::forward_like<decltype(self)>(self._command_family_semaphore_values); }
+		constexpr auto&& command_buffer_semaphore_values (this auto&& self) noexcept { return sl::forward_like<decltype(self)>(self._command_buffer_semaphore_values); }
+
 
 	public:
 		template<resource_key_t Key>
@@ -137,7 +142,7 @@ namespace d2d::impl {
 		}
 		
 		template<resource_key_t Key>
-		constexpr auto&& get(this auto&& self) noexcept 
+		constexpr auto&& get(this auto&& self, sl::constant_type<resource_key_t, Key> = {}) noexcept 
 		requires (Resources.contains(Key)) {
 			return sl::forward_like<decltype(self)>(self[sl::constant<resource_key_t, Key>]);
 		}
@@ -171,25 +176,24 @@ namespace d2d::impl {
 
 		std::vector<timeline_callbacks_type> _timeline_callbacks;
 		sl::array<command_family::num_families, std::shared_ptr<vk::command_pool>> _command_pool_ptrs;
-		std::array<std::array<vk::command_buffer<N>, command_family::num_families>, frames_in_flight> _command_buffers;
-		std::array<std::array<vk::semaphore, command_family::num_families>, frames_in_flight> _command_buffer_semaphores;
-		std::array<std::array<std::unique_ptr<std::atomic<sl::uint64_t>>, command_family::num_families>, frames_in_flight> _command_buffer_semaphore_values;
-		std::array<vk::fence, frames_in_flight> _graphics_fences;
+		sl::array<frames_in_flight, sl::array<command_buffer_count, vk::command_buffer<N>>> _command_buffers;
+		sl::array<frames_in_flight, sl::array<command_buffer_count, vk::semaphore>> _command_buffer_semaphores;
+		sl::array<frames_in_flight, sl::array<command_buffer_count, sl::uint64_t>> _command_buffer_semaphore_values;
+		sl::array<frames_in_flight, sl::array<command_family::num_families, vk::semaphore>> _generic_timeline_sempahores;
+		sl::array<frames_in_flight, sl::array<command_family::num_families, sl::uint64_t>> _command_family_semaphore_values;
 		std::array<vk::semaphore, frames_in_flight> _acquisition_semaphores;
 		std::vector<vk::semaphore> _graphics_semaphores;
 		std::vector<vk::semaphore> _pre_present_semaphores;
-		std::array<vk::semaphore, command_family::num_families> _generic_timeline_sempahores;
-		sl::array<command_family::num_families, sl::uint64_t> _generic_semaphore_values;
 
 		sl::size_t _frame_count;
 	};
 }
 
 namespace d2d {
-	template<sl::size_t I, sl::size_t J, sl::size_t N, resource_table<N> Resources>
+	template<sl::size_t I, sl::size_t J, sl::size_t N, resource_table<N> Resources, sl::size_t CommandGroupCount>
 	constexpr result<void> copy(
-		vk::device_allocation_segment<I, render_process<N, Resources>>& dst,
-		vk::device_allocation_segment<J, render_process<N, Resources>> const& src,
+		vk::device_allocation_segment<I, render_process<N, Resources, CommandGroupCount>>& dst,
+		vk::device_allocation_segment<J, render_process<N, Resources, CommandGroupCount>> const& src,
 		sl::size_t size,
 		sl::uoffset_t dst_offset = 0,
 		sl::uoffset_t src_offset = 0

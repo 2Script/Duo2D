@@ -12,6 +12,7 @@
 #include "Duo2D/vulkan/memory/device_allocation_segment.hpp"
 #include "Duo2D/core/memory_policy.hpp"
 #include "Duo2D/core/resource_table.hpp"
+#include "Duo2D/vulkan/sync/fence.hpp"
 
 
 namespace d2d::vk::impl {
@@ -27,9 +28,9 @@ namespace d2d::vk::impl {
 }
 
 namespace d2d::vk {
-    template<sl::size_t FramesInFlight, sl::index_t... Is, buffering_policy_t BufferingPolicy, memory_policy_t MemoryPolicy, sl::size_t N, resource_table<N> Resources>
-    class device_allocation<FramesInFlight, sl::index_sequence_type<Is...>, BufferingPolicy, MemoryPolicy, render_process<N, Resources>> : 
-		public device_allocation_segment<Is, render_process<N, Resources>>...
+    template<sl::size_t FramesInFlight, sl::index_t... Is, buffering_policy_t BufferingPolicy, memory_policy_t MemoryPolicy, sl::size_t N, resource_table<N> Resources, sl::size_t CommandGroupCount>
+    class device_allocation<FramesInFlight, sl::index_sequence_type<Is...>, BufferingPolicy, MemoryPolicy, render_process<N, Resources, CommandGroupCount>> : 
+		public device_allocation_segment<Is, render_process<N, Resources, CommandGroupCount>>...
 	{
 	private:
 		constexpr static sl::size_t minimum_buffer_capacity_size_bytes = sizeof(std::byte) * 16;
@@ -39,7 +40,7 @@ namespace d2d::vk {
 		constexpr static sl::array<N, resource_key_t> resource_keys = sl::universal::make_deduced<sl::generic::array>(Resources, sl::functor::subscript<0>{});
 	public:
 		template<sl::index_t I>
-		using segment_type = device_allocation_segment<I, render_process<N, Resources>>;
+		using segment_type = device_allocation_segment<I, render_process<N, Resources, CommandGroupCount>>;
 		using memory_ptr_type = vulkan_ptr<VkDeviceMemory, vkFreeMemory>;
 	private:
 		constexpr static bool is_host_visible_memory(memory_policy_t policy) noexcept { 
@@ -47,7 +48,7 @@ namespace d2d::vk {
 		}
 	private:
 		constexpr sl::index_t allocation_index() noexcept {
-			return (static_cast<render_process<N, Resources> const&>(*this).frame_count()) % allocation_count;
+			return (static_cast<render_process<N, Resources, CommandGroupCount> const&>(*this).frame_count()) % allocation_count;
 		}
 
 	// public:
@@ -63,7 +64,7 @@ namespace d2d::vk {
 		result<void> initialize_buffers(sl::array<AllocIdxCount, sl::index_t> alloc_indices) noexcept;
 
 	protected:
-		result<void> realloc(sl::uint64_t timeout = std::numeric_limits<std::uint64_t>::max()) noexcept;
+		result<void> realloc(sl::uint64_t timeout = std::numeric_limits<sl::uint64_t>::max()) noexcept;
 
 	public:
 		friend segment_type<Is>...;
@@ -81,14 +82,14 @@ namespace d2d::vk {
 }
 
 namespace d2d::vk {
-    template<sl::size_t FramesInFlight, sl::index_t... Is, buffering_policy_t BufferingPolicy, memory_policy_t MemoryPolicy, sl::size_t N, resource_table<N> Resources>
+    template<sl::size_t FramesInFlight, sl::index_t... Is, buffering_policy_t BufferingPolicy, memory_policy_t MemoryPolicy, sl::size_t N, resource_table<N> Resources, sl::size_t CommandGroupCount>
 	requires (sizeof...(Is) == 0 || MemoryPolicy == memory_policy::push_constant)
-    class device_allocation<FramesInFlight, sl::index_sequence_type<Is...>, BufferingPolicy, MemoryPolicy, render_process<N, Resources>> : 
-		public device_allocation_segment<Is, render_process<N, Resources>>... 
+    class device_allocation<FramesInFlight, sl::index_sequence_type<Is...>, BufferingPolicy, MemoryPolicy, render_process<N, Resources, CommandGroupCount>> : 
+		public device_allocation_segment<Is, render_process<N, Resources, CommandGroupCount>>... 
 	{
 	public:
 		template<sl::index_t I>
-		using segment_type = device_allocation_segment<I, render_process<N, Resources>>;
+		using segment_type = device_allocation_segment<I, render_process<N, Resources, CommandGroupCount>>;
 		using memory_ptr_type = vulkan_ptr<VkDeviceMemory, vkFreeMemory>;
 	public:
 		static result<device_allocation> create(std::shared_ptr<logical_device>, std::shared_ptr<physical_device>) noexcept {

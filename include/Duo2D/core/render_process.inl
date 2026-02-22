@@ -1,11 +1,13 @@
 #pragma once
 #include "Duo2D/core/render_process.hpp"
 
+#include "Duo2D/timeline/dedicated_command_group.hpp"
+
 
 namespace d2d::impl {
-	template<sl::size_t N, resource_table<N> Resources, buffering_policy_t... BufferingPolicyIs>
+	template<sl::size_t N, resource_table<N> Resources, sl::size_t CommandGroupCount, buffering_policy_t... BufferingPolicyIs>
 	template<memory_policy_t... MPs>
-	result<void>    render_process<N, Resources, sl::index_sequence_type<BufferingPolicyIs...>>::
+	result<void>    render_process<N, Resources, CommandGroupCount, sl::index_sequence_type<BufferingPolicyIs...>>::
 	initialize_allocations(sl::integer_sequence_type<memory_policy_t, MPs...>) noexcept {
 		auto init_single_alloc = [this]<buffering_policy_t BP>(sl::constant_type<buffering_policy_t, BP>) -> result<void> {
 			return ol::to_result((([this]() -> result<void> {
@@ -25,8 +27,8 @@ namespace d2d::impl {
 
 
 namespace d2d::impl {
-	template<sl::size_t N, resource_table<N> Resources, buffering_policy_t... BufferingPolicyIs>
-	result<bool>    render_process<N, Resources, sl::index_sequence_type<BufferingPolicyIs...>>::
+	template<sl::size_t N, resource_table<N> Resources, sl::size_t CommandGroupCount, buffering_policy_t... BufferingPolicyIs>
+	result<bool>    render_process<N, Resources, CommandGroupCount, sl::index_sequence_type<BufferingPolicyIs...>>::
 	verify_swap_chain(VkResult fn_result, bool even_if_suboptimal) noexcept {
 		switch(fn_result) {
 		case VK_SUCCESS:
@@ -58,9 +60,9 @@ namespace d2d::impl {
 }
 
 namespace d2d::impl {
-	template<sl::size_t N, resource_table<N> Resources, buffering_policy_t... BufferingPolicyIs>
+	template<sl::size_t N, resource_table<N> Resources, sl::size_t CommandGroupCount, buffering_policy_t... BufferingPolicyIs>
 	template<sl::size_t I, sl::size_t J>
-	constexpr result<void>    render_process<N, Resources, sl::index_sequence_type<BufferingPolicyIs...>>::
+	constexpr result<void>    render_process<N, Resources, CommandGroupCount, sl::index_sequence_type<BufferingPolicyIs...>>::
 	copy(
 		vk::device_allocation_segment<J, render_process> const& src,
 		sl::size_t size,
@@ -69,18 +71,19 @@ namespace d2d::impl {
 	) & noexcept {
 		vk::device_allocation_segment<I, render_process>& dst = static_cast<vk::device_allocation_segment<I, render_process>&>(*this);
 		//TODO: use next frame index if theres no garauntee current transfer command buffer is not in use
-		vk::command_buffer<N> const& transfer_command_buffer = _command_buffers[frame_index()][command_family::transfer];
-		const sl::uint64_t semaphore_value = command_buffer_semaphore_values()[frame_index()][command_family::transfer]->fetch_add(1, std::memory_order::relaxed);
+		const sl::index_t frame_idx = frame_index();
+		vk::command_buffer<N> const& transfer_command_buffer = command_buffers()[frame_idx][timeline::impl::dedicated_command_group::out_of_timeline_copy];
+		const sl::uint64_t semaphore_value = command_buffer_semaphore_values()[frame_idx][timeline::impl::dedicated_command_group::out_of_timeline_copy]++;
 
 		VkSemaphoreWaitInfo semaphore_wait_info{
 			.sType = VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO,
 			.flags = 0,
 			.semaphoreCount = 1,
-			.pSemaphores = &command_buffer_semaphores()[frame_index()][command_family::transfer],
+			.pSemaphores = &command_buffer_semaphores()[frame_idx][timeline::impl::dedicated_command_group::out_of_timeline_copy],
 			.pValues = &semaphore_value
 		};
 		vk::semaphore_submit_info semaphore_signal_info{
-			command_buffer_semaphores()[frame_index()][command_family::transfer],
+			command_buffer_semaphores()[frame_idx][timeline::impl::dedicated_command_group::out_of_timeline_copy],
 			render_stage::group::all_transfer,
 			semaphore_value + 1,
 		};
@@ -96,15 +99,15 @@ namespace d2d::impl {
 }
 
 namespace d2d {
-	template<sl::size_t I, sl::size_t J, sl::size_t N, resource_table<N> Resources>
+	template<sl::size_t I, sl::size_t J, sl::size_t N, resource_table<N> Resources, sl::size_t CommandGroupCount>
 	constexpr result<void> copy(
-		vk::device_allocation_segment<I, render_process<N, Resources>>& dst,
-		vk::device_allocation_segment<J, render_process<N, Resources>> const& src,
+		vk::device_allocation_segment<I, render_process<N, Resources, CommandGroupCount>>& dst,
+		vk::device_allocation_segment<J, render_process<N, Resources, CommandGroupCount>> const& src,
 		sl::size_t size,
 		sl::uoffset_t dst_offset,
 		sl::uoffset_t src_offset
 	) noexcept {
-		render_process<N, Resources>& proc = static_cast<render_process<N, Resources>&>(dst);
+		render_process<N, Resources, CommandGroupCount>& proc = static_cast<render_process<N, Resources, CommandGroupCount>&>(dst);
 		return proc.template copy<I>(src, size, dst_offset, src_offset);
 	}
 }

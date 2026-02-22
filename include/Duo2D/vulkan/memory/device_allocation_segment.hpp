@@ -32,7 +32,7 @@ namespace d2d::vk {
 
 
 namespace d2d::vk::impl {
-	template<sl::index_t I, sl::size_t N, resource_table<N> Resources>
+	template<sl::index_t I, sl::size_t N, resource_table<N> Resources, sl::size_t CommandGroupCount>
 	struct device_allocation_segment_properties {
 		constexpr static resource_config config = sl::universal::get<sl::second_constant>(*std::next(Resources.begin(), I));
 		constexpr static bool c = sl::universal::get<0>(sl::key_value_pair<int, int>{});
@@ -46,16 +46,16 @@ namespace d2d::vk::impl {
 }
 
 namespace d2d::vk::impl {
-	template<sl::index_t I, sl::size_t N, resource_table<N> Resources>
-	class device_allocation_segment_base<I, render_process<N, Resources>> :
-		public device_allocation_segment_properties<I, N, Resources>
+	template<sl::index_t I, sl::size_t N, resource_table<N> Resources, sl::size_t CommandGroupCount>
+	class device_allocation_segment_base<I, render_process<N, Resources, CommandGroupCount>> :
+		public device_allocation_segment_properties<I, N, Resources, CommandGroupCount>
 	{
-		using base_type = device_allocation_segment_properties<I, N, Resources>;
+		using base_type = device_allocation_segment_properties<I, N, Resources, CommandGroupCount>;
 	public:
 		using base_type::config;
 		using base_type::allocation_count;
 	public:
-        static result<device_allocation_segment<I, render_process<N, Resources>>> create(std::shared_ptr<logical_device> device, std::size_t initial_capacity, std::size_t initial_size = 0) noexcept;
+        static result<device_allocation_segment<I, render_process<N, Resources, CommandGroupCount>>> create(std::shared_ptr<logical_device> device, std::size_t initial_capacity, std::size_t initial_size = 0) noexcept;
 
 	public:
 		constexpr std::byte const* data() const noexcept { return ptrs[this->current_buffer_index()]; }
@@ -81,8 +81,8 @@ namespace d2d::vk::impl {
 
 		// template<sl::size_t DstI, sl::size_t SrcI>
 		// friend constexpr result<void> copy(
-			// device_allocation_segment<DstI, render_process<N, Resources>>& dst, 
-			// device_allocation_segment<DstI, render_process<N, Resources>> const& src, 
+			// device_allocation_segment<DstI, render_process<N, Resources, CommandGroupCount>>& dst, 
+			// device_allocation_segment<DstI, render_process<N, Resources, CommandGroupCount>> const& src, 
 		// ) noexcept;
 
 	public:
@@ -101,14 +101,14 @@ namespace d2d::vk::impl {
 	};
 
 
-	template<sl::index_t I, sl::size_t N, resource_table<N> Resources>
+	template<sl::index_t I, sl::size_t N, resource_table<N> Resources, sl::size_t CommandGroupCount>
 	requires(
-		device_allocation_segment_properties<I, N, Resources>::config.memory == memory_policy::push_constant
+		device_allocation_segment_properties<I, N, Resources, CommandGroupCount>::config.memory == memory_policy::push_constant
 	)
-	class device_allocation_segment_base<I, render_process<N, Resources>> :
-		public device_allocation_segment_properties<I, N, Resources>
+	class device_allocation_segment_base<I, render_process<N, Resources, CommandGroupCount>> :
+		public device_allocation_segment_properties<I, N, Resources, CommandGroupCount>
 	{
-		using base_type = device_allocation_segment_properties<I, N, Resources>;
+		using base_type = device_allocation_segment_properties<I, N, Resources, CommandGroupCount>;
 	public:
 		using base_type::config;
 		using base_type::allocation_count;
@@ -134,12 +134,12 @@ namespace d2d::vk::impl {
 namespace d2d::vk {
 	//Directly modifyable
 	//Assumes that reads/writes are done safely
-	template<sl::index_t I, sl::size_t N, resource_table<N> Resources>
-    class device_allocation_segment<I, render_process<N, Resources>> :
-		public impl::device_allocation_segment_base<I, render_process<N, Resources>>
+	template<sl::index_t I, sl::size_t N, resource_table<N> Resources, sl::size_t CommandGroupCount>
+    class device_allocation_segment<I, render_process<N, Resources, CommandGroupCount>> :
+		public impl::device_allocation_segment_base<I, render_process<N, Resources, CommandGroupCount>>
 	{
 	protected:
-		using base_type = impl::device_allocation_segment_base<I, render_process<N, Resources>>;
+		using base_type = impl::device_allocation_segment_base<I, render_process<N, Resources, CommandGroupCount>>;
 	public:
 		using base_type::config;
 		using base_type::allocation_count;
@@ -180,12 +180,12 @@ namespace d2d::vk {
 
 namespace d2d::vk {
 	//Not directly modifyable
-	template<sl::index_t I, sl::size_t N, resource_table<N> Resources>
+	template<sl::index_t I, sl::size_t N, resource_table<N> Resources, sl::size_t CommandGroupCount>
 	requires (
-		device_allocation_segment<I, render_process<N, Resources>>::config.memory == memory_policy::gpu_local
+		device_allocation_segment<I, render_process<N, Resources, CommandGroupCount>>::config.memory == memory_policy::gpu_local
 	)
-	class device_allocation_segment<I, render_process<N, Resources>> : 
-		public impl::device_allocation_segment_base<I, render_process<N, Resources>> {};
+	class device_allocation_segment<I, render_process<N, Resources, CommandGroupCount>> : 
+		public impl::device_allocation_segment_base<I, render_process<N, Resources, CommandGroupCount>> {};
 }
 
 

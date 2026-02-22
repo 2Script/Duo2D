@@ -5,6 +5,7 @@
 #include "Duo2D/core/render_process.hpp"
 #include "Duo2D/vulkan/memory/pipeline.hpp"
 #include "Duo2D/timeline/state.hpp"
+#include "Duo2D/timeline/event.hpp"
 
 
 namespace d2d {
@@ -14,7 +15,9 @@ namespace d2d {
 		render_stage_flags_t DestinationStages, memory_operation_t DestinationMemoryOp,
 		typename KeySeq
 	>
-	struct resource_dependency {};
+	struct resource_dependency : timeline::event {
+		constexpr static command_family_t family = ExecutionCommandFamily;
+	};
 }
 
 
@@ -26,14 +29,14 @@ namespace d2d::timeline {
 		resource_key_t... ResourceKeys
 	>
 	struct command<resource_dependency<ExecutionCommandFamily, SourceStages, SourceMemoryOp, DestinationStages, DestinationMemoryOp, resource_key_sequence_type<ResourceKeys...>>> {
-		template<sl::size_t N, resource_table<N> Resources>
-		constexpr result<void> operator()(render_process<N, Resources> const& proc, timeline::state<N, Resources>&, sl::empty_t) const noexcept {
+		template<sl::size_t N, resource_table<N> Resources, sl::size_t CommandGroupCount, sl::index_t CommandGroupIdx>
+		constexpr result<void> operator()(render_process<N, Resources, CommandGroupCount> const& proc, timeline::state<N, Resources, CommandGroupCount>&, sl::empty_t, sl::index_constant_type<CommandGroupIdx>) const noexcept {
 			constexpr std::optional<command_family_t> src_command_family = ::d2d::impl::to_command_family(SourceStages);
 			constexpr std::optional<command_family_t> dst_command_family = ::d2d::impl::to_command_family(DestinationStages);
 			constexpr bool is_inter_command = src_command_family.has_value() && dst_command_family.has_value() && *src_command_family != *dst_command_family;
 			const bool different_queues = is_inter_command && proc.physical_device_ptr()->queue_family_infos[*src_command_family].index != proc.physical_device_ptr()->queue_family_infos[*dst_command_family];
 
-			vk::command_buffer<N> const& cmd_buff = proc.command_buffers()[ExecutionCommandFamily];
+			vk::command_buffer<N> const& cmd_buff = proc.command_buffers()[proc.frame_index()][CommandGroupIdx];
 			
 			//If it's an inter-command dependency and the queues are the same, do nothing (submit<> will handle the syncronization)
 			if constexpr(is_inter_command)
