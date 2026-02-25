@@ -30,6 +30,7 @@ list(TRANSFORM CPP_FILES PREPEND src/Duo2D/)
 set(SHADER_INPUT_FILES
     rect.vert
     rect.frag
+	generate_rects.comp
 )
 list(TRANSFORM SHADER_INPUT_FILES PREPEND shaders/)
 list(TRANSFORM SHADER_INPUT_FILES REPLACE "\.[^.]*$" ".hpp" OUTPUT_VARIABLE SHADER_OUTPUT_FILES)

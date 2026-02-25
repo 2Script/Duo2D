@@ -66,8 +66,9 @@ namespace d2d::vk::impl {
 		constexpr sl::size_t capacity() const noexcept { return allocated_bytes; }
 		constexpr sl::size_t capacity_bytes() const noexcept { return allocated_bytes; }
 
-		constexpr VkDeviceAddress gpu_address() const noexcept { return device_addresses[this->current_buffer_index()]; }
+		constexpr gpu_address_t gpu_address() const noexcept { return device_addresses[this->current_buffer_index()]; }
         constexpr explicit operator bool() const noexcept { return static_cast<bool>(buffs[this->current_buffer_index()]); }
+		constexpr explicit operator VkBuffer() const noexcept { return buffs[this->current_buffer_index()]; }
 	
 	public:
 		constexpr result<void> reserve(sl::size_t new_capacity_bytes) noexcept;
@@ -90,7 +91,7 @@ namespace d2d::vk::impl {
 
 	protected:
 		sl::array<allocation_count, buffer_ptr_type> buffs;
-		sl::array<allocation_count, VkDeviceAddress> device_addresses;
+		sl::array<allocation_count, gpu_address_t> device_addresses;
 		sl::array<allocation_count, std::byte*> ptrs;
         sl::size_t data_bytes;
         sl::size_t allocated_bytes;

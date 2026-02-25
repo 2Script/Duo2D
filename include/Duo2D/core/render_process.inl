@@ -91,6 +91,29 @@ namespace d2d::impl {
 		__D2D_VULKAN_VERIFY(vkWaitSemaphores(*logi_device_ptr, &semaphore_wait_info, std::numeric_limits<sl::uint64_t>::max()));
 		RESULT_VERIFY(transfer_command_buffer.reset());
         RESULT_VERIFY(transfer_command_buffer.begin(true));
+		sl::array<2, VkBufferMemoryBarrier2> pre_copy_barriers{{
+			VkBufferMemoryBarrier2{
+				.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2,
+				.srcStageMask = VK_PIPELINE_STAGE_2_COPY_BIT,
+				.srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT,
+				.dstStageMask = VK_PIPELINE_STAGE_2_COPY_BIT,
+				.dstAccessMask = VK_ACCESS_2_TRANSFER_READ_BIT,
+				.buffer = static_cast<VkBuffer>(src),
+				.offset = src_offset,
+				.size = size
+			},
+			VkBufferMemoryBarrier2{
+				.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2,
+				.srcStageMask = VK_PIPELINE_STAGE_2_COPY_BIT,
+				.srcAccessMask = VK_ACCESS_2_TRANSFER_READ_BIT | VK_ACCESS_2_TRANSFER_WRITE_BIT,
+				.dstStageMask = VK_PIPELINE_STAGE_2_COPY_BIT,
+				.dstAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT,
+				.buffer = static_cast<VkBuffer>(dst),
+				.offset = dst_offset,
+				.size = size
+			},
+		}};
+		transfer_command_buffer.pipeline_barrier({}, pre_copy_barriers, {});
 		transfer_command_buffer.copy(dst, src, size, dst_offset, src_offset);
 		RESULT_VERIFY(transfer_command_buffer.end());
 		RESULT_VERIFY(transfer_command_buffer.submit(command_family::transfer, {}, {&semaphore_signal_info, 1}));

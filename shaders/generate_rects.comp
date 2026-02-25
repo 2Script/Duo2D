@@ -1,0 +1,54 @@
+#version 450
+#extension GL_EXT_buffer_reference : require
+
+
+struct draw_command {
+    uint indexCount;
+    uint instanceCount;
+    uint firstIndex;
+    int  vertexOffset;
+    uint firstInstance;
+};
+
+
+layout(buffer_reference, std430, buffer_reference_align = 8) readonly buffer RectangleLimitBuffer { 
+	uvec4 limit;
+};
+
+layout(buffer_reference, std430, buffer_reference_align = 8) writeonly buffer PositionsBuffer { 
+	uvec2 positions[];
+};
+
+layout(buffer_reference, std430, buffer_reference_align = 8) buffer DrawCommandsBuffer { 
+	draw_command draw_cmd;
+};
+
+
+layout(buffer_reference, std430, buffer_reference_align = 8) readonly buffer Registers { 
+	RectangleLimitBuffer rect_limit_buff;
+	PositionsBuffer pos_buff;
+	DrawCommandsBuffer draw_cmd_buff;
+};
+
+layout(std430, push_constant) uniform PushConstants {
+    Registers addrs;
+} push_constants;
+
+
+layout (local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+
+
+void main() {
+	const uint x = gl_GlobalInvocationID.x;
+	const uint y = gl_GlobalInvocationID.y;
+	const uint i = x + (16 * y);
+	
+	const uint n = push_constants.addrs.rect_limit_buff.limit.x;
+
+	if(i >= n)
+		return;
+
+	push_constants.addrs.pos_buff.positions[i] = uvec2(100 * x, 50 * y);
+	atomicMax(push_constants.addrs.draw_cmd_buff.draw_cmd.instanceCount, i + 1);
+	
+}

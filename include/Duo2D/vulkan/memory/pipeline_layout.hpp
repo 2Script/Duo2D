@@ -8,7 +8,7 @@
 __D2D_DECLARE_VK_TRAITS_DEVICE(VkPipelineLayout);
 
 namespace d2d::vk {
-    template<typename T, sl::size_t N, resource_table<N> Resources>
+    template<shader_stage_flags_t Stages, typename T, sl::size_t N, resource_table<N> Resources>
     struct pipeline_layout : vulkan_ptr<VkPipelineLayout, vkDestroyPipelineLayout> {
         static result<pipeline_layout> create(std::shared_ptr<logical_device> device) noexcept;
     };

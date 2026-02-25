@@ -12,7 +12,7 @@ namespace d2d::test {
         constexpr static auto vert_shader_data = std::to_array(d2d::shaders::rect::vert);
         constexpr static auto frag_shader_data = std::to_array(d2d::shaders::rect::frag);
 		constexpr static auto buffers = sl::integer_sequence<resource_key_t, 
-			::resource_id::push_constants,
+			::resource_id::draw_constants,
 			::resource_id::draw_commands,
 
 			::resource_id::rectangle_indices,

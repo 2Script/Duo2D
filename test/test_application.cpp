@@ -33,7 +33,7 @@ extern "C" const char* __asan_default_options() { return "detect_leaks=0"; }
 #endif
 
 
-using window = d2d::window<d2d::test::basic_timeline, resource_configs>;
+using window = d2d::window<d2d::test::novice_timeline, resource_configs>;
 using application = d2d::application<window>;
 
 constexpr sl::size_t N = resource_configs.size();
@@ -117,32 +117,60 @@ int main(){
 	
 	w.timeline_callbacks().push_back(typename window::timeline_callbacks_type{
 		.on_frame_begin_fn = [](typename window::render_process_type& proc) noexcept -> d2d::result<void> {
-			push_constants constants {
+			{
+			draw_constants constants {
 				.swap_extent = proc.swap_chain().extent(),
 				.position_buff_addr = sl::universal::get<resource_id::positions>(proc).gpu_address()
 			};
 			std::memcpy(
-				sl::universal::get<resource_id::push_constants>(proc).data(),
+				sl::universal::get<resource_id::draw_constants>(proc).data(),
 				&constants,
-				sizeof(push_constants)
+				sizeof(draw_constants)
 			);
+			}
+
+			{
+			compute_constants constants {
+				.buffer_addresses_addr = sl::universal::get<resource_id::compute_buffer_addresses>(proc).gpu_address()
+			};
+			std::memcpy(
+				sl::universal::get<resource_id::compute_constants>(proc).data(),
+				&constants,
+				sizeof(compute_constants)
+			);
+
+			sl::array<4, VkDeviceAddress> compute_addresses{{
+				sl::universal::get<resource_id::rectangle_limit>(proc).gpu_address(),
+
+				sl::universal::get<resource_id::positions>(proc).gpu_address(),
+				sl::universal::get<resource_id::draw_commands>(proc).gpu_address(),
+				sl::universal::get<resource_id::draw_count>(proc).gpu_address(),
+			}};
+
+			std::memcpy(
+				sl::universal::get<resource_id::compute_buffer_addresses>(proc).data(),
+				compute_addresses.data(),
+				compute_addresses.size_bytes()
+			);
+			}
 			return {};
 		},
-		.on_swap_chain_updated_fn = &d2d::timeline::predefined_callbacks::update_swap_extent<window, resource_id::push_constants>,
+		.on_swap_chain_updated_fn = &d2d::timeline::predefined_callbacks::update_swap_extent<window, resource_id::draw_constants>,
 	});
 
 
+	RESULT_VERIFY((sl::universal::get<resource_id::dispatch_commands>(w).template try_emplace_back<VkDispatchIndirectCommand>(
+		1, 1, 1
+	)));
 
-	RESULT_VERIFY(sl::universal::get<resource_id::draw_commands>(w).reserve(sizeof(VkDrawIndexedIndirectCommand)));
+
+	RESULT_VERIFY(sl::universal::get<resource_id::draw_commands>(w).reserve(sizeof(VkDrawIndexedIndirectCommand))); //Should do nothing
 	RESULT_VERIFY((sl::universal::get<resource_id::draw_commands>(w).template try_emplace_back<VkDrawIndexedIndirectCommand>(
 		6, 3, 0, 0, 0
 	)));
-
-	sl::array<1, VkDeviceAddress> addresses{{
-		sl::universal::get<resource_id::positions>(w).gpu_address(),
-	}};
-	std::memcpy(sl::universal::get<resource_id::push_constants>(w).data(), addresses.data(), addresses.size_bytes());
-
+	RESULT_VERIFY((sl::universal::get<resource_id::draw_count>(w).template try_emplace_back<sl::uint32_t>(
+		1
+	)));
 
 	RESULT_VERIFY(sl::universal::get<resource_id::staging>(w).resize(rect_indices.size_bytes()));
 	std::memcpy(sl::universal::get<resource_id::staging>(w).data(), rect_indices.data(), rect_indices.size_bytes());
@@ -160,12 +188,24 @@ int main(){
 	RESULT_VERIFY(sl::universal::get<resource_id::staging>(w).resize(rect_positions.size_bytes()));
 	std::memcpy(sl::universal::get<resource_id::staging>(w).data(), rect_positions.data(), rect_positions.size_bytes());
 
-	RESULT_VERIFY(sl::universal::get<resource_id::positions>(w).try_resize(rect_positions.size_bytes()));
+	RESULT_VERIFY(sl::universal::get<resource_id::positions>(w).resize(sizeof(d2d::pt2u32) * 16 * 16));
 
 	RESULT_VERIFY((d2d::copy(
 		sl::universal::get<resource_id::positions>(w),
 		sl::universal::get<resource_id::staging>(w),
 		rect_positions.size_bytes()
+	)));
+	sl::universal::get<resource_id::staging>(w).clear();
+
+
+	constexpr d2d::vec4<sl::uint32_t> rect_limit{250, 0, 100, 100};
+	RESULT_VERIFY((sl::universal::get<resource_id::staging>(w).try_push_back(
+		rect_limit
+	)));
+	RESULT_VERIFY((d2d::copy(
+		sl::universal::get<resource_id::rectangle_limit>(w),
+		sl::universal::get<resource_id::staging>(w),
+		sizeof(decltype(rect_limit))
 	)));
 	sl::universal::get<resource_id::staging>(w).clear();
 

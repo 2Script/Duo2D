@@ -34,10 +34,12 @@ namespace d2d::vk {
         void free() const noexcept;
 		
 		
-	template<typename T, sl::index_t I, typename Derived, resource_table<N> Resources>
-		void bind_buffer(device_allocation_segment<I, Derived> const& buff, pipeline_layout<T, N, Resources> const& layout, std::size_t& bind_index) const noexcept;
-    	template<typename T, resource_table<N> Resources>
-		void bind_pipeline(pipeline<T, N, Resources> const& p) const noexcept;
+		template<typename T, sl::index_t I, typename Derived, resource_table<N> Resources>
+		void bind_buffer(device_allocation_segment<I, Derived> const& buff, pipeline_layout<shader_stage::all_graphics, T, N, Resources> const& layout, std::size_t& bind_index) const noexcept;
+		template<typename T, sl::index_t I, typename Derived, resource_table<N> Resources>
+		void bind_buffer(device_allocation_segment<I, Derived> const& buff, pipeline_layout<shader_stage::compute, T, N, Resources> const& layout, std::size_t& bind_index) const noexcept;
+    	template<bind_point_t BindPoint, typename T, resource_table<N> Resources>
+		void bind_pipeline(pipeline<BindPoint, T, N, Resources> const& p) const noexcept;
 
 	public:
         void begin_draw(std::span<const VkRenderingAttachmentInfo> color_attachments, VkRenderingAttachmentInfo const& depth_attachment, rect<std::uint32_t> render_area_bounds, rect<float> viewport_bounds, rect<std::uint32_t> scissor_bounds) const noexcept;
@@ -45,7 +47,9 @@ namespace d2d::vk {
 
     public:
 		template<typename T>
-        void draw(sl::size_t& offset) const noexcept;
+        void draw(sl::size_t offset = 0) const noexcept;
+		template<typename T>
+        void dispatch(sl::size_t offset = 0) const noexcept;
         
     public:
         void pipeline_barrier(std::span<const VkMemoryBarrier2> global_barriers, std::span<const VkBufferMemoryBarrier2> buffer_barriers, std::span<const VkImageMemoryBarrier2> image_barriers) const noexcept;
@@ -72,6 +76,8 @@ namespace d2d::vk {
 		//TODO: just make the command buffer functions not const
 		mutable sl::array<N, VkBuffer> draw_buff_refs;
 		mutable sl::size_t draw_buff_ref_count;
+		mutable sl::array<N, VkBuffer> dispatch_buff_refs;
+		mutable sl::size_t dispatch_buff_ref_count;
     };
 }
 

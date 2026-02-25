@@ -11,6 +11,10 @@ namespace d2d::vk {
         ret.logi_device_ptr = logi_device;
 		ret.phys_device_ptr = phys_device;
         ret.cmd_pool_ptr = pool;
+		ret.draw_buff_refs = {};
+		ret.draw_buff_ref_count = 0;
+		ret.dispatch_buff_refs = {};
+		ret.dispatch_buff_ref_count = 0;
 
         VkCommandBufferAllocateInfo alloc_info{
             .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
@@ -178,7 +182,7 @@ namespace d2d::vk {
 namespace d2d::vk {
 	template<sl::size_t N>
 	template<typename T, sl::index_t I, typename Derived, resource_table<N> Resources>
-	void command_buffer<N>::bind_buffer(device_allocation_segment<I, Derived> const& buff, pipeline_layout<T, N, Resources> const& layout, std::size_t&) const noexcept {
+	void command_buffer<N>::bind_buffer(device_allocation_segment<I, Derived> const& buff, pipeline_layout<shader_stage::all_graphics, T, N, Resources> const& layout, std::size_t&) const noexcept {
 		constexpr resource_config config = device_allocation_segment<I, Derived>::config;
 		
 		if constexpr(config.usage & usage_policy::index)
@@ -189,33 +193,53 @@ namespace d2d::vk {
 
 		if constexpr(config.usage & usage_policy::draw_commands)
 			draw_buff_refs[draw_buff_ref_count++] = buff.buffs[buff.current_buffer_index()];
-
 	}
 
 	template<sl::size_t N>
-    template<typename T, resource_table<N> Resources>
-	void command_buffer<N>::bind_pipeline(pipeline<T, N, Resources> const& p) const noexcept {
-        vkCmdBindPipeline(handle, VK_PIPELINE_BIND_POINT_GRAPHICS, p);
+	template<typename T, sl::index_t I, typename Derived, resource_table<N> Resources>
+	void command_buffer<N>::bind_buffer(device_allocation_segment<I, Derived> const& buff, pipeline_layout<shader_stage::compute, T, N, Resources> const& layout, std::size_t&) const noexcept {
+		constexpr resource_config config = device_allocation_segment<I, Derived>::config;
+
+		if constexpr(config.usage & usage_policy::push_constant)
+			vkCmdPushConstants(handle, layout, config.stages, 0, config.initial_capacity_bytes, buff.bytes.data());
+
+		if constexpr(config.usage & usage_policy::dispatch_commands)
+			dispatch_buff_refs[dispatch_buff_ref_count++] = buff.buffs[buff.current_buffer_index()];
+	}
+
+	template<sl::size_t N>
+    template<bind_point_t BindPoint, typename T, resource_table<N> Resources>
+	void command_buffer<N>::bind_pipeline(pipeline<BindPoint, T, N, Resources> const& p) const noexcept {
+        vkCmdBindPipeline(handle, static_cast<VkPipelineBindPoint>(BindPoint), p);
 	}
 
 	
 	template<sl::size_t N>
 	template<typename T>
-    void command_buffer<N>::draw(sl::size_t&) const noexcept {
+    void command_buffer<N>::draw(sl::size_t offset) const noexcept {
 
 		const size_t draw_count = T::draw_count();
 		for(sl::index_t i = 0; i < draw_buff_ref_count; ++i) {
 			VkBuffer draw_buff = draw_buff_refs[i];
         	if constexpr (requires { T::index_type; }) {
-        	    vkCmdDrawIndexedIndirect(handle, draw_buff, 0, draw_count, sizeof(VkDrawIndexedIndirectCommand));
+        	    vkCmdDrawIndexedIndirect(handle, draw_buff, offset, draw_count, sizeof(VkDrawIndexedIndirectCommand));
 				//offset += draw_count * sizeof(VkDrawIndexedIndirectCommand);
 			} else {
-        	    vkCmdDrawIndirect(handle, draw_buff, 0, draw_count, sizeof(VkDrawIndirectCommand));
+        	    vkCmdDrawIndirect(handle, draw_buff, offset, draw_count, sizeof(VkDrawIndirectCommand));
 				//offset += draw_count * sizeof(VkDrawIndirectCommand);
 			}
 		}
 
 		draw_buff_ref_count = 0;
+    }
+	
+	template<sl::size_t N>
+	template<typename T>
+    void command_buffer<N>::dispatch(sl::size_t offset) const noexcept {
+		for(sl::index_t i = 0; i < dispatch_buff_ref_count; ++i) 
+			vkCmdDispatchIndirect(handle, dispatch_buff_refs[i], offset);
+
+		dispatch_buff_ref_count = 0;
     }
 }
 

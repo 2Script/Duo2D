@@ -130,8 +130,8 @@ namespace d2d::impl {
 		constexpr std::vector<timeline_callbacks_type> const& timeline_callbacks(this auto const& self) noexcept { return self._timeline_callbacks; }
 
 
-		constexpr auto&& command_family_semaphore_values        (this auto&& self) noexcept { return sl::forward_like<decltype(self)>(self._command_family_semaphore_values); }
-		constexpr auto&& command_buffer_semaphore_values (this auto&& self) noexcept { return sl::forward_like<decltype(self)>(self._command_buffer_semaphore_values); }
+		constexpr auto&& command_family_semaphore_values(this auto&& self) noexcept { return sl::forward_like<decltype(self)>(self._command_family_semaphore_values); }
+		constexpr auto&& command_buffer_semaphore_values(this auto&& self) noexcept { return sl::forward_like<decltype(self)>(self._command_buffer_semaphore_values); }
 
 
 	public:

@@ -28,7 +28,7 @@ namespace d2d::impl {
 }
 
 namespace d2d {
-	template<command_family_t CommandFamily, typename CompletedAtT = signal_completion_at<render_stage::none>, typename WaitForT = wait_for<render_stage::none>>
+	template<command_family_t CommandFamily, typename CompletedAtT = signal_completion_at<render_stage::group::all>, typename WaitForT = wait_for<render_stage::none>>
 	struct submit : impl::submit_base<CommandFamily, CompletedAtT, WaitForT> {};
 }
 

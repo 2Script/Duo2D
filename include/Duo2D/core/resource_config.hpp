@@ -20,6 +20,14 @@ namespace d2d {
 	using buffering_policy_t = bool;
 	using usage_policy_flags_t = VkFlags;
 	using shader_stage_flags_t = VkShaderStageFlags;
+
+
+
+	using dispatch_command_t = VkDispatchIndirectCommand;
+	using indexed_draw_command_t = VkDrawIndexedIndirectCommand;
+	using draw_command_t = VkDrawIndirectCommand;
+	using draw_count_t = sl::uint32_t;
+	using gpu_address_t = VkDeviceAddress;
 }
 
 namespace d2d {
@@ -56,15 +64,22 @@ namespace d2d {
 		vertex  = 0b1 << (num_descriptor_based_usage_policies + 1),
 		generic = vertex,
 
-		draw_commands = 0b1 << (num_descriptor_based_usage_policies + 2),
-		push_constant = 0b1 << (num_descriptor_based_usage_policies + 3),
-
-		num_non_descriptor_based_usage_policies = impl::bit_pos(push_constant) + 1 - num_descriptor_based_usage_policies,
+		num_buffer_based_usage_policies = impl::bit_pos(generic) + 1 - num_descriptor_based_usage_policies,
+		num_direct_usage_polcies = num_buffer_based_usage_policies + num_descriptor_based_usage_policies,
 
 
-		num_usage_policies = num_non_descriptor_based_usage_policies + num_descriptor_based_usage_policies,
-		num_valid_usage_policies = num_usage_policies - 1,
-		num_buffer_backed_usage_policies = num_usage_policies - 1,
+		draw_commands     = 0b1 << (num_direct_usage_polcies + 0),
+		dispatch_commands = 0b1 << (num_direct_usage_polcies + 1),
+		draw_count        = 0b1 << (num_direct_usage_polcies + 2),
+
+		num_indirect_usage_policies = impl::bit_pos(draw_count) + 1 - num_direct_usage_polcies,
+		num_real_usage_policies = num_direct_usage_polcies + num_indirect_usage_policies,
+
+
+		push_constant     = 0b1 << (num_real_usage_policies + 0),
+
+		num_pseudo_usage_policies = impl::bit_pos(push_constant) + 1 - num_real_usage_policies,
+		num_usage_policies = num_pseudo_usage_policies + num_real_usage_policies,
 
 		max_value = ~static_cast<usage_policy_flags_t>(0) >> (std::numeric_limits<usage_policy_flags_t>::digits - (num_usage_policies)),
 	};

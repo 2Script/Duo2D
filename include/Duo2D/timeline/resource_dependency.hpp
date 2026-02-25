@@ -34,7 +34,7 @@ namespace d2d::timeline {
 			constexpr std::optional<command_family_t> src_command_family = ::d2d::impl::to_command_family(SourceStages);
 			constexpr std::optional<command_family_t> dst_command_family = ::d2d::impl::to_command_family(DestinationStages);
 			constexpr bool is_inter_command = src_command_family.has_value() && dst_command_family.has_value() && *src_command_family != *dst_command_family;
-			const bool different_queues = is_inter_command && proc.physical_device_ptr()->queue_family_infos[*src_command_family].index != proc.physical_device_ptr()->queue_family_infos[*dst_command_family];
+			const bool different_queues = is_inter_command && proc.physical_device_ptr()->queue_family_infos[*src_command_family].index != proc.physical_device_ptr()->queue_family_infos[*dst_command_family].index;
 
 			vk::command_buffer<N> const& cmd_buff = proc.command_buffers()[proc.frame_index()][CommandGroupIdx];
 			
@@ -53,7 +53,7 @@ namespace d2d::timeline {
 					.dstAccessMask = (is_inter_command && ExecutionCommandFamily != *dst_command_family) ? VK_ACCESS_2_NONE : DestinationMemoryOp,
 					.srcQueueFamilyIndex = different_queues ? *src_command_family : VK_QUEUE_FAMILY_IGNORED,
 					.dstQueueFamilyIndex = different_queues ? *dst_command_family : VK_QUEUE_FAMILY_IGNORED,
-					.buffer = proc[resource_key_constant_type<ResourceKeys>{}],
+					.buffer = static_cast<VkBuffer>(proc[resource_key_constant_type<ResourceKeys>{}]),
 					.offset = 0,
 					.size = proc[resource_key_constant_type<ResourceKeys>{}].size_bytes()
 				}...

@@ -3,6 +3,7 @@
 
 #include <streamline/algorithm/aligned_to.hpp>
 #include <streamline/functional/functor/default_construct.hpp>
+#include <streamline/functional/functor/invoke_each_result.hpp>
 
 #include "Duo2D/timeline/dedicated_command_group.hpp"
 
@@ -23,16 +24,18 @@ namespace d2d::vk {
 		ret.logi_device_ptr = logi_device;
 		ret.phys_device_ptr = phys_device;
 
-		RESULT_VERIFY(ol::to_result((([&logi_device, &ret]() noexcept -> result<void> {
-			const std::size_t buff_capacity_bytes = std::max(
-				segment_type<Is>::config.initial_capacity_bytes,
+		constexpr auto make_buffer = []<sl::index_t I>(std::shared_ptr<logical_device> logi_device_ptr, device_allocation& ret, sl::index_constant_type<I>) noexcept -> result<void> {
+			constexpr std::size_t buff_capacity_bytes = std::max(
+				segment_type<I>::config.initial_capacity_bytes,
 				minimum_buffer_capacity_size_bytes
 			);
 
-			segment_type<Is>& segment = static_cast<segment_type<Is>&>(ret);
-            RESULT_TRY_MOVE(segment, (make<segment_type<Is>>(logi_device, buff_capacity_bytes, 0)));
+			segment_type<I>& segment = static_cast<segment_type<I>&>(ret);
+            RESULT_TRY_MOVE(segment, (make<segment_type<I>>(logi_device_ptr, buff_capacity_bytes, 0)));
 			return {};
-		}) && ...)));
+		};
+		RESULT_VERIFY((sl::functor::invoke_each_result<result<void>, make_buffer>{}(sl::index_sequence<Is...>, logi_device, ret)));
+		
 		constexpr static sl::array<allocation_count, sl::index_t> alloc_indices = sl::universal::make_deduced<sl::generic::array>(sl::index_sequence_of_length<allocation_count>);
 		RESULT_VERIFY(ret.initialize_buffers(alloc_indices));
         return ret;
@@ -179,7 +182,7 @@ namespace d2d::vk{
 			segment_type<Is>::buffs[i] = impl::buffer_ptr_type{logi_device_ptr};
 			VkBufferCreateInfo buffer_create_info{
 			    .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-			    .size = segment_type<Is>::desired_bytes,
+			    .size = std::max(segment_type<Is>::desired_bytes, segment_type<Is>::allocated_bytes),
 			    .usage = segment_type<Is>::flags,
 			    .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
 			};
@@ -220,12 +223,38 @@ namespace d2d::vk{
 			render_stage::group::all_transfer,
 			semaphore_post_value,
 		};
+
 		__D2D_VULKAN_VERIFY(vkWaitSemaphores(*logi_device_ptr, &semaphore_pre_wait_info, timeout));
 		
 		RESULT_VERIFY(transfer_command_buffer.reset());
         RESULT_VERIFY(transfer_command_buffer.begin(true));
 		for(sl::index_t j = 0; j < buffer_count; ++j) {
 			if(buff_sizes[j] == 0) continue;
+
+			sl::array<2, VkBufferMemoryBarrier2> pre_copy_barriers {{
+				VkBufferMemoryBarrier2{
+					.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2,
+					.srcStageMask = VK_PIPELINE_STAGE_2_COPY_BIT,
+					.srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT,
+					.dstStageMask = VK_PIPELINE_STAGE_2_COPY_BIT,
+					.dstAccessMask = VK_ACCESS_2_TRANSFER_READ_BIT,
+					.buffer = old_buffs[j],
+					.offset = 0,
+					.size = buff_sizes[j]
+				},
+				VkBufferMemoryBarrier2{
+					.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2,
+					.srcStageMask = VK_PIPELINE_STAGE_2_COPY_BIT,
+					.srcAccessMask = VK_ACCESS_2_TRANSFER_READ_BIT | VK_ACCESS_2_TRANSFER_WRITE_BIT,
+					.dstStageMask = VK_PIPELINE_STAGE_2_COPY_BIT,
+					.dstAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT,
+					.buffer = *buff_refs[j],
+					.offset = 0,
+					.size = buff_sizes[j]
+				},
+			}};
+			transfer_command_buffer.pipeline_barrier({}, pre_copy_barriers, {});
+			
 			VkBufferCopy copy_region{
             	.srcOffset = 0,
             	.dstOffset = 0,

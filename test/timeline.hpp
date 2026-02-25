@@ -3,6 +3,7 @@
 #include <streamline/containers/tuple.hpp>
 
 #include "Duo2D/timeline/acquire_image.hpp"
+#include "Duo2D/timeline/dispatch.hpp"
 #include "Duo2D/timeline/initialize.hpp"
 #include "Duo2D/timeline/submit.hpp"
 #include "Duo2D/timeline/begin_draw_phase.hpp"
@@ -10,7 +11,8 @@
 #include "Duo2D/timeline/draw.hpp"
 #include "Duo2D/timeline/resource_dependency.hpp"
 
-#include "styled_rect.hpp"
+#include "./generate_rects.hpp"
+#include "./styled_rect.hpp"
 
 namespace d2d::test {
 	using basic_timeline = sl::tuple<
@@ -29,21 +31,24 @@ namespace d2d::test {
 	>;
 }
 
-namespace d2d::text {
+namespace d2d::test {
 	using novice_timeline = sl::tuple<
 		d2d::acquire_image,
 
 
 		d2d::initialize<d2d::command_family::compute>,
 
-		//d2d::dispatch<T>
-		//d2d::dispatch<U>
-		//d2d::dispatch<V>
+		d2d::dispatch<d2d::test::generate_rects>,
 		
 		d2d::resource_dependency<d2d::command_family::compute,
 			d2d::render_stage::compute_shader, d2d::memory_operation::write,
 			d2d::render_stage::draw_commands, d2d::memory_operation::read,
-			resource_key_sequence_type<0>
+			resource_key_sequence_type<::resource_id::draw_commands>
+		>,
+		d2d::resource_dependency<d2d::command_family::compute,
+			d2d::render_stage::compute_shader, d2d::memory_operation::write,
+			d2d::render_stage::vertex_shader, d2d::memory_operation::read,
+			resource_key_sequence_type<::resource_id::positions>
 		>,
 		d2d::submit<d2d::command_family::compute, signal_completion_at<d2d::render_stage::compute_shader>>,
 
@@ -52,7 +57,12 @@ namespace d2d::text {
 		d2d::resource_dependency<d2d::command_family::graphics,
 			d2d::render_stage::compute_shader, d2d::memory_operation::write,
 			d2d::render_stage::draw_commands, d2d::memory_operation::read,
-			resource_key_sequence_type<0>
+			resource_key_sequence_type<::resource_id::draw_commands>
+		>,
+		d2d::resource_dependency<d2d::command_family::graphics,
+			d2d::render_stage::compute_shader, d2d::memory_operation::write,
+			d2d::render_stage::vertex_shader, d2d::memory_operation::read,
+			resource_key_sequence_type<::resource_id::positions>
 		>,
 		
 		d2d::begin_draw_phase,
@@ -60,7 +70,7 @@ namespace d2d::text {
 		d2d::draw<d2d::test::styled_rect>,
 
 		d2d::end_draw_phase,
-		d2d::submit<d2d::command_family::graphics, signal_completion_at<d2d::render_stage::none>, wait_for<d2d::render_stage::compute_shader>>,
+		d2d::submit<d2d::command_family::graphics, signal_completion_at<d2d::render_stage::group::all_graphics>, wait_for<d2d::render_stage::compute_shader>>,
 
 		d2d::initialize<d2d::command_family::present>,
 		d2d::submit<d2d::command_family::present>

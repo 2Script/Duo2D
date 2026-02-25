@@ -8,11 +8,12 @@
 
 namespace d2d::vk {
     template<typename T, sl::size_t N, resource_table<N> Resources>
-    result<pipeline<T, N, Resources>> pipeline<T, N, Resources>::create(std::shared_ptr<logical_device> device, std::span<const VkFormat> color_attachment_formats, VkFormat depth_attachment_format) noexcept {
+    result<pipeline<bind_point::graphics, T, N, Resources>>    pipeline<bind_point::graphics, T, N, Resources>::
+	create(std::shared_ptr<logical_device> device, std::span<const VkFormat> color_attachment_formats, VkFormat depth_attachment_format) noexcept {
         pipeline ret{};
         ret.dependent_handle = device;
 
-		RESULT_TRY_MOVE(ret._layout, (make<pipeline_layout<T, N, Resources>>(device)))
+		RESULT_TRY_MOVE(ret._layout, (make<pipeline_layout<shader_stage::all_graphics, T, N, Resources>>(device)))
 
 
         //Specify vertex input state
@@ -139,7 +140,32 @@ namespace d2d::vk {
             .basePipelineIndex = -1,
         };
         __D2D_VULKAN_VERIFY(vkCreateGraphicsPipelines(*device, VK_NULL_HANDLE, 1, &pipeline_create_info, nullptr, &ret.handle));
+        return ret;
+    }
+}
 
+
+namespace d2d::vk {
+    template<typename T, sl::size_t N, resource_table<N> Resources>
+    result<pipeline<bind_point::compute, T, N, Resources>>    pipeline<bind_point::compute, T, N, Resources>::
+	create(std::shared_ptr<logical_device> device) noexcept {
+        pipeline ret{};
+        ret.dependent_handle = device;
+
+		RESULT_TRY_MOVE(ret._layout, (make<pipeline_layout<shader_stage::compute, T, N, Resources>>(device)))
+
+        RESULT_TRY_MOVE_UNSCOPED(shader_module comp_shader, make<shader_module>(device, T::comp_shader_data, VK_SHADER_STAGE_COMPUTE_BIT), cs);
+
+        VkComputePipelineCreateInfo pipeline_create_info{
+			.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
+			.pNext = nullptr,
+			.flags = VkPipelineCreateFlags{},
+			.stage = comp_shader.stage_info(),
+			.layout = ret._layout,
+			.basePipelineHandle = VK_NULL_HANDLE,
+			.basePipelineIndex = -1,
+		};
+        __D2D_VULKAN_VERIFY(vkCreateComputePipelines(*device, VK_NULL_HANDLE, 1, &pipeline_create_info, nullptr, &ret.handle));
         return ret;
     }
 }

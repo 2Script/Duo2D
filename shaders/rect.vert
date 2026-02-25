@@ -14,10 +14,11 @@ layout(std430, push_constant) uniform PushConstants {
 } push_constants;
 
 layout(location = 0) out vec2 uv_out;
+layout(location = 1) out float blue_out;
 
 
 void main() {
-	const uvec2 size_in = uvec2(200, 100);
+	const uvec2 size_in = uvec2(50, 25);
     const uvec2 uv_base = uvec2(gl_VertexIndex & 1, (gl_VertexIndex >> 1) & 1);
 	const uvec2 pos_in = push_constants.buff.positions[gl_InstanceIndex];
     const vec2 pos = pos_in + (size_in * uv_base);
@@ -25,6 +26,7 @@ void main() {
     
     gl_Position = vec4(((pos * 2)/push_constants.swap_extent) - 1, 0.0, 1.0);
 	uv_out = uv_base;
+	blue_out = gl_InstanceIndex/(16.0 * 16.0);
     //color_out = color_in/255.0;
 
     //background_texture_idx_out = background_texture_idx_in;

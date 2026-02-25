@@ -17,23 +17,25 @@ namespace d2d::vk::impl {
 		ret.flags = 0;
 
 		constexpr static usage_policy_flags_t usage = config.usage;
-		constexpr static VkFlags all_descriptor_based_flags         = ~static_cast<VkFlags>(0) >> (std::numeric_limits<VkFlags>::digits - (usage_policy::num_descriptor_based_usage_policies));
-		constexpr static VkFlags all_sampler_descriptor_based_flags = ~static_cast<VkFlags>(0) >> (std::numeric_limits<VkFlags>::digits - (usage_policy::num_sampler_descriptor_based_usage_policies));
-		constexpr static VkFlags descriptor_based_usage = usage & all_descriptor_based_flags;
-		
-		#ifdef D2D_DEBUG
-		if(std::popcount(descriptor_based_usages) > 1) return errc::invalid_argument;
-		if(std::popcount(usage & ~all_descriptor_based_flags) > (usage_policy::num_descriptor_based_usage_policies - usage_policy::num_usage_policies)) return errc::invalid_argument;
-		if(usage & usage_policy::push_constant) return errc::invalid_argument;
-		#endif
+		constexpr static VkFlags all_descriptor_based_flags         = (~static_cast<VkFlags>(0) >> (std::numeric_limits<VkFlags>::digits - (usage_policy::num_descriptor_based_usage_policies))) << 0;
+		constexpr static VkFlags all_sampler_descriptor_based_flags = (~static_cast<VkFlags>(0) >> (std::numeric_limits<VkFlags>::digits - (usage_policy::num_sampler_descriptor_based_usage_policies))) << 0;
+		constexpr static VkFlags all_buffer_based_flags             = (~static_cast<VkFlags>(0) >> (std::numeric_limits<VkFlags>::digits - (usage_policy::num_buffer_based_usage_policies))) << usage_policy::num_descriptor_based_usage_policies;
+		constexpr static VkFlags all_indirect_flags                 = (~static_cast<VkFlags>(0) >> (std::numeric_limits<VkFlags>::digits - (usage_policy::num_indirect_usage_policies))) << usage_policy::num_direct_usage_polcies;
 
+
+		constexpr static VkFlags descriptor_based_usage = usage & all_descriptor_based_flags;
+		constexpr static VkFlags buffer_based_usage = usage & all_buffer_based_flags;
 		if constexpr (descriptor_based_usage) {
 			ret.descriptor_type = static_cast<VkDescriptorType>(::d2d::impl::bit_pos(descriptor_based_usage));
 			ret.flags |= VK_BUFFER_USAGE_RESOURCE_DESCRIPTOR_BUFFER_BIT_EXT;
 			if constexpr (descriptor_based_usage & all_sampler_descriptor_based_flags)
 				ret.flags |= VK_BUFFER_USAGE_SAMPLER_DESCRIPTOR_BUFFER_BIT_EXT;
-		} else 
-			ret.flags = (usage >> usage_policy::num_descriptor_based_usage_policies) << ::d2d::impl::bit_pos(VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
+		}
+		if constexpr(buffer_based_usage)
+			ret.flags |= (buffer_based_usage >> usage_policy::num_descriptor_based_usage_policies) << ::d2d::impl::bit_pos(VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
+		if constexpr (usage & all_indirect_flags)
+			ret.flags |= VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT;
+		
 
 		ret.flags |= VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
 
@@ -166,7 +168,7 @@ namespace d2d::vk {
 	push_to(sl::uoffset_t dst_offset, T&& t) 
 	noexcept(sl::traits::is_noexcept_constructible_from_v<T, T&&>) {
 		std::byte* dst = this->data();
-		new (dst + dst_offset) T(sl::forward<T>(t));
+		new (dst + dst_offset) sl::remove_cvref_t<T>(sl::forward<T>(t));
 		return {};
 	}
 
@@ -177,7 +179,7 @@ namespace d2d::vk {
 	emplace_to(sl::uoffset_t dst_offset, Args&&... args)
 	noexcept(sl::traits::is_noexcept_constructible_from_v<T, Args&&...>) {
 		std::byte* dst = this->data();
-		new (dst + dst_offset) T(sl::forward<Args>(args)...);
+		new (dst + dst_offset) sl::remove_cvref_t<T>(sl::forward<Args>(args)...);
 		return {};
 	}
 }

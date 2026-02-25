@@ -72,7 +72,7 @@ namespace d2d::timeline {
 
 		for(command_family_t cf = 0; cf < command_family::num_families; ++cf)
 			if(::d2d::impl::has_command_family(cf, WaitStages))
-				wait_semaphore_infos[wait_seamphore_count++] = {proc.command_family_semaphores()[frame_idx][cf], ::d2d::impl::filter_by_command_family(cf, WaitStages), proc.command_family_semaphore_values()[frame_idx][cf]};
+				wait_semaphore_infos[wait_seamphore_count++] = {proc.command_family_semaphores()[frame_idx][cf], d2d::render_stage::group::all/*::d2d::impl::filter_by_command_family(cf, WaitStages)*/, proc.command_family_semaphore_values()[frame_idx][cf]};
 		
 		for(sl::index_t i = 0; i < extra_wait_semaphore_count; ++i)
 			wait_semaphore_infos[wait_seamphore_count++] = impl::extra_semaphores<CommandFamily>::wait(proc, timeline_state)[i];

@@ -20,7 +20,7 @@ namespace d2d {
 		draw_commands                  = VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT,
 
 		index_input                    = VK_PIPELINE_STAGE_2_INDEX_INPUT_BIT,
-		vertex_attribute_input         = VK_PIPELINE_STAGE_2_VERTEX_ATTRIBUTE_INPUT_BIT,
+		//vertex_attribute_input         = VK_PIPELINE_STAGE_2_VERTEX_ATTRIBUTE_INPUT_BIT,
 		vertex_shader                  = VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT,
 
 		tessellation_control_shader    = VK_PIPELINE_STAGE_2_TESSELLATION_CONTROL_SHADER_BIT,
