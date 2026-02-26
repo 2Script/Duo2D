@@ -43,7 +43,7 @@ namespace d2d::test {
 		d2d::resource_dependency<d2d::command_family::compute,
 			d2d::render_stage::compute_shader, d2d::memory_operation::write,
 			d2d::render_stage::draw_commands, d2d::memory_operation::read,
-			resource_key_sequence_type<::resource_id::draw_commands>
+			resource_key_sequence_type<::resource_id::draw_commands, ::resource_id::counts>
 		>,
 		d2d::resource_dependency<d2d::command_family::compute,
 			d2d::render_stage::compute_shader, d2d::memory_operation::write,
@@ -57,7 +57,7 @@ namespace d2d::test {
 		d2d::resource_dependency<d2d::command_family::graphics,
 			d2d::render_stage::compute_shader, d2d::memory_operation::write,
 			d2d::render_stage::draw_commands, d2d::memory_operation::read,
-			resource_key_sequence_type<::resource_id::draw_commands>
+			resource_key_sequence_type<::resource_id::draw_commands, ::resource_id::counts>
 		>,
 		d2d::resource_dependency<d2d::command_family::graphics,
 			d2d::render_stage::compute_shader, d2d::memory_operation::write,

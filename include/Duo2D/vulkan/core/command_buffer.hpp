@@ -47,9 +47,9 @@ namespace d2d::vk {
 
     public:
 		template<typename T>
-        void draw(sl::size_t offset = 0) const noexcept;
+        void draw(sl::uoffset_t draw_offset = 0, sl::uoffset_t count_offset = 0) const noexcept;
 		template<typename T>
-        void dispatch(sl::size_t offset = 0) const noexcept;
+        void dispatch(sl::uoffset_t offset = 0) const noexcept;
         
     public:
         void pipeline_barrier(std::span<const VkMemoryBarrier2> global_barriers, std::span<const VkBufferMemoryBarrier2> buffer_barriers, std::span<const VkImageMemoryBarrier2> image_barriers) const noexcept;
@@ -75,7 +75,10 @@ namespace d2d::vk {
 
 		//TODO: just make the command buffer functions not const
 		mutable sl::array<N, VkBuffer> draw_buff_refs;
+		mutable sl::array<N, sl::size_t> draw_buff_sizes;
 		mutable sl::size_t draw_buff_ref_count;
+		mutable sl::array<N, VkBuffer> draw_count_buff_refs;
+		mutable sl::size_t draw_count_buff_ref_count;
 		mutable sl::array<N, VkBuffer> dispatch_buff_refs;
 		mutable sl::size_t dispatch_buff_ref_count;
     };

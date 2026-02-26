@@ -230,30 +230,6 @@ namespace d2d::vk{
         RESULT_VERIFY(transfer_command_buffer.begin(true));
 		for(sl::index_t j = 0; j < buffer_count; ++j) {
 			if(buff_sizes[j] == 0) continue;
-
-			sl::array<2, VkBufferMemoryBarrier2> pre_copy_barriers {{
-				VkBufferMemoryBarrier2{
-					.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2,
-					.srcStageMask = VK_PIPELINE_STAGE_2_COPY_BIT,
-					.srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT,
-					.dstStageMask = VK_PIPELINE_STAGE_2_COPY_BIT,
-					.dstAccessMask = VK_ACCESS_2_TRANSFER_READ_BIT,
-					.buffer = old_buffs[j],
-					.offset = 0,
-					.size = buff_sizes[j]
-				},
-				VkBufferMemoryBarrier2{
-					.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2,
-					.srcStageMask = VK_PIPELINE_STAGE_2_COPY_BIT,
-					.srcAccessMask = VK_ACCESS_2_TRANSFER_READ_BIT | VK_ACCESS_2_TRANSFER_WRITE_BIT,
-					.dstStageMask = VK_PIPELINE_STAGE_2_COPY_BIT,
-					.dstAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT,
-					.buffer = *buff_refs[j],
-					.offset = 0,
-					.size = buff_sizes[j]
-				},
-			}};
-			transfer_command_buffer.pipeline_barrier({}, pre_copy_barriers, {});
 			
 			VkBufferCopy copy_region{
             	.srcOffset = 0,
@@ -261,6 +237,30 @@ namespace d2d::vk{
             	.size = buff_sizes[j],
 			};
         	vkCmdCopyBuffer(transfer_command_buffer, old_buffs[j], *buff_refs[j], 1, &copy_region);
+
+			sl::array<2, VkBufferMemoryBarrier2> post_copy_barriers {{
+				VkBufferMemoryBarrier2{
+					.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2,
+					.srcStageMask = VK_PIPELINE_STAGE_2_COPY_BIT,
+					.srcAccessMask = VK_ACCESS_2_TRANSFER_READ_BIT,
+					.dstStageMask = VK_PIPELINE_STAGE_2_COPY_BIT,
+					.dstAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT,
+					.buffer = old_buffs[j],
+					.offset = 0,
+					.size = buff_sizes[j]
+				},
+				VkBufferMemoryBarrier2{
+					.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2,
+					.srcStageMask = VK_PIPELINE_STAGE_2_COPY_BIT,
+					.srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT,
+					.dstStageMask = VK_PIPELINE_STAGE_2_COPY_BIT,
+					.dstAccessMask = VK_ACCESS_2_TRANSFER_READ_BIT | VK_ACCESS_2_TRANSFER_WRITE_BIT,
+					.buffer = *buff_refs[j],
+					.offset = 0,
+					.size = buff_sizes[j]
+				},
+			}};
+			transfer_command_buffer.pipeline_barrier({}, post_copy_barriers, {});
 		}
 		RESULT_VERIFY(transfer_command_buffer.end());
 		RESULT_VERIFY(transfer_command_buffer.submit(command_family::transfer, {}, {&semaphore_signal_info, 1}));

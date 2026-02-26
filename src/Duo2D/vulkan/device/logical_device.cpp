@@ -43,6 +43,7 @@ namespace d2d::vk {
         VkPhysicalDeviceVulkan12Features desired_1_2_features{
             .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
             .pNext = &desired_1_3_features,
+			.drawIndirectCount = VK_TRUE,
             .descriptorIndexing = VK_TRUE,
             .shaderUniformBufferArrayNonUniformIndexing = VK_TRUE,
             .shaderSampledImageArrayNonUniformIndexing = VK_TRUE,
@@ -50,13 +51,18 @@ namespace d2d::vk {
             .timelineSemaphore = VK_TRUE,
 			.bufferDeviceAddress = VK_TRUE,
         };
+        VkPhysicalDeviceVulkan11Features desired_1_1_features{
+            .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES,
+            .pNext = &desired_1_2_features,
+			.shaderDrawParameters = VK_TRUE,
+        };
         VkPhysicalDeviceFeatures desired_base_features {
             .multiDrawIndirect = VK_TRUE,
             .samplerAnisotropy = VK_TRUE,
         };
 		VkPhysicalDeviceFeatures2 desired_features {
 			.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2,
-			.pNext = &desired_1_2_features,
+			.pNext = &desired_1_1_features,
 			.features = desired_base_features,
 		};
 

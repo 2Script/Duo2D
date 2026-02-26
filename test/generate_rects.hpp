@@ -14,7 +14,8 @@ namespace d2d::test {
 		constexpr static auto buffers = sl::integer_sequence<resource_key_t, 
 			::resource_id::compute_constants,
 			::resource_id::dispatch_commands,
-			::resource_id::rectangle_limit,
+			
+			::resource_id::counts,
 
 			::resource_id::draw_commands,
 			::resource_id::positions

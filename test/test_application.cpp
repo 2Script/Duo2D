@@ -139,12 +139,11 @@ int main(){
 				sizeof(compute_constants)
 			);
 
-			sl::array<4, VkDeviceAddress> compute_addresses{{
-				sl::universal::get<resource_id::rectangle_limit>(proc).gpu_address(),
+			sl::array<3, VkDeviceAddress> compute_addresses{{
+				sl::universal::get<resource_id::counts>(proc).gpu_address(),
 
 				sl::universal::get<resource_id::positions>(proc).gpu_address(),
 				sl::universal::get<resource_id::draw_commands>(proc).gpu_address(),
-				sl::universal::get<resource_id::draw_count>(proc).gpu_address(),
 			}};
 
 			std::memcpy(
@@ -168,7 +167,7 @@ int main(){
 	RESULT_VERIFY((sl::universal::get<resource_id::draw_commands>(w).template try_emplace_back<VkDrawIndexedIndirectCommand>(
 		6, 3, 0, 0, 0
 	)));
-	RESULT_VERIFY((sl::universal::get<resource_id::draw_count>(w).template try_emplace_back<sl::uint32_t>(
+	RESULT_VERIFY((sl::universal::get<resource_id::counts>(w).template try_emplace_back<d2d::draw_count_t>(
 		1
 	)));
 
@@ -188,7 +187,7 @@ int main(){
 	RESULT_VERIFY(sl::universal::get<resource_id::staging>(w).resize(rect_positions.size_bytes()));
 	std::memcpy(sl::universal::get<resource_id::staging>(w).data(), rect_positions.data(), rect_positions.size_bytes());
 
-	RESULT_VERIFY(sl::universal::get<resource_id::positions>(w).resize(sizeof(d2d::pt2u32) * 16 * 16));
+	RESULT_VERIFY(sl::universal::get<resource_id::positions>(w).resize((sizeof(d2d::pt2u32) * 16 * 16) + 1));
 
 	RESULT_VERIFY((d2d::copy(
 		sl::universal::get<resource_id::positions>(w),
@@ -198,14 +197,15 @@ int main(){
 	sl::universal::get<resource_id::staging>(w).clear();
 
 
-	constexpr d2d::vec4<sl::uint32_t> rect_limit{250, 0, 100, 100};
+	constexpr sl::uint32_t rect_limit{250};
 	RESULT_VERIFY((sl::universal::get<resource_id::staging>(w).try_push_back(
 		rect_limit
 	)));
 	RESULT_VERIFY((d2d::copy(
-		sl::universal::get<resource_id::rectangle_limit>(w),
+		sl::universal::get<resource_id::counts>(w),
 		sl::universal::get<resource_id::staging>(w),
-		sizeof(decltype(rect_limit))
+		sizeof(decltype(rect_limit)),
+		sizeof(d2d::draw_count_t)
 	)));
 	sl::universal::get<resource_id::staging>(w).clear();
 

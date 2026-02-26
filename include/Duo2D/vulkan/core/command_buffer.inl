@@ -191,8 +191,14 @@ namespace d2d::vk {
 		if constexpr(config.usage & usage_policy::push_constant)
 			vkCmdPushConstants(handle, layout, config.stages, 0, config.initial_capacity_bytes, buff.bytes.data());
 
-		if constexpr(config.usage & usage_policy::draw_commands)
-			draw_buff_refs[draw_buff_ref_count++] = buff.buffs[buff.current_buffer_index()];
+		if constexpr(config.usage & usage_policy::draw_commands) {
+			const sl::index_t i = draw_buff_ref_count++;
+			draw_buff_refs[i] = buff.buffs[buff.current_buffer_index()];
+			draw_buff_sizes[i] = buff.allocated_bytes;
+		}
+
+		if constexpr(config.usage & usage_policy::draw_count)
+			draw_count_buff_refs[draw_count_buff_ref_count++] = buff.buffs[buff.current_buffer_index()];
 	}
 
 	template<sl::size_t N>
@@ -216,26 +222,29 @@ namespace d2d::vk {
 	
 	template<sl::size_t N>
 	template<typename T>
-    void command_buffer<N>::draw(sl::size_t offset) const noexcept {
-
-		const size_t draw_count = T::draw_count();
-		for(sl::index_t i = 0; i < draw_buff_ref_count; ++i) {
+    void command_buffer<N>::draw(sl::uoffset_t draw_offset, sl::uoffset_t count_offset) const noexcept {
+		const sl::uint32_t max_draw_count = T::max_draw_count();
+		for(sl::index_t i = 0; i < std::min(draw_buff_ref_count, draw_count_buff_ref_count); ++i) {
 			VkBuffer draw_buff = draw_buff_refs[i];
+			VkBuffer draw_count_buff = draw_count_buff_refs[i];
         	if constexpr (requires { T::index_type; }) {
-        	    vkCmdDrawIndexedIndirect(handle, draw_buff, offset, draw_count, sizeof(VkDrawIndexedIndirectCommand));
-				//offset += draw_count * sizeof(VkDrawIndexedIndirectCommand);
+				constexpr static sl::size_t stride = sizeof(indexed_draw_command_t);
+				const sl::uint32_t final_max_draw_count = std::min(max_draw_count, static_cast<sl::uint32_t>((draw_buff_sizes[i] - stride - draw_offset)/stride) + 1);
+        	    vkCmdDrawIndexedIndirectCount(handle, draw_buff, draw_offset, draw_count_buff, count_offset, final_max_draw_count, stride);
 			} else {
-        	    vkCmdDrawIndirect(handle, draw_buff, offset, draw_count, sizeof(VkDrawIndirectCommand));
-				//offset += draw_count * sizeof(VkDrawIndirectCommand);
+				constexpr static sl::size_t stride = sizeof(draw_command_t);
+				const sl::uint32_t final_max_draw_count = std::min(max_draw_count, static_cast<sl::uint32_t>((draw_buff_sizes[i] - stride - draw_offset)/stride) + 1);
+        	    vkCmdDrawIndirectCount(handle, draw_buff, draw_offset, draw_count_buff, count_offset, final_max_draw_count, stride);
 			}
 		}
 
 		draw_buff_ref_count = 0;
+		draw_count_buff_ref_count = 0;
     }
 	
 	template<sl::size_t N>
 	template<typename T>
-    void command_buffer<N>::dispatch(sl::size_t offset) const noexcept {
+    void command_buffer<N>::dispatch(sl::uoffset_t offset) const noexcept {
 		for(sl::index_t i = 0; i < dispatch_buff_ref_count; ++i) 
 			vkCmdDispatchIndirect(handle, dispatch_buff_refs[i], offset);
 

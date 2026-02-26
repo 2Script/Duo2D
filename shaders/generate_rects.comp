@@ -11,21 +11,24 @@ struct draw_command {
 };
 
 
-layout(buffer_reference, std430, buffer_reference_align = 8) readonly buffer RectangleLimitBuffer { 
-	uvec4 limit;
-};
-
 layout(buffer_reference, std430, buffer_reference_align = 8) writeonly buffer PositionsBuffer { 
 	uvec2 positions[];
 };
 
 layout(buffer_reference, std430, buffer_reference_align = 8) buffer DrawCommandsBuffer { 
-	draw_command draw_cmd;
+	draw_command draw_cmds[];
+};
+
+layout(buffer_reference, std430, buffer_reference_align = 8) buffer CountBuffer { 
+	uint draw_count;
+	uint rect_limit;
+	
+	uvec2 _padding;
 };
 
 
 layout(buffer_reference, std430, buffer_reference_align = 8) readonly buffer Registers { 
-	RectangleLimitBuffer rect_limit_buff;
+	CountBuffer count_buff;
 	PositionsBuffer pos_buff;
 	DrawCommandsBuffer draw_cmd_buff;
 };
@@ -43,12 +46,14 @@ void main() {
 	const uint y = gl_GlobalInvocationID.y;
 	const uint i = x + (16 * y);
 	
-	const uint n = push_constants.addrs.rect_limit_buff.limit.x;
+	const uint n = push_constants.addrs.count_buff.rect_limit.x;
 
 	if(i >= n)
 		return;
 
 	push_constants.addrs.pos_buff.positions[i] = uvec2(100 * x, 50 * y);
-	atomicMax(push_constants.addrs.draw_cmd_buff.draw_cmd.instanceCount, i + 1);
-	
+	atomicMax(push_constants.addrs.draw_cmd_buff.draw_cmds[0].instanceCount, i + 1);
+
+	//push_constants.addrs.draw_cmd_buff.draw_cmds[i] = draw_command(6, 3, 0, 0, 0);
+	//atomicMax(push_constants.addrs.count_buff.draw_count, i + 1);
 }
