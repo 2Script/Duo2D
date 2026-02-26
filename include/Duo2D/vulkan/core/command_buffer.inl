@@ -267,8 +267,8 @@ namespace d2d::vk {
 		sl::uoffset_t src_offset
 	) const noexcept {
         VkBufferCopy copy_region{ 
-            .srcOffset = dst_offset,
-            .dstOffset = src_offset,
+            .srcOffset = src_offset,
+            .dstOffset = dst_offset,
             .size = size,
         };
         return copy(dst, src, {&copy_region, 1});
