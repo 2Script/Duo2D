@@ -18,6 +18,7 @@
 #include <Duo2D/core/window.hpp>
 #include <Duo2D/arith/matrix.hpp>
 #include <Duo2D/arith/point.hpp>
+#include "Duo2D/core/decoder.hpp"
 #include "Duo2D/input/category.hpp"
 #include "Duo2D/input/code.hpp"
 #include "Duo2D/timeline/predefined_callbacks/update_swap_extent.hpp"
@@ -100,8 +101,8 @@ int main(){
     std::set<d2d::vk::physical_device> device_list = *d;
     if(device_list.empty()) return d2d::error::no_vulkan_devices;
 
-    //std::cout << std::filesystem::current_path() << std::endl;
-    //const std::filesystem::path assets_path = std::filesystem::canonical(std::filesystem::path("../../test/assets"));
+    std::cout << std::filesystem::current_path() << std::endl;
+    const std::filesystem::path assets_path = std::filesystem::canonical(std::filesystem::path("../../test/assets"));
 
     app.selected_device() = *device_list.begin();
     auto i = app.initialize_device();
@@ -112,6 +113,11 @@ int main(){
     window* win = *_w;
 
 	window& w = *win;
+
+	//llfio::mapped_file_handle mh;
+	//RESULT_TRY_MOVE(mh, d2d::decoder::open_file(assets_path / "test_font.ttf"));
+	//RESULT_VERIFY(d2d::decoder::decode_font(mh));
+	
 
 
 	
@@ -257,12 +263,12 @@ int main(){
     win->current_input_categories().set(d2d::input::category::ui);
     //win->current_input_categories().set(2);
 
-    d2d::input::event_set& inactive_mouse_move = win->input_inactive_bindings()[d2d::input::combination{{d2d::input::generic_code::any}, d2d::input::mouse_code::move}];
-    inactive_mouse_move.applicable_categories.set(d2d::input::category::system);
-    inactive_mouse_move.event_ids[d2d::input::category::system] = 3;
-    win->input_event_functions().try_emplace(d2d::input::categorized_event_t{3, d2d::input::category::system}, [](void*, d2d::input::combination, bool, d2d::input::categorized_event_t, d2d::input::mouse_aux_t, void*){
-        std::cout << "mouse move (inactive)" << std::endl;
-    }); 
+    //d2d::input::event_set& inactive_mouse_move = win->input_inactive_bindings()[d2d::input::combination{{d2d::input::generic_code::any}, d2d::input::mouse_code::move}];
+    //inactive_mouse_move.applicable_categories.set(d2d::input::category::system);
+    //inactive_mouse_move.event_ids[d2d::input::category::system] = 3;
+    //win->input_event_functions().try_emplace(d2d::input::categorized_event_t{3, d2d::input::category::system}, [](void*, d2d::input::combination, bool, d2d::input::categorized_event_t, d2d::input::mouse_aux_t, void*){
+    //    std::cout << "mouse move (inactive)" << std::endl;
+    //}); 
 
     d2d::input::event_set& shift_mouse_move = win->input_active_bindings()[d2d::input::combination{{d2d::input::key_code::kb_left_shift}, d2d::input::mouse_code::move}];
     shift_mouse_move.applicable_categories.set(d2d::input::category::system);

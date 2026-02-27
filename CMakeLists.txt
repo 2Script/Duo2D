@@ -8,6 +8,7 @@ set(CMAKE_VERBOSE_MAKEFILE ON CACHE BOOL "ON")
 
 set(CPP_FILES
     vulkan/core/command_pool.cpp
+    vulkan/core/decoder.cpp
     vulkan/core/instance.cpp
 
     vulkan/device/logical_device.cpp
