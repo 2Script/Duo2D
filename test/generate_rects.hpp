@@ -6,19 +6,19 @@
 #include "Duo2D/shaders/rect.hpp"
 #include "Duo2D/shaders/generate_rects.hpp"
 
-#include "./resource_table.hpp"
+#include "./buffer_config_table.hpp"
 
 namespace d2d::test {
 	struct generate_rects {
         constexpr static auto comp_shader_data = std::to_array(d2d::shaders::generate_rects::comp);
-		constexpr static auto buffers = sl::integer_sequence<resource_key_t, 
-			::resource_id::compute_constants,
-			::resource_id::dispatch_commands,
+		constexpr static auto buffers = sl::integer_sequence<buffer_key_t, 
+			::buffer_id::compute_constants,
+			::buffer_id::dispatch_commands,
 			
-			::resource_id::counts,
+			::buffer_id::counts,
 
-			::resource_id::draw_commands,
-			::resource_id::positions
+			::buffer_id::draw_commands,
+			::buffer_id::positions
 		>;
 	};
 }

@@ -7,13 +7,13 @@
 #include <vulkan/vulkan_core.h>
 
 namespace d2d::vk {
-    template<typename T, sl::size_t N, resource_table<N> Resources>
-    result<pipeline<bind_point::graphics, T, N, Resources>>    pipeline<bind_point::graphics, T, N, Resources>::
+    template<typename T, sl::size_t N, buffer_config_table<N> BufferConfigs>
+    result<pipeline<bind_point::graphics, T, N, BufferConfigs>>    pipeline<bind_point::graphics, T, N, BufferConfigs>::
 	create(std::shared_ptr<logical_device> device, std::span<const VkFormat> color_attachment_formats, VkFormat depth_attachment_format) noexcept {
         pipeline ret{};
         ret.dependent_handle = device;
 
-		RESULT_TRY_MOVE(ret._layout, (make<pipeline_layout<shader_stage::all_graphics, T, N, Resources>>(device)))
+		RESULT_TRY_MOVE(ret._layout, (make<pipeline_layout<shader_stage::all_graphics, T, N, BufferConfigs>>(device)))
 
 
         //Specify vertex input state
@@ -146,13 +146,13 @@ namespace d2d::vk {
 
 
 namespace d2d::vk {
-    template<typename T, sl::size_t N, resource_table<N> Resources>
-    result<pipeline<bind_point::compute, T, N, Resources>>    pipeline<bind_point::compute, T, N, Resources>::
+    template<typename T, sl::size_t N, buffer_config_table<N> BufferConfigs>
+    result<pipeline<bind_point::compute, T, N, BufferConfigs>>    pipeline<bind_point::compute, T, N, BufferConfigs>::
 	create(std::shared_ptr<logical_device> device) noexcept {
         pipeline ret{};
         ret.dependent_handle = device;
 
-		RESULT_TRY_MOVE(ret._layout, (make<pipeline_layout<shader_stage::compute, T, N, Resources>>(device)))
+		RESULT_TRY_MOVE(ret._layout, (make<pipeline_layout<shader_stage::compute, T, N, BufferConfigs>>(device)))
 
         RESULT_TRY_MOVE_UNSCOPED(shader_module comp_shader, make<shader_module>(device, T::comp_shader_data, VK_SHADER_STAGE_COMPUTE_BIT), cs);
 

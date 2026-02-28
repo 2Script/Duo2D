@@ -8,7 +8,7 @@
 #include <vulkan/vulkan.h>
 #include <frozen/unordered_map.h>
 
-#include "Duo2D/core/resource_table.hpp"
+#include "Duo2D/core/buffer_config_table.hpp"
 #include "Duo2D/vulkan/memory/device_allocation.fwd.hpp"
 #include "Duo2D/vulkan/memory/device_allocation_segment.hpp"
 #include "Duo2D/vulkan/memory/image.hpp"
@@ -34,12 +34,12 @@ namespace d2d::vk {
         void free() const noexcept;
 		
 		
-		template<typename T, sl::index_t I, typename Derived, resource_table<N> Resources>
-		void bind_buffer(device_allocation_segment<I, Derived> const& buff, pipeline_layout<shader_stage::all_graphics, T, N, Resources> const& layout, std::size_t& bind_index) const noexcept;
-		template<typename T, sl::index_t I, typename Derived, resource_table<N> Resources>
-		void bind_buffer(device_allocation_segment<I, Derived> const& buff, pipeline_layout<shader_stage::compute, T, N, Resources> const& layout, std::size_t& bind_index) const noexcept;
-    	template<bind_point_t BindPoint, typename T, resource_table<N> Resources>
-		void bind_pipeline(pipeline<BindPoint, T, N, Resources> const& p) const noexcept;
+		template<typename T, sl::index_t I, typename Derived, buffer_config_table<N> BufferConfigs>
+		void bind_buffer(device_allocation_segment<I, Derived> const& buff, pipeline_layout<shader_stage::all_graphics, T, N, BufferConfigs> const& layout, std::size_t& bind_index) const noexcept;
+		template<typename T, sl::index_t I, typename Derived, buffer_config_table<N> BufferConfigs>
+		void bind_buffer(device_allocation_segment<I, Derived> const& buff, pipeline_layout<shader_stage::compute, T, N, BufferConfigs> const& layout, std::size_t& bind_index) const noexcept;
+    	template<bind_point_t BindPoint, typename T, buffer_config_table<N> BufferConfigs>
+		void bind_pipeline(pipeline<BindPoint, T, N, BufferConfigs> const& p) const noexcept;
 
 	public:
         void begin_draw(std::span<const VkRenderingAttachmentInfo> color_attachments, VkRenderingAttachmentInfo const& depth_attachment, rect<std::uint32_t> render_area_bounds, rect<float> viewport_bounds, rect<std::uint32_t> scissor_bounds) const noexcept;

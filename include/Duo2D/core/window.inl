@@ -33,9 +33,9 @@
 
 
 namespace d2d {
-    template<typename... Ts, auto Resources>
-	requires impl::is_resource_table_v<decltype(Resources)>
-    result<window<sl::tuple<Ts...>, Resources>>    window<sl::tuple<Ts...>, Resources>::
+    template<typename... Ts, auto BufferConfigs>
+	requires impl::is_buffer_config_table_v<decltype(BufferConfigs)>
+    result<window<sl::tuple<Ts...>, BufferConfigs>>    window<sl::tuple<Ts...>, BufferConfigs>::
 	create(std::string_view title, unsigned int width, unsigned int height, std::shared_ptr<vk::instance> i) noexcept {
 
         //Create window
@@ -65,9 +65,9 @@ namespace d2d {
     }
 
 
-    template<typename... Ts, auto Resources> 
-	requires impl::is_resource_table_v<decltype(Resources)>
-	result<void>     window<sl::tuple<Ts...>, Resources>::
+    template<typename... Ts, auto BufferConfigs> 
+	requires impl::is_buffer_config_table_v<decltype(BufferConfigs)>
+	result<void>     window<sl::tuple<Ts...>, BufferConfigs>::
 	initialize(std::shared_ptr<vk::logical_device> logi_device, std::shared_ptr<vk::physical_device> phys_device) noexcept {
 		if(this->_swap_chain) 
 			return {}; //return error::window_already_initialized;
@@ -88,9 +88,9 @@ namespace d2d {
 		RESULT_TRY_MOVE(this->_swap_chain, make<vk::swap_chain>(
 			logi_device, 
 			phys_device,
-			render_process<Resources.size(), Resources, command_group_count>::pixel_format_priority,
-			render_process<Resources.size(), Resources, command_group_count>::default_color_space,
-			render_process<Resources.size(), Resources, command_group_count>::present_mode_priority,
+			render_process<BufferConfigs.size(), BufferConfigs, command_group_count>::pixel_format_priority,
+			render_process<BufferConfigs.size(), BufferConfigs, command_group_count>::default_color_space,
+			render_process<BufferConfigs.size(), BufferConfigs, command_group_count>::present_mode_priority,
 			this->_surface,
 			this->window_handle.get()
 		));
@@ -111,7 +111,7 @@ namespace d2d {
 		for(sl::index_t i = 0; i < this->frames_in_flight; ++i) {
 			//Create command buffers
 			for(sl::index_t j = 0; j < dedicated_cmd_buff_count; ++j) {
-				RESULT_TRY_MOVE(this->_command_buffers[i][j], make<vk::command_buffer<Resources.size()>>(
+				RESULT_TRY_MOVE(this->_command_buffers[i][j], make<vk::command_buffer<BufferConfigs.size()>>(
 					logi_device, 
 					phys_device, 
 					this->_command_pool_ptrs[command_family::transfer]
@@ -119,7 +119,7 @@ namespace d2d {
 			}
 			for(sl::index_t j = 0; j < command_traits_type::group_count; ++j) {
 				if(command_traits_type::group_families[j] == command_family::none) continue;
-				RESULT_TRY_MOVE(this->_command_buffers[i][j + dedicated_cmd_buff_count], make<vk::command_buffer<Resources.size()>>(
+				RESULT_TRY_MOVE(this->_command_buffers[i][j + dedicated_cmd_buff_count], make<vk::command_buffer<BufferConfigs.size()>>(
 					logi_device, 
 					phys_device, 
 					this->_command_pool_ptrs[command_traits_type::group_families[j]]
@@ -172,8 +172,8 @@ namespace d2d {
 }
 
 namespace d2d {
-	template<typename... Ts, auto Resources> requires impl::is_resource_table_v<decltype(Resources)>
-    result<void> window<sl::tuple<Ts...>, Resources>::render() noexcept {
+	template<typename... Ts, auto BufferConfigs> requires impl::is_buffer_config_table_v<decltype(BufferConfigs)>
+    result<void> window<sl::tuple<Ts...>, BufferConfigs>::render() noexcept {
 		using filter_dedicated_command_groups_sequence = sl::filtered_sequence_t<
 			sl::index_sequence_of_length_type<command_group_count>,
 			[]<sl::index_t I>(sl::index_constant_type<I>) noexcept { return I >= d2d::timeline::impl::dedicated_command_group::num_dedicated_command_groups; }
@@ -202,18 +202,18 @@ namespace d2d {
 
 		D2D_INVOKE_ALL(this->timeline_callbacks(), on_frame_begin_fn, *this);
 
-		timeline::state<Resources.size(), Resources, command_group_count> timeline_state{
-			//.draw_buffer_offsets = sl::universal::make<typename timeline::state<Resources.size(), Resources, command_group_count>::draw_buffer_offsets_type>(
-			//	Resources, 
+		timeline::state<BufferConfigs.size(), BufferConfigs, command_group_count> timeline_state{
+			//.draw_buffer_offsets = sl::universal::make<typename timeline::state<BufferConfigs.size(), BufferConfigs, command_group_count>::draw_buffer_offsets_type>(
+			//	BufferConfigs, 
 			//	sl::functor::subscript<0>{}, 
 			//	sl::functor::default_construct<sl::index_t>{},
-			//	impl::draw_command_buffer_filtered_index_sequence<Resources.size(), Resources, command_group_count>{}
+			//	impl::draw_command_buffer_filtered_index_sequence<BufferConfigs.size(), BufferConfigs, command_group_count>{}
 			//),
 
 			.image_index = 0
 		};
 		
-		constexpr auto exec = []<sl::index_t I>(window& win, timeline::state<Resources.size(), Resources, command_group_count>& state, sl::index_constant_type<I>) noexcept -> result<void> {
+		constexpr auto exec = []<sl::index_t I>(window& win, timeline::state<BufferConfigs.size(), BufferConfigs, command_group_count>& state, sl::index_constant_type<I>) noexcept -> result<void> {
 			return win.template execute_command<I>(state);
 		};
 		RESULT_VERIFY((sl::functor::invoke_each_result<result<void>, exec>{}(sl::index_sequence_for_pack<Ts...>, *this, timeline_state)));
@@ -229,9 +229,9 @@ namespace d2d {
     }
 
 
-	template<typename... Ts, auto Resources> requires impl::is_resource_table_v<decltype(Resources)>
+	template<typename... Ts, auto BufferConfigs> requires impl::is_buffer_config_table_v<decltype(BufferConfigs)>
 	template<sl::index_t I>
-    result<void> window<sl::tuple<Ts...>, Resources>::execute_command(timeline::state<Resources.size(), Resources, command_group_count>& state) noexcept {
+    result<void> window<sl::tuple<Ts...>, BufferConfigs>::execute_command(timeline::state<BufferConfigs.size(), BufferConfigs, command_group_count>& state) noexcept {
 		using timeline_type = typename sl::tuple_traits<sl::tuple<Ts...>>::template type_of_element<I>;
 		return d2d::timeline::command<timeline_type>{}(
 			*this,
@@ -243,23 +243,23 @@ namespace d2d {
 }
 
 namespace d2d {
-	template<typename... Ts, auto Resources> requires impl::is_resource_table_v<decltype(Resources)>
+	template<typename... Ts, auto BufferConfigs> requires impl::is_buffer_config_table_v<decltype(BufferConfigs)>
 	template<typename TimelineCommandT>
-    result<void> window<sl::tuple<Ts...>, Resources>::execute_command(timeline::state<Resources.size(), Resources, command_group_count>& state) noexcept {
+    result<void> window<sl::tuple<Ts...>, BufferConfigs>::execute_command(timeline::state<BufferConfigs.size(), BufferConfigs, command_group_count>& state) noexcept {
 		return d2d::timeline::command<TimelineCommandT>{}(*this, state, sl::empty_t{}, timeline::impl::dedicated_command_group::out_of_timeline_execute);
 	}
 
-	template<typename... Ts, auto Resources> requires impl::is_resource_table_v<decltype(Resources)>
+	template<typename... Ts, auto BufferConfigs> requires impl::is_buffer_config_table_v<decltype(BufferConfigs)>
 	template<typename TimelineCommandT>
-    result<void> window<sl::tuple<Ts...>, Resources>::execute_command() noexcept {
+    result<void> window<sl::tuple<Ts...>, BufferConfigs>::execute_command() noexcept {
 		return execute_command(external_timeline_state());
 	}
 }
 
 
 namespace d2d {
-	template<typename... Ts, auto Resources> requires impl::is_resource_table_v<decltype(Resources)>
-    void window<sl::tuple<Ts...>, Resources>::process_input(GLFWwindow* window_ptr, input::code_t code, bool pressed, input::mouse_aux_t mouse_aux_data) noexcept {
+	template<typename... Ts, auto BufferConfigs> requires impl::is_buffer_config_table_v<decltype(BufferConfigs)>
+    void window<sl::tuple<Ts...>, BufferConfigs>::process_input(GLFWwindow* window_ptr, input::code_t code, bool pressed, input::mouse_aux_t mouse_aux_data) noexcept {
         auto window_info_it = input::impl::glfw_window_map().find(window_ptr);
         if(window_info_it == input::impl::glfw_window_map().end()) [[unlikely]] return;
         window* win_ptr = static_cast<window*>(window_info_it->second.window_ptr);
@@ -303,8 +303,8 @@ namespace d2d {
     }
 
 
-	template<typename... Ts, auto Resources> requires impl::is_resource_table_v<decltype(Resources)>
-    void window<sl::tuple<Ts...>, Resources>::kb_key_input(GLFWwindow* window_ptr, int key, int, int action, int) noexcept {
+	template<typename... Ts, auto BufferConfigs> requires impl::is_buffer_config_table_v<decltype(BufferConfigs)>
+    void window<sl::tuple<Ts...>, BufferConfigs>::kb_key_input(GLFWwindow* window_ptr, int key, int, int action, int) noexcept {
         if(key == GLFW_KEY_UNKNOWN) return;
         switch(action) {
         case GLFW_RELEASE:
@@ -318,8 +318,8 @@ namespace d2d {
         //return process_input(window_ptr, input::codes_map[key], static_cast<bool>(action), input::mouse_aux_t{});
     }
 
-	template<typename... Ts, auto Resources> requires impl::is_resource_table_v<decltype(Resources)>
-    void window<sl::tuple<Ts...>, Resources>::kb_text_input(GLFWwindow* window_ptr, unsigned int codepoint) noexcept {
+	template<typename... Ts, auto BufferConfigs> requires impl::is_buffer_config_table_v<decltype(BufferConfigs)>
+    void window<sl::tuple<Ts...>, BufferConfigs>::kb_text_input(GLFWwindow* window_ptr, unsigned int codepoint) noexcept {
         auto window_info_it = input::impl::glfw_window_map().find(window_ptr);
         if(window_info_it == input::impl::glfw_window_map().end()) [[unlikely]] return;
         window* win_ptr = static_cast<window*>(window_info_it->second.window_ptr);
@@ -330,21 +330,21 @@ namespace d2d {
         //std::invoke(text_input_fn, win_ptr, codepoint);
     }
 
-	template<typename... Ts, auto Resources> requires impl::is_resource_table_v<decltype(Resources)>
-    void window<sl::tuple<Ts...>, Resources>::mouse_move(GLFWwindow* window_ptr, double x, double y) noexcept {
+	template<typename... Ts, auto BufferConfigs> requires impl::is_buffer_config_table_v<decltype(BufferConfigs)>
+    void window<sl::tuple<Ts...>, BufferConfigs>::mouse_move(GLFWwindow* window_ptr, double x, double y) noexcept {
         thread_pool().detach_task(std::bind(process_input, window_ptr, input::mouse_code::move, true, input::mouse_aux_t{pt2d{x, y}}));
         thread_pool().detach_task(std::bind(process_input, window_ptr, input::mouse_code::move, false, input::mouse_aux_t{pt2d{x, y}}));
         //return process_input(window_ptr, input::mouse_code::move, std::nullopt, pt2d{x, y});
     }
 
-	template<typename... Ts, auto Resources> requires impl::is_resource_table_v<decltype(Resources)>
-    void window<sl::tuple<Ts...>, Resources>::mouse_button_input(GLFWwindow* window_ptr, int button, int action, int) noexcept {
+	template<typename... Ts, auto BufferConfigs> requires impl::is_buffer_config_table_v<decltype(BufferConfigs)>
+    void window<sl::tuple<Ts...>, BufferConfigs>::mouse_button_input(GLFWwindow* window_ptr, int button, int action, int) noexcept {
         thread_pool().detach_task(std::bind(process_input, window_ptr, input::codes_map[button], static_cast<bool>(action), input::mouse_aux_t{}));
         //return process_input(window_ptr, input::codes_map[button], static_cast<bool>(action), input::mouse_aux_t{});
     }
 
-	template<typename... Ts, auto Resources> requires impl::is_resource_table_v<decltype(Resources)>
-    void window<sl::tuple<Ts...>, Resources>::mouse_scroll(GLFWwindow* window_ptr, double x, double y) noexcept {
+	template<typename... Ts, auto BufferConfigs> requires impl::is_buffer_config_table_v<decltype(BufferConfigs)>
+    void window<sl::tuple<Ts...>, BufferConfigs>::mouse_scroll(GLFWwindow* window_ptr, double x, double y) noexcept {
         thread_pool().detach_task(std::bind(process_input, window_ptr, input::mouse_code::scroll, true, input::mouse_aux_t{-pt2d{x, y}}));
         thread_pool().detach_task(std::bind(process_input, window_ptr, input::mouse_code::scroll, false, input::mouse_aux_t{-pt2d{x, y}}));
     }

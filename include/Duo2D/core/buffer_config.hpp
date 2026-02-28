@@ -46,18 +46,18 @@ namespace d2d {
 		none,
 
 
-		sampler                            = 0b1 << VK_DESCRIPTOR_TYPE_SAMPLER,
-		combined_sampled_image_and_sampler = 0b1 << VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-		sampled_image                      = 0b1 << VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
-		storage_image                      = 0b1 << VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+		sampler = 0b1 << VK_DESCRIPTOR_TYPE_SAMPLER,
+		//combined_sampled_image_and_sampler = 0b1 << VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
 
-		uniform = 0b1 << VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-		storage = 0b1 << VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-		ubo  = uniform,
-		ssbo = storage,
+		sampled_image = 0b1 << VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
+		storage_image = 0b1 << VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+		uniform_data  = 0b1 << VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+		//storage_data  = 0b1 << VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+		ubo  = uniform_data,
+		//ssbo = storage,
 
-		num_sampler_descriptor_based_usage_policies = impl::bit_pos(storage_image) + 1,
-		num_descriptor_based_usage_policies = impl::bit_pos(storage) + 1,
+		num_sampler_based_usage_policies = impl::bit_pos(sampler) + 1,
+		num_descriptor_based_usage_policies = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER + 1,
 		
 
 		index   = 0b1 << (num_descriptor_based_usage_policies + 0),
@@ -76,7 +76,8 @@ namespace d2d {
 		num_real_usage_policies = num_direct_usage_polcies + num_indirect_usage_policies,
 
 
-		push_constant     = 0b1 << (num_real_usage_policies + 0),
+		asset_heap    = 0b1 << (num_real_usage_policies + 0),
+		push_constant = 0b1 << (num_real_usage_policies + 1),
 
 		num_pseudo_usage_policies = impl::bit_pos(push_constant) + 1 - num_real_usage_policies,
 		num_usage_policies = num_pseudo_usage_policies + num_real_usage_policies,
@@ -106,7 +107,7 @@ namespace d2d {
 
 
 namespace d2d {
-	struct resource_config {
+	struct buffer_config {
 		memory_policy_t memory;
 		buffering_policy_t buffering;
 		usage_policy_flags_t usage;

@@ -24,7 +24,7 @@
 #include "Duo2D/timeline/predefined_callbacks/update_swap_extent.hpp"
 
 #include "./timeline.hpp"
-#include "./resource_table.hpp"
+#include "./buffer_config_table.hpp"
 
 std::exception_ptr asdasdasd{};
 
@@ -34,10 +34,10 @@ extern "C" const char* __asan_default_options() { return "detect_leaks=0"; }
 #endif
 
 
-using window = d2d::window<d2d::test::novice_timeline, resource_configs>;
+using window = d2d::window<d2d::test::novice_timeline, buffer_configs>;
 using application = d2d::application<window>;
 
-constexpr sl::size_t N = resource_configs.size();
+constexpr sl::size_t N = buffer_configs.size();
 using command_traits_type = d2d::timeline::impl::command_traits<
 	d2d::test::basic_timeline, 
 	0, 
@@ -45,7 +45,7 @@ using command_traits_type = d2d::timeline::impl::command_traits<
 	sl::integer_sequence_type<d2d::command_family_t>
 >;
 constexpr sl::size_t command_group_count = command_traits_type::group_count + d2d::timeline::impl::dedicated_command_group::num_dedicated_command_groups;
-using filter_sequence = d2d::impl::device_allocation_filter_sequence<N, resource_configs, command_group_count, d2d::buffering_policy::multi, d2d::memory_policy::push_constant>;
+using filter_sequence = d2d::impl::device_allocation_filter_sequence<N, buffer_configs, command_group_count, d2d::buffering_policy::multi, d2d::memory_policy::push_constant>;
 
 static_assert(command_traits_type::group_indices[0] == 0);
 static_assert(command_traits_type::group_indices[1] == 1);
@@ -61,8 +61,8 @@ static_assert(command_traits_type::group_families[1] == d2d::command_family::gra
 static_assert(command_traits_type::group_families[2] == d2d::command_family::present);
 
 
-using render_process_type = d2d::render_process<N, resource_configs, command_group_count>;
-using device_allocation_group_type = d2d::impl::device_allocation_group<N, resource_configs, command_group_count, d2d::buffering_policy::multi, sl::index_sequence_of_length_type<d2d::memory_policy::num_memory_policies>>;
+using render_process_type = d2d::render_process<N, buffer_configs, command_group_count>;
+using device_allocation_group_type = d2d::impl::device_allocation_group<N, buffer_configs, command_group_count, d2d::buffering_policy::multi, sl::index_sequence_of_length_type<d2d::memory_policy::num_memory_policies>>;
 using device_allocation_type = d2d::vk::device_allocation<
 	D2D_FRAMES_IN_FLIGHT, 
 	filter_sequence,
@@ -126,10 +126,10 @@ int main(){
 			{
 			draw_constants constants {
 				.swap_extent = proc.swap_chain().extent(),
-				.position_buff_addr = sl::universal::get<resource_id::positions>(proc).gpu_address()
+				.position_buff_addr = sl::universal::get<buffer_id::positions>(proc).gpu_address()
 			};
 			std::memcpy(
-				sl::universal::get<resource_id::draw_constants>(proc).data(),
+				sl::universal::get<buffer_id::draw_constants>(proc).data(),
 				&constants,
 				sizeof(draw_constants)
 			);
@@ -137,83 +137,83 @@ int main(){
 
 			{
 			compute_constants constants {
-				.buffer_addresses_addr = sl::universal::get<resource_id::compute_buffer_addresses>(proc).gpu_address()
+				.buffer_addresses_addr = sl::universal::get<buffer_id::compute_buffer_addresses>(proc).gpu_address()
 			};
 			std::memcpy(
-				sl::universal::get<resource_id::compute_constants>(proc).data(),
+				sl::universal::get<buffer_id::compute_constants>(proc).data(),
 				&constants,
 				sizeof(compute_constants)
 			);
 
 			sl::array<3, VkDeviceAddress> compute_addresses{{
-				sl::universal::get<resource_id::counts>(proc).gpu_address(),
+				sl::universal::get<buffer_id::counts>(proc).gpu_address(),
 
-				sl::universal::get<resource_id::positions>(proc).gpu_address(),
-				sl::universal::get<resource_id::draw_commands>(proc).gpu_address(),
+				sl::universal::get<buffer_id::positions>(proc).gpu_address(),
+				sl::universal::get<buffer_id::draw_commands>(proc).gpu_address(),
 			}};
 
 			std::memcpy(
-				sl::universal::get<resource_id::compute_buffer_addresses>(proc).data(),
+				sl::universal::get<buffer_id::compute_buffer_addresses>(proc).data(),
 				compute_addresses.data(),
 				compute_addresses.size_bytes()
 			);
 			}
 			return {};
 		},
-		.on_swap_chain_updated_fn = &d2d::timeline::predefined_callbacks::update_swap_extent<window, resource_id::draw_constants>,
+		.on_swap_chain_updated_fn = &d2d::timeline::predefined_callbacks::update_swap_extent<window, buffer_id::draw_constants>,
 	});
 
 
-	RESULT_VERIFY((sl::universal::get<resource_id::dispatch_commands>(w).template try_emplace_back<VkDispatchIndirectCommand>(
+	RESULT_VERIFY((sl::universal::get<buffer_id::dispatch_commands>(w).template try_emplace_back<VkDispatchIndirectCommand>(
 		1, 1, 1
 	)));
 
 
-	RESULT_VERIFY(sl::universal::get<resource_id::draw_commands>(w).reserve(sizeof(VkDrawIndexedIndirectCommand))); //Should do nothing
-	RESULT_VERIFY((sl::universal::get<resource_id::draw_commands>(w).template try_emplace_back<VkDrawIndexedIndirectCommand>(
+	RESULT_VERIFY(sl::universal::get<buffer_id::draw_commands>(w).reserve(sizeof(VkDrawIndexedIndirectCommand))); //Should do nothing
+	RESULT_VERIFY((sl::universal::get<buffer_id::draw_commands>(w).template try_emplace_back<VkDrawIndexedIndirectCommand>(
 		6, 3, 0, 0, 0
 	)));
-	RESULT_VERIFY((sl::universal::get<resource_id::counts>(w).template try_emplace_back<d2d::draw_count_t>(
+	RESULT_VERIFY((sl::universal::get<buffer_id::counts>(w).template try_emplace_back<d2d::draw_count_t>(
 		1
 	)));
 
-	RESULT_VERIFY(sl::universal::get<resource_id::staging>(w).resize(rect_indices.size_bytes()));
-	std::memcpy(sl::universal::get<resource_id::staging>(w).data(), rect_indices.data(), rect_indices.size_bytes());
+	RESULT_VERIFY(sl::universal::get<buffer_id::staging>(w).resize(rect_indices.size_bytes()));
+	std::memcpy(sl::universal::get<buffer_id::staging>(w).data(), rect_indices.data(), rect_indices.size_bytes());
 	
-	RESULT_VERIFY(sl::universal::get<resource_id::rectangle_indices>(w).resize(rect_indices.size_bytes()));
+	RESULT_VERIFY(sl::universal::get<buffer_id::rectangle_indices>(w).resize(rect_indices.size_bytes()));
 
 	RESULT_VERIFY((d2d::copy(
-		sl::universal::get<resource_id::rectangle_indices>(w),
-		sl::universal::get<resource_id::staging>(w),
+		sl::universal::get<buffer_id::rectangle_indices>(w),
+		sl::universal::get<buffer_id::staging>(w),
 		rect_indices.size_bytes()
 	)));
-	//sl::universal::get<resource_id::staging>(w).clear();
+	//sl::universal::get<buffer_id::staging>(w).clear();
 
 
-	RESULT_VERIFY(sl::universal::get<resource_id::staging>(w).resize(rect_positions.size_bytes()));
-	std::memcpy(sl::universal::get<resource_id::staging>(w).data(), rect_positions.data(), rect_positions.size_bytes());
+	RESULT_VERIFY(sl::universal::get<buffer_id::staging>(w).resize(rect_positions.size_bytes()));
+	std::memcpy(sl::universal::get<buffer_id::staging>(w).data(), rect_positions.data(), rect_positions.size_bytes());
 
-	RESULT_VERIFY(sl::universal::get<resource_id::positions>(w).resize((sizeof(d2d::pt2u32) * 16 * 16) + 1));
+	RESULT_VERIFY(sl::universal::get<buffer_id::positions>(w).resize((sizeof(d2d::pt2u32) * 16 * 16) + 1));
 
 	RESULT_VERIFY((d2d::copy(
-		sl::universal::get<resource_id::positions>(w),
-		sl::universal::get<resource_id::staging>(w),
+		sl::universal::get<buffer_id::positions>(w),
+		sl::universal::get<buffer_id::staging>(w),
 		rect_positions.size_bytes()
 	)));
-	sl::universal::get<resource_id::staging>(w).clear();
+	sl::universal::get<buffer_id::staging>(w).clear();
 
 
 	constexpr sl::uint32_t rect_limit{250};
-	RESULT_VERIFY((sl::universal::get<resource_id::staging>(w).try_push_back(
+	RESULT_VERIFY((sl::universal::get<buffer_id::staging>(w).try_push_back(
 		rect_limit
 	)));
 	RESULT_VERIFY((d2d::copy(
-		sl::universal::get<resource_id::counts>(w),
-		sl::universal::get<resource_id::staging>(w),
+		sl::universal::get<buffer_id::counts>(w),
+		sl::universal::get<buffer_id::staging>(w),
 		sizeof(decltype(rect_limit)),
 		sizeof(d2d::draw_count_t)
 	)));
-	sl::universal::get<resource_id::staging>(w).clear();
+	sl::universal::get<buffer_id::staging>(w).clear();
 
     //2nd window
     /* {

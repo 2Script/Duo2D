@@ -5,9 +5,9 @@
 
 
 namespace d2d::impl {
-	template<sl::size_t N, resource_table<N> Resources, sl::size_t CommandGroupCount, buffering_policy_t... BufferingPolicyIs>
+	template<sl::size_t N, buffer_config_table<N> BufferConfigs, sl::size_t CommandGroupCount, buffering_policy_t... BufferingPolicyIs>
 	template<memory_policy_t... MPs>
-	result<void>    render_process<N, Resources, CommandGroupCount, sl::index_sequence_type<BufferingPolicyIs...>>::
+	result<void>    render_process<N, BufferConfigs, CommandGroupCount, sl::index_sequence_type<BufferingPolicyIs...>>::
 	initialize_allocations(sl::integer_sequence_type<memory_policy_t, MPs...>) noexcept {
 		auto init_single_alloc = [this]<buffering_policy_t BP>(sl::constant_type<buffering_policy_t, BP>) -> result<void> {
 			return ol::to_result((([this]() -> result<void> {
@@ -27,8 +27,8 @@ namespace d2d::impl {
 
 
 namespace d2d::impl {
-	template<sl::size_t N, resource_table<N> Resources, sl::size_t CommandGroupCount, buffering_policy_t... BufferingPolicyIs>
-	result<bool>    render_process<N, Resources, CommandGroupCount, sl::index_sequence_type<BufferingPolicyIs...>>::
+	template<sl::size_t N, buffer_config_table<N> BufferConfigs, sl::size_t CommandGroupCount, buffering_policy_t... BufferingPolicyIs>
+	result<bool>    render_process<N, BufferConfigs, CommandGroupCount, sl::index_sequence_type<BufferingPolicyIs...>>::
 	verify_swap_chain(VkResult fn_result, bool even_if_suboptimal) noexcept {
 		switch(fn_result) {
 		case VK_SUCCESS:
@@ -60,9 +60,9 @@ namespace d2d::impl {
 }
 
 namespace d2d::impl {
-	template<sl::size_t N, resource_table<N> Resources, sl::size_t CommandGroupCount, buffering_policy_t... BufferingPolicyIs>
+	template<sl::size_t N, buffer_config_table<N> BufferConfigs, sl::size_t CommandGroupCount, buffering_policy_t... BufferingPolicyIs>
 	template<sl::size_t I, sl::size_t J>
-	constexpr result<void>    render_process<N, Resources, CommandGroupCount, sl::index_sequence_type<BufferingPolicyIs...>>::
+	constexpr result<void>    render_process<N, BufferConfigs, CommandGroupCount, sl::index_sequence_type<BufferingPolicyIs...>>::
 	copy(
 		vk::device_allocation_segment<J, render_process> const& src,
 		sl::size_t size,
@@ -123,15 +123,15 @@ namespace d2d::impl {
 }
 
 namespace d2d {
-	template<sl::size_t I, sl::size_t J, sl::size_t N, resource_table<N> Resources, sl::size_t CommandGroupCount>
+	template<sl::size_t I, sl::size_t J, sl::size_t N, buffer_config_table<N> BufferConfigs, sl::size_t CommandGroupCount>
 	constexpr result<void> copy(
-		vk::device_allocation_segment<I, render_process<N, Resources, CommandGroupCount>>& dst,
-		vk::device_allocation_segment<J, render_process<N, Resources, CommandGroupCount>> const& src,
+		vk::device_allocation_segment<I, render_process<N, BufferConfigs, CommandGroupCount>>& dst,
+		vk::device_allocation_segment<J, render_process<N, BufferConfigs, CommandGroupCount>> const& src,
 		sl::size_t size,
 		sl::uoffset_t dst_offset,
 		sl::uoffset_t src_offset
 	) noexcept {
-		render_process<N, Resources, CommandGroupCount>& proc = static_cast<render_process<N, Resources, CommandGroupCount>&>(dst);
+		render_process<N, BufferConfigs, CommandGroupCount>& proc = static_cast<render_process<N, BufferConfigs, CommandGroupCount>&>(dst);
 		return proc.template copy<I>(src, size, dst_offset, src_offset);
 	}
 }

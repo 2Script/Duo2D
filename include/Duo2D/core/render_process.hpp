@@ -22,7 +22,7 @@
 #include "Duo2D/vulkan/display/framebuffer.hpp"
 #include "Duo2D/vulkan/display/depth_image.hpp"
 #include "Duo2D/vulkan/display/render_pass.hpp"
-#include "Duo2D/core/resource_table.hpp"
+#include "Duo2D/core/buffer_config_table.hpp"
 #include "Duo2D/vulkan/memory/texture_map.hpp"
 #include "Duo2D/vulkan/sync/fence.hpp"
 #include "Duo2D/vulkan/sync/semaphore.hpp"
@@ -31,44 +31,44 @@
 
 
 namespace d2d::impl {
-	template<sl::size_t N, resource_table<N> Resources, sl::size_t CommandGroupCount, buffering_policy_t BP, memory_policy_t MP>
+	template<sl::size_t N, buffer_config_table<N> BufferConfigs, sl::size_t CommandGroupCount, buffering_policy_t BP, memory_policy_t MP>
 	using device_allocation_filter_sequence = sl::filtered_sequence_t<
 		sl::index_sequence_of_length_type<N>,
 		[]<sl::index_t I>(sl::index_constant_type<I>){
 			return 
-				vk::device_allocation_segment<I, ::d2d::render_process<N, Resources, CommandGroupCount>>::config.memory == MP &&
-				vk::device_allocation_segment<I, ::d2d::render_process<N, Resources, CommandGroupCount>>::config.buffering == BP;
+				vk::device_allocation_segment<I, ::d2d::render_process<N, BufferConfigs, CommandGroupCount>>::config.memory == MP &&
+				vk::device_allocation_segment<I, ::d2d::render_process<N, BufferConfigs, CommandGroupCount>>::config.buffering == BP;
 		}
 	>;
 }
 
 
 namespace d2d::impl {
-	template<sl::size_t N, resource_table<N> Resources, sl::size_t CommandGroupCount, buffering_policy_t BufferingPolicy, memory_policy_t... MemoryPolicyIs>
-	class device_allocation_group<N, Resources, CommandGroupCount, BufferingPolicy, sl::index_sequence_type<MemoryPolicyIs...>> : 
+	template<sl::size_t N, buffer_config_table<N> BufferConfigs, sl::size_t CommandGroupCount, buffering_policy_t BufferingPolicy, memory_policy_t... MemoryPolicyIs>
+	class device_allocation_group<N, BufferConfigs, CommandGroupCount, BufferingPolicy, sl::index_sequence_type<MemoryPolicyIs...>> : 
 		public vk::device_allocation<
 			D2D_FRAMES_IN_FLIGHT, 
-			device_allocation_filter_sequence<N, Resources, CommandGroupCount, BufferingPolicy, MemoryPolicyIs>,
+			device_allocation_filter_sequence<N, BufferConfigs, CommandGroupCount, BufferingPolicy, MemoryPolicyIs>,
 			BufferingPolicy, MemoryPolicyIs,
-			::d2d::render_process<N, Resources, CommandGroupCount>
+			::d2d::render_process<N, BufferConfigs, CommandGroupCount>
 		>... 
 	{};
 }
 
 
 namespace d2d::impl {
-	template<sl::size_t N, resource_table<N> Resources, sl::size_t CommandGroupCount, buffering_policy_t... BufferingPolicyIs>
-	class render_process<N, Resources, CommandGroupCount, sl::index_sequence_type<BufferingPolicyIs...>> : 
+	template<sl::size_t N, buffer_config_table<N> BufferConfigs, sl::size_t CommandGroupCount, buffering_policy_t... BufferingPolicyIs>
+	class render_process<N, BufferConfigs, CommandGroupCount, sl::index_sequence_type<BufferingPolicyIs...>> : 
 		public device_allocation_group<
-			N, Resources, CommandGroupCount, BufferingPolicyIs, sl::index_sequence_of_length_type<memory_policy::num_memory_policies>
+			N, BufferConfigs, CommandGroupCount, BufferingPolicyIs, sl::index_sequence_of_length_type<memory_policy::num_memory_policies>
 		>... 
 	{
 		template<buffering_policy_t BP, memory_policy_t MP>
 		using allocation_type = vk::device_allocation<
 			D2D_FRAMES_IN_FLIGHT,
-			device_allocation_filter_sequence<N, Resources, CommandGroupCount, BP, MP>,
+			device_allocation_filter_sequence<N, BufferConfigs, CommandGroupCount, BP, MP>,
 			BP, MP,
-			::d2d::render_process<N, Resources, CommandGroupCount>
+			::d2d::render_process<N, BufferConfigs, CommandGroupCount>
 		>;
 	private:
 		template<sl::index_t, typename>
@@ -79,9 +79,9 @@ namespace d2d::impl {
 		template<buffering_policy_t BP, memory_policy_t MP>
 		using memory_type = vk::device_allocation<
 			D2D_FRAMES_IN_FLIGHT, 
-			device_allocation_filter_sequence<N, Resources, CommandGroupCount, BP, MP>,
+			device_allocation_filter_sequence<N, BufferConfigs, CommandGroupCount, BP, MP>,
 			BP, MP,
-			::d2d::render_process<N, Resources, CommandGroupCount>
+			::d2d::render_process<N, BufferConfigs, CommandGroupCount>
 		>;
 	protected:
 		template<memory_policy_t... MPs>
@@ -89,15 +89,15 @@ namespace d2d::impl {
 	public:
 		constexpr static sl::size_t frames_in_flight = D2D_FRAMES_IN_FLIGHT;
 		constexpr static sl::size_t command_buffer_count = CommandGroupCount;
-		constexpr static sl::lookup_table<N, resource_key_t, sl::index_t> resource_key_indices = sl::universal::make_deduced<sl::generic::lookup_table>(
-			Resources, sl::functor::subscript<0>{}, sl::functor::identity_index{}
+		constexpr static sl::lookup_table<N, buffer_key_t, sl::index_t> buffer_key_indices = sl::universal::make_deduced<sl::generic::lookup_table>(
+			BufferConfigs, sl::functor::subscript<0>{}, sl::functor::identity_index{}
 		);
 	
 	public:
 		result<bool> verify_swap_chain(VkResult fn_result, bool even_if_suboptimal) noexcept;
 
 	public:
-		using timeline_callbacks_type = timeline::callbacks<N, Resources, CommandGroupCount>;
+		using timeline_callbacks_type = timeline::callbacks<N, BufferConfigs, CommandGroupCount>;
 
 	public:
 		constexpr std::shared_ptr<vk::logical_device>  logical_device_ptr()  const noexcept { return logi_device_ptr; }
@@ -135,16 +135,16 @@ namespace d2d::impl {
 
 
 	public:
-		template<resource_key_t Key>
-		constexpr auto&& operator[](this auto&& self, sl::constant_type<resource_key_t, Key>) noexcept 
-		requires (Resources.contains(Key)) {
-			return static_cast<sl::copy_cvref_t<decltype(self), vk::device_allocation_segment<resource_key_indices[Key], render_process>>>(self);
+		template<buffer_key_t Key>
+		constexpr auto&& operator[](this auto&& self, sl::constant_type<buffer_key_t, Key>) noexcept 
+		requires (BufferConfigs.contains(Key)) {
+			return static_cast<sl::copy_cvref_t<decltype(self), vk::device_allocation_segment<buffer_key_indices[Key], render_process>>>(self);
 		}
 		
-		template<resource_key_t Key>
-		constexpr auto&& get(this auto&& self, sl::constant_type<resource_key_t, Key> = {}) noexcept 
-		requires (Resources.contains(Key)) {
-			return sl::forward_like<decltype(self)>(self[sl::constant<resource_key_t, Key>]);
+		template<buffer_key_t Key>
+		constexpr auto&& get(this auto&& self, sl::constant_type<buffer_key_t, Key> = {}) noexcept 
+		requires (BufferConfigs.contains(Key)) {
+			return sl::forward_like<decltype(self)>(self[sl::constant<buffer_key_t, Key>]);
 		}
 		
 		
@@ -190,10 +190,10 @@ namespace d2d::impl {
 }
 
 namespace d2d {
-	template<sl::size_t I, sl::size_t J, sl::size_t N, resource_table<N> Resources, sl::size_t CommandGroupCount>
+	template<sl::size_t I, sl::size_t J, sl::size_t N, buffer_config_table<N> BufferConfigs, sl::size_t CommandGroupCount>
 	constexpr result<void> copy(
-		vk::device_allocation_segment<I, render_process<N, Resources, CommandGroupCount>>& dst,
-		vk::device_allocation_segment<J, render_process<N, Resources, CommandGroupCount>> const& src,
+		vk::device_allocation_segment<I, render_process<N, BufferConfigs, CommandGroupCount>>& dst,
+		vk::device_allocation_segment<J, render_process<N, BufferConfigs, CommandGroupCount>> const& src,
 		sl::size_t size,
 		sl::uoffset_t dst_offset = 0,
 		sl::uoffset_t src_offset = 0

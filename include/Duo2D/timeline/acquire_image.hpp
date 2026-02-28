@@ -4,7 +4,7 @@
 #include "Duo2D/core/render_process.hpp"
 #include "Duo2D/timeline/command.fwd.hpp"
 #include "Duo2D/timeline/state.hpp"
-#include "Duo2D/core/resource_table.hpp"
+#include "Duo2D/core/buffer_config_table.hpp"
 #include "Duo2D/core/invoke_all.def.hpp"
 #include "Duo2D/timeline/event.hpp"
 
@@ -18,8 +18,8 @@ namespace d2d {
 namespace d2d::timeline {
 	template<>
 	struct command<acquire_image> {
-		template<sl::size_t N, resource_table<N> Resources, sl::size_t CommandGroupCount>
-		constexpr result<void> operator()(render_process<N, Resources, CommandGroupCount>& proc, timeline::state<N, Resources, CommandGroupCount>& timeline_state, sl::empty_t, auto) const noexcept {
+		template<sl::size_t N, buffer_config_table<N> BufferConfigs, sl::size_t CommandGroupCount>
+		constexpr result<void> operator()(render_process<N, BufferConfigs, CommandGroupCount>& proc, timeline::state<N, BufferConfigs, CommandGroupCount>& timeline_state, sl::empty_t, auto) const noexcept {
 			RESULT_TRY_COPY_UNSCOPED(bool swap_chain_updated, proc.verify_swap_chain(
         	    vkAcquireNextImageKHR(*proc.logical_device_ptr(), proc.swap_chain(), UINT64_MAX, proc.acquisition_semaphores()[proc.frame_index()], VK_NULL_HANDLE, &timeline_state.image_index), false
         	), sc);

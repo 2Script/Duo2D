@@ -3,13 +3,13 @@
 
 #include "Duo2D/core/error.hpp"
 #include "Duo2D/core/render_process.fwd.hpp"
-#include "Duo2D/core/resource_table.hpp"
+#include "Duo2D/core/buffer_config_table.hpp"
 
 
 namespace d2d::timeline {
-	template<sl::size_t N, resource_table<N> Resources, sl::size_t CommandGroupCount>
+	template<sl::size_t N, buffer_config_table<N> BufferConfigs, sl::size_t CommandGroupCount>
 	struct callbacks {
-		using render_process_type = render_process<N, Resources, CommandGroupCount>;
+		using render_process_type = render_process<N, BufferConfigs, CommandGroupCount>;
 		using result_type = result<void>;
 	public:
 		result_type(*on_frame_begin_fn)(render_process_type&) noexcept;

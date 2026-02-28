@@ -1,7 +1,7 @@
 #pragma once
 #include <vulkan/vulkan.h>
 
-#include "Duo2D/core/resource_table.hpp"
+#include "Duo2D/core/buffer_config_table.hpp"
 #include "Duo2D/traits/vk_traits.hpp"
 #include "Duo2D/vulkan/device/logical_device.hpp"
 

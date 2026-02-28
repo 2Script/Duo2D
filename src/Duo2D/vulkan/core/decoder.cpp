@@ -58,7 +58,6 @@ namespace d2d::decoder {
         hb_draw_funcs_set_quadratic_to_func(draw_funcs, ::d2d::impl::quad_to,  &glyph_ctx, nullptr);
         hb_draw_funcs_set_cubic_to_func    (draw_funcs, ::d2d::impl::cubic_to, &glyph_ctx, nullptr);
 
-
         const unsigned int glyph_count = hb_face_get_glyph_count(face_ptr.get());
         std::vector<std::array<std::byte, font_texture::size_bytes>> glyphs(glyph_count);
         std::vector<rect<float>> glyph_bounds(glyph_count);

@@ -15,7 +15,7 @@ namespace d2d {
 		render_stage_flags_t DestinationStages, memory_operation_t DestinationMemoryOp,
 		typename KeySeq
 	>
-	struct resource_dependency : timeline::event {
+	struct buffer_dependency : timeline::event {
 		constexpr static command_family_t family = ExecutionCommandFamily;
 	};
 }
@@ -26,11 +26,11 @@ namespace d2d::timeline {
 		command_family_t ExecutionCommandFamily,
 		render_stage_flags_t SourceStages, memory_operation_t SourceMemoryOp,
 		render_stage_flags_t DestinationStages, memory_operation_t DestinationMemoryOp,
-		resource_key_t... ResourceKeys
+		buffer_key_t... BufferKeys
 	>
-	struct command<resource_dependency<ExecutionCommandFamily, SourceStages, SourceMemoryOp, DestinationStages, DestinationMemoryOp, resource_key_sequence_type<ResourceKeys...>>> {
-		template<sl::size_t N, resource_table<N> Resources, sl::size_t CommandGroupCount, sl::index_t CommandGroupIdx>
-		constexpr result<void> operator()(render_process<N, Resources, CommandGroupCount> const& proc, timeline::state<N, Resources, CommandGroupCount>&, sl::empty_t, sl::index_constant_type<CommandGroupIdx>) const noexcept {
+	struct command<buffer_dependency<ExecutionCommandFamily, SourceStages, SourceMemoryOp, DestinationStages, DestinationMemoryOp, buffer_key_sequence_type<BufferKeys...>>> {
+		template<sl::size_t N, buffer_config_table<N> BufferConfigs, sl::size_t CommandGroupCount, sl::index_t CommandGroupIdx>
+		constexpr result<void> operator()(render_process<N, BufferConfigs, CommandGroupCount> const& proc, timeline::state<N, BufferConfigs, CommandGroupCount>&, sl::empty_t, sl::index_constant_type<CommandGroupIdx>) const noexcept {
 			constexpr std::optional<command_family_t> src_command_family = ::d2d::impl::to_command_family(SourceStages);
 			constexpr std::optional<command_family_t> dst_command_family = ::d2d::impl::to_command_family(DestinationStages);
 			constexpr bool is_inter_command = src_command_family.has_value() && dst_command_family.has_value() && *src_command_family != *dst_command_family;
@@ -44,7 +44,7 @@ namespace d2d::timeline {
 					return {};
 
 
-			std::array<VkBufferMemoryBarrier2, sizeof...(ResourceKeys)> barriers{{
+			std::array<VkBufferMemoryBarrier2, sizeof...(BufferKeys)> barriers{{
 				VkBufferMemoryBarrier2{
 					.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2,
 					.srcStageMask  = (is_inter_command && ExecutionCommandFamily != *src_command_family) ? VK_PIPELINE_STAGE_2_NONE : SourceStages,
@@ -53,9 +53,9 @@ namespace d2d::timeline {
 					.dstAccessMask = (is_inter_command && ExecutionCommandFamily != *dst_command_family) ? VK_ACCESS_2_NONE : DestinationMemoryOp,
 					.srcQueueFamilyIndex = different_queues ? *src_command_family : VK_QUEUE_FAMILY_IGNORED,
 					.dstQueueFamilyIndex = different_queues ? *dst_command_family : VK_QUEUE_FAMILY_IGNORED,
-					.buffer = static_cast<VkBuffer>(proc[resource_key_constant_type<ResourceKeys>{}]),
+					.buffer = static_cast<VkBuffer>(proc[buffer_key_constant_type<BufferKeys>{}]),
 					.offset = 0,
-					.size = proc[resource_key_constant_type<ResourceKeys>{}].size_bytes()
+					.size = proc[buffer_key_constant_type<BufferKeys>{}].size_bytes()
 				}...
 			}};
 			

@@ -181,9 +181,9 @@ namespace d2d::vk {
 
 namespace d2d::vk {
 	template<sl::size_t N>
-	template<typename T, sl::index_t I, typename Derived, resource_table<N> Resources>
-	void command_buffer<N>::bind_buffer(device_allocation_segment<I, Derived> const& buff, pipeline_layout<shader_stage::all_graphics, T, N, Resources> const& layout, std::size_t&) const noexcept {
-		constexpr resource_config config = device_allocation_segment<I, Derived>::config;
+	template<typename T, sl::index_t I, typename Derived, buffer_config_table<N> BufferConfigs>
+	void command_buffer<N>::bind_buffer(device_allocation_segment<I, Derived> const& buff, pipeline_layout<shader_stage::all_graphics, T, N, BufferConfigs> const& layout, std::size_t&) const noexcept {
+		constexpr buffer_config config = device_allocation_segment<I, Derived>::config;
 		
 		if constexpr(config.usage & usage_policy::index)
             vkCmdBindIndexBuffer(handle, buff.buffs[buff.current_buffer_index()], 0, T::index_type);
@@ -202,9 +202,9 @@ namespace d2d::vk {
 	}
 
 	template<sl::size_t N>
-	template<typename T, sl::index_t I, typename Derived, resource_table<N> Resources>
-	void command_buffer<N>::bind_buffer(device_allocation_segment<I, Derived> const& buff, pipeline_layout<shader_stage::compute, T, N, Resources> const& layout, std::size_t&) const noexcept {
-		constexpr resource_config config = device_allocation_segment<I, Derived>::config;
+	template<typename T, sl::index_t I, typename Derived, buffer_config_table<N> BufferConfigs>
+	void command_buffer<N>::bind_buffer(device_allocation_segment<I, Derived> const& buff, pipeline_layout<shader_stage::compute, T, N, BufferConfigs> const& layout, std::size_t&) const noexcept {
+		constexpr buffer_config config = device_allocation_segment<I, Derived>::config;
 
 		if constexpr(config.usage & usage_policy::push_constant)
 			vkCmdPushConstants(handle, layout, config.stages, 0, config.initial_capacity_bytes, buff.bytes.data());
@@ -214,8 +214,8 @@ namespace d2d::vk {
 	}
 
 	template<sl::size_t N>
-    template<bind_point_t BindPoint, typename T, resource_table<N> Resources>
-	void command_buffer<N>::bind_pipeline(pipeline<BindPoint, T, N, Resources> const& p) const noexcept {
+    template<bind_point_t BindPoint, typename T, buffer_config_table<N> BufferConfigs>
+	void command_buffer<N>::bind_pipeline(pipeline<BindPoint, T, N, BufferConfigs> const& p) const noexcept {
         vkCmdBindPipeline(handle, static_cast<VkPipelineBindPoint>(BindPoint), p);
 	}
 

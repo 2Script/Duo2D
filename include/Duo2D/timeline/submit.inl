@@ -55,10 +55,10 @@ namespace d2d::timeline::impl {
 
 namespace d2d::timeline {
 	template<command_family_t CommandFamily, render_stage_flags_t CompleteStages, render_stage_flags_t WaitStages>
-	template<sl::size_t N, resource_table<N> Resources, sl::size_t CommandGroupCount, sl::index_t CommandGroupIdx>
+	template<sl::size_t N, buffer_config_table<N> BufferConfigs, sl::size_t CommandGroupCount, sl::index_t CommandGroupIdx>
 	result<void> command<::d2d::impl::submit_base<CommandFamily, signal_completion_at<CompleteStages>, wait_for<WaitStages>>>::operator()(
-		render_process<N, Resources, CommandGroupCount>& proc, 
-		timeline::state<N, Resources, CommandGroupCount>& timeline_state, 
+		render_process<N, BufferConfigs, CommandGroupCount>& proc, 
+		timeline::state<N, BufferConfigs, CommandGroupCount>& timeline_state, 
 		sl::empty_t,
 		sl::index_constant_type<CommandGroupIdx>
 	) const noexcept {
@@ -105,10 +105,10 @@ namespace d2d::timeline {
 
 namespace d2d::timeline {
 	template<render_stage_flags_t CompleteStages, render_stage_flags_t WaitStages>
-	template<sl::size_t N, resource_table<N> Resources, sl::size_t CommandGroupCount, sl::index_t CommandGroupIdx>
+	template<sl::size_t N, buffer_config_table<N> BufferConfigs, sl::size_t CommandGroupCount, sl::index_t CommandGroupIdx>
 	result<void> command<submit<command_family::present, signal_completion_at<CompleteStages>, wait_for<WaitStages>>>::operator()(
-		render_process<N, Resources, CommandGroupCount>& proc, 
-		timeline::state<N, Resources, CommandGroupCount>& timeline_state,
+		render_process<N, BufferConfigs, CommandGroupCount>& proc, 
+		timeline::state<N, BufferConfigs, CommandGroupCount>& timeline_state,
 		sl::empty_t,
 		sl::index_constant_type<CommandGroupIdx>
 	) const noexcept {

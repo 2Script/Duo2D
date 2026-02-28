@@ -6,19 +6,19 @@
 #include "Duo2D/core/drawable.hpp"
 #include "Duo2D/shaders/rect.hpp"
 
-#include "./resource_table.hpp"
+#include "./buffer_config_table.hpp"
 
 namespace d2d::test {
 	struct styled_rect : public d2d::drawable {
         constexpr static auto vert_shader_data = std::to_array(d2d::shaders::rect::vert);
         constexpr static auto frag_shader_data = std::to_array(d2d::shaders::rect::frag);
-		constexpr static auto buffers = sl::integer_sequence<resource_key_t, 
-			::resource_id::draw_constants,
-			::resource_id::draw_commands,
-			::resource_id::counts,
+		constexpr static auto buffers = sl::integer_sequence<buffer_key_t, 
+			::buffer_id::draw_constants,
+			::buffer_id::draw_commands,
+			::buffer_id::counts,
 
-			::resource_id::rectangle_indices,
-			::resource_id::positions
+			::buffer_id::rectangle_indices,
+			::buffer_id::positions
 		>;
 
 	public:

@@ -22,14 +22,14 @@
 
 
 namespace d2d {
-    template<typename... Ts, auto Resources> requires impl::is_resource_table_v<decltype(Resources)>
-    struct window<sl::tuple<Ts...>, Resources> : public render_process<
-		Resources.size(), Resources, 
+    template<typename... Ts, auto BufferConfigs> requires impl::is_buffer_config_table_v<decltype(BufferConfigs)>
+    struct window<sl::tuple<Ts...>, BufferConfigs> : public render_process<
+		BufferConfigs.size(), BufferConfigs, 
 		timeline::command_traits<Ts...>::group_count + timeline::impl::dedicated_command_group::num_dedicated_command_groups
 	> {
 		using command_traits_type = timeline::command_traits<Ts...>;
 		constexpr static sl::size_t command_group_count = command_traits_type::group_count + timeline::impl::dedicated_command_group::num_dedicated_command_groups;
-		using render_process_type = render_process<Resources.size(), Resources, command_group_count>;
+		using render_process_type = render_process<BufferConfigs.size(), BufferConfigs, command_group_count>;
 	public:
         static result<window> create(std::string_view title, unsigned int width, unsigned int height, std::shared_ptr<vk::instance> i) noexcept;
 		result<void> initialize(std::shared_ptr<vk::logical_device> logi_device, std::shared_ptr<vk::physical_device> phys_device) noexcept;
@@ -44,12 +44,12 @@ namespace d2d {
         result<void> render() noexcept;
 	public:
 		template<typename TimelineCommandT>
-		result<void> execute_command(timeline::state<Resources.size(), Resources, command_group_count>& state) noexcept;
+		result<void> execute_command(timeline::state<BufferConfigs.size(), BufferConfigs, command_group_count>& state) noexcept;
 		template<typename TimelineCommandT>
 		result<void> execute_command() noexcept;
 	private:
 		template<sl::index_t I>
-		result<void> execute_command(timeline::state<Resources.size(), Resources, command_group_count>& state) noexcept;
+		result<void> execute_command(timeline::state<BufferConfigs.size(), BufferConfigs, command_group_count>& state) noexcept;
 
 	public:
 		constexpr auto&& external_timeline_state(this auto&& self) noexcept { return sl::forward_like<decltype(self)>(self._external_timeline_state); }
@@ -82,7 +82,7 @@ namespace d2d {
         friend class application;
  
 	private:
-		timeline::state<Resources.size(), Resources, command_group_count> _external_timeline_state;
+		timeline::state<BufferConfigs.size(), BufferConfigs, command_group_count> _external_timeline_state;
 		sl::tuple<typename sl::invoke_return_type_t<timeline::setup<Ts>, render_process_type&>::value_type...> auxiliary;
 
     private:

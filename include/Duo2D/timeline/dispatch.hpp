@@ -20,9 +20,9 @@ namespace d2d {
 namespace d2d::timeline {
 	template<typename T>
 	struct setup<dispatch<T>> {
-		template<sl::size_t N, resource_table<N> Resources, sl::size_t CommandGroupCount>
-		result<vk::pipeline<vk::bind_point::compute, T, N, Resources>> operator()(render_process<N, Resources, CommandGroupCount> const& proc) const noexcept {
-			return make<vk::pipeline<vk::bind_point::compute, T, N, Resources>>(proc.logical_device_ptr());
+		template<sl::size_t N, buffer_config_table<N> BufferConfigs, sl::size_t CommandGroupCount>
+		result<vk::pipeline<vk::bind_point::compute, T, N, BufferConfigs>> operator()(render_process<N, BufferConfigs, CommandGroupCount> const& proc) const noexcept {
+			return make<vk::pipeline<vk::bind_point::compute, T, N, BufferConfigs>>(proc.logical_device_ptr());
 		};
 	};
 }
@@ -30,16 +30,16 @@ namespace d2d::timeline {
 namespace d2d::timeline {
 	template<typename T>
 	struct command<dispatch<T>> {
-		template<sl::size_t N, resource_table<N> Resources, sl::size_t CommandGroupCount, sl::index_t CommandGroupIdx>
-		constexpr result<void> operator()(render_process<N, Resources, CommandGroupCount> const& proc, timeline::state<N, Resources, CommandGroupCount>&, vk::pipeline<vk::bind_point::compute, T, N, Resources>& pipeline, sl::index_constant_type<CommandGroupIdx>) const noexcept {
+		template<sl::size_t N, buffer_config_table<N> BufferConfigs, sl::size_t CommandGroupCount, sl::index_t CommandGroupIdx>
+		constexpr result<void> operator()(render_process<N, BufferConfigs, CommandGroupCount> const& proc, timeline::state<N, BufferConfigs, CommandGroupCount>&, vk::pipeline<vk::bind_point::compute, T, N, BufferConfigs>& pipeline, sl::index_constant_type<CommandGroupIdx>) const noexcept {
 			vk::command_buffer<N> const& compute_buffer = proc.command_buffers()[proc.frame_index()][CommandGroupIdx];
 
 			compute_buffer.bind_pipeline(pipeline);
 
 			sl::size_t bind_index = 0;
-			//For each resource declared by type T, bind the resource (if applicable)
-			[&compute_buffer, &bind_index, &proc, &pipeline]<resource_key_t... Is>(resource_key_sequence_type<Is...>){
-				((compute_buffer.template bind_buffer<T>(proc[sl::constant<resource_key_t, Is>], pipeline.layout(), bind_index)), ...);
+			//For each buffer declared by type T, bind the buffer (if applicable)
+			[&compute_buffer, &bind_index, &proc, &pipeline]<buffer_key_t... Is>(buffer_key_sequence_type<Is...>){
+				((compute_buffer.template bind_buffer<T>(proc[sl::constant<buffer_key_t, Is>], pipeline.layout(), bind_index)), ...);
 			}(T::buffers);
 
 			compute_buffer.template dispatch<T>(); 

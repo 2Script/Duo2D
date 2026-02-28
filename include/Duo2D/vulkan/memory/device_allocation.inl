@@ -9,9 +9,9 @@
 
 
 namespace d2d::vk {
-    template<sl::size_t FiF, sl::index_t... Is, buffering_policy_t BP, memory_policy_t MP, sl::size_t N, resource_table<N> Resources, sl::size_t CommandGroupCount>
-    result<device_allocation<FiF, sl::index_sequence_type<Is...>, BP, MP, render_process<N, Resources, CommandGroupCount>>>
-		device_allocation<FiF, sl::index_sequence_type<Is...>, BP, MP, render_process<N, Resources, CommandGroupCount>>::
+    template<sl::size_t FiF, sl::index_t... Is, buffering_policy_t BP, memory_policy_t MP, sl::size_t N, buffer_config_table<N> BufferConfigs, sl::size_t CommandGroupCount>
+    result<device_allocation<FiF, sl::index_sequence_type<Is...>, BP, MP, render_process<N, BufferConfigs, CommandGroupCount>>>
+		device_allocation<FiF, sl::index_sequence_type<Is...>, BP, MP, render_process<N, BufferConfigs, CommandGroupCount>>::
 	create(std::shared_ptr<logical_device> logi_device, std::shared_ptr<physical_device> phys_device) noexcept {
         device_allocation ret{}; 
         ret.mems = sl::universal::make<sl::array<allocation_count, memory_ptr_type>>(
@@ -44,10 +44,10 @@ namespace d2d::vk {
 
 
 namespace d2d::vk {
-    template<sl::size_t FiF, sl::index_t... Is, buffering_policy_t BP, memory_policy_t MP, sl::size_t N, resource_table<N> Resources, sl::size_t CommandGroupCount>
+    template<sl::size_t FiF, sl::index_t... Is, buffering_policy_t BP, memory_policy_t MP, sl::size_t N, buffer_config_table<N> BufferConfigs, sl::size_t CommandGroupCount>
 	template<sl::size_t AllocIdxCount>
     result<void>
-		device_allocation<FiF, sl::index_sequence_type<Is...>, BP, MP, render_process<N, Resources, CommandGroupCount>>::
+		device_allocation<FiF, sl::index_sequence_type<Is...>, BP, MP, render_process<N, BufferConfigs, CommandGroupCount>>::
 	initialize_buffers(sl::array<AllocIdxCount, sl::index_t> alloc_indices) noexcept {
 		//Get the memory requirements for each buffer
 		//We assume that duplicate buffers have the same memory requirements, so we only check the first buffer
@@ -160,8 +160,8 @@ namespace d2d::vk {
 }
 
 namespace d2d::vk{
-    template<sl::size_t FiF, sl::index_t... Is, buffering_policy_t BP, memory_policy_t MP, sl::size_t N, resource_table<N> Resources, sl::size_t CommandGroupCount>
-    result<void>    device_allocation<FiF, sl::index_sequence_type<Is...>, BP, MP, render_process<N, Resources, CommandGroupCount>>::
+    template<sl::size_t FiF, sl::index_t... Is, buffering_policy_t BP, memory_policy_t MP, sl::size_t N, buffer_config_table<N> BufferConfigs, sl::size_t CommandGroupCount>
+    result<void>    device_allocation<FiF, sl::index_sequence_type<Is...>, BP, MP, render_process<N, BufferConfigs, CommandGroupCount>>::
 	realloc(sl::uint64_t timeout) noexcept {
 		const sl::index_t i = allocation_index();
 
@@ -204,7 +204,7 @@ namespace d2d::vk{
 			std::addressof(segment_type<Is>::buffs[i])...
 		}};
 
-		render_process<N, Resources, CommandGroupCount>& proc = static_cast<render_process<N, Resources, CommandGroupCount>&>(*this);
+		render_process<N, BufferConfigs, CommandGroupCount>& proc = static_cast<render_process<N, BufferConfigs, CommandGroupCount>&>(*this);
 		const sl::index_t frame_idx = proc.frame_index();
 		vk::command_buffer<N> const& transfer_command_buffer = proc.command_buffers()[frame_idx][timeline::impl::dedicated_command_group::realloc];
 
