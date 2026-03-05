@@ -9,10 +9,10 @@
 
 
 namespace d2d::vk {
-    template<sl::size_t FiF, sl::index_t... Is, buffering_policy_t BP, memory_policy_t MP, sl::size_t N, buffer_config_table<N> BufferConfigs, sl::size_t CommandGroupCount>
-    result<device_allocation<FiF, sl::index_sequence_type<Is...>, BP, MP, render_process<N, BufferConfigs, CommandGroupCount>>>
-		device_allocation<FiF, sl::index_sequence_type<Is...>, BP, MP, render_process<N, BufferConfigs, CommandGroupCount>>::
-	create(std::shared_ptr<logical_device> logi_device, std::shared_ptr<physical_device> phys_device) noexcept {
+    template<sl::size_t FiF, sl::index_t... Is, coupling_policy_t CP, memory_policy_t MP, sl::size_t N, buffer_config_table<N> BufferConfigs, typename RenderProcessT>
+    result<device_allocation<FiF, sl::index_sequence_type<Is...>, CP, MP, N, BufferConfigs, RenderProcessT>>
+		device_allocation<FiF, sl::index_sequence_type<Is...>, CP, MP, N, BufferConfigs, RenderProcessT>::
+	create(std::shared_ptr<logical_device> logi_device, std::shared_ptr<physical_device> phys_device, std::shared_ptr<command_pool> transfer_command_pool) noexcept {
         device_allocation ret{}; 
         ret.mems = sl::universal::make<sl::array<allocation_count, memory_ptr_type>>(
 			logi_device, 
@@ -35,6 +35,11 @@ namespace d2d::vk {
 			return {};
 		};
 		RESULT_VERIFY((sl::functor::invoke_each_result<result<void>, make_buffer>{}(sl::index_sequence<Is...>, logi_device, ret)));
+
+		for(sl::index_t i = 0; i < allocation_count; ++i) {
+			RESULT_TRY_MOVE(ret.realloc_command_buffers[i], make<command_buffer>(logi_device, phys_device, transfer_command_pool))
+			RESULT_TRY_MOVE(ret.realloc_fences[i], make<fence>(logi_device));
+		}
 		
 		constexpr static sl::array<allocation_count, sl::index_t> alloc_indices = sl::universal::make_deduced<sl::generic::array>(sl::index_sequence_of_length<allocation_count>);
 		RESULT_VERIFY(ret.initialize_buffers(alloc_indices));
@@ -44,10 +49,10 @@ namespace d2d::vk {
 
 
 namespace d2d::vk {
-    template<sl::size_t FiF, sl::index_t... Is, buffering_policy_t BP, memory_policy_t MP, sl::size_t N, buffer_config_table<N> BufferConfigs, sl::size_t CommandGroupCount>
+    template<sl::size_t FiF, sl::index_t... Is, coupling_policy_t CP, memory_policy_t MP, sl::size_t N, buffer_config_table<N> BufferConfigs, typename RenderProcessT>
 	template<sl::size_t AllocIdxCount>
     result<void>
-		device_allocation<FiF, sl::index_sequence_type<Is...>, BP, MP, render_process<N, BufferConfigs, CommandGroupCount>>::
+		device_allocation<FiF, sl::index_sequence_type<Is...>, CP, MP, N, BufferConfigs, RenderProcessT>::
 	initialize_buffers(sl::array<AllocIdxCount, sl::index_t> alloc_indices) noexcept {
 		//Get the memory requirements for each buffer
 		//We assume that duplicate buffers have the same memory requirements, so we only check the first buffer
@@ -160,9 +165,11 @@ namespace d2d::vk {
 }
 
 namespace d2d::vk{
-    template<sl::size_t FiF, sl::index_t... Is, buffering_policy_t BP, memory_policy_t MP, sl::size_t N, buffer_config_table<N> BufferConfigs, sl::size_t CommandGroupCount>
-    result<void>    device_allocation<FiF, sl::index_sequence_type<Is...>, BP, MP, render_process<N, BufferConfigs, CommandGroupCount>>::
-	realloc(sl::uint64_t timeout) noexcept {
+    template<sl::size_t FiF, sl::index_t... Is, coupling_policy_t CP, memory_policy_t MP, sl::size_t N, buffer_config_table<N> BufferConfigs, typename RenderProcessT>
+		template<sl::index_t I>
+    result<void>    device_allocation<FiF, sl::index_sequence_type<Is...>, CP, MP, N, BufferConfigs, RenderProcessT>::
+	realloc(sl::index_constant_type<I>, sl::uint64_t timeout) noexcept 
+	requires((I == Is) || ...) {
 		const sl::index_t i = allocation_index();
 
 		const sl::array<buffer_count, sl::size_t> buff_sizes{{
@@ -203,31 +210,12 @@ namespace d2d::vk{
 		const sl::array<buffer_count, impl::buffer_ptr_type*> buff_refs{{
 			std::addressof(segment_type<Is>::buffs[i])...
 		}};
-
-		render_process<N, BufferConfigs, CommandGroupCount>& proc = static_cast<render_process<N, BufferConfigs, CommandGroupCount>&>(*this);
-		const sl::index_t frame_idx = proc.frame_index();
-		vk::command_buffer<N> const& transfer_command_buffer = proc.command_buffers()[frame_idx][timeline::impl::dedicated_command_group::realloc];
-
-		const sl::uint64_t semaphore_pre_value = proc.command_buffer_semaphore_values()[frame_idx][timeline::impl::dedicated_command_group::realloc]++;
-		const sl::uint64_t semaphore_post_value = semaphore_pre_value + 1;
-
-		VkSemaphoreWaitInfo semaphore_pre_wait_info{
-			.sType = VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO,
-			.flags = 0,
-			.semaphoreCount = 1,
-			.pSemaphores = &proc.command_buffer_semaphores()[frame_idx][timeline::impl::dedicated_command_group::realloc],
-			.pValues = &semaphore_pre_value
-		};
-		vk::semaphore_submit_info semaphore_signal_info{
-			proc.command_buffer_semaphores()[frame_idx][timeline::impl::dedicated_command_group::realloc],
-			render_stage::group::all_transfer,
-			semaphore_post_value,
-		};
-
-		__D2D_VULKAN_VERIFY(vkWaitSemaphores(*logi_device_ptr, &semaphore_pre_wait_info, timeout));
 		
-		RESULT_VERIFY(transfer_command_buffer.reset());
-        RESULT_VERIFY(transfer_command_buffer.begin(true));
+		RESULT_VERIFY(realloc_fences[i].wait(timeout));
+		RESULT_VERIFY(realloc_fences[i].reset());
+
+		RESULT_VERIFY(realloc_command_buffers[i].reset());
+        RESULT_VERIFY(realloc_command_buffers[i].begin(true));
 		for(sl::index_t j = 0; j < buffer_count; ++j) {
 			if(buff_sizes[j] == 0) continue;
 			
@@ -236,7 +224,7 @@ namespace d2d::vk{
             	.dstOffset = 0,
             	.size = buff_sizes[j],
 			};
-        	vkCmdCopyBuffer(transfer_command_buffer, old_buffs[j], *buff_refs[j], 1, &copy_region);
+        	vkCmdCopyBuffer(realloc_command_buffers[i], old_buffs[j], *buff_refs[j], 1, &copy_region);
 
 			sl::array<2, VkBufferMemoryBarrier2> post_copy_barriers {{
 				VkBufferMemoryBarrier2{
@@ -260,21 +248,12 @@ namespace d2d::vk{
 					.size = buff_sizes[j]
 				},
 			}};
-			transfer_command_buffer.pipeline_barrier({}, post_copy_barriers, {});
+			realloc_command_buffers[i].pipeline_barrier({}, post_copy_barriers, {});
 		}
-		RESULT_VERIFY(transfer_command_buffer.end());
-		RESULT_VERIFY(transfer_command_buffer.submit(command_family::transfer, {}, {&semaphore_signal_info, 1}));
+		RESULT_VERIFY(realloc_command_buffers[i].end());
+		RESULT_VERIFY(realloc_command_buffers[i].submit(command_family::transfer, {}, {}, realloc_fences[i]));
 
-
-		VkSemaphoreWaitInfo semaphore_post_wait_info{
-			.sType = VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO,
-			.flags = 0,
-			.semaphoreCount = 1,
-			.pSemaphores = &proc.command_buffer_semaphores()[frame_idx][timeline::impl::dedicated_command_group::realloc],
-			.pValues = &semaphore_post_value
-		};
-		__D2D_VULKAN_VERIFY(vkWaitSemaphores(*logi_device_ptr, &semaphore_post_wait_info, timeout));
-
+		RESULT_VERIFY(realloc_fences[i].wait(timeout));
 		return {};
 	}
 }

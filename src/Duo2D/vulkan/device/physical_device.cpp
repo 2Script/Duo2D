@@ -4,8 +4,11 @@
 #include <streamline/functional/functor/construct_using.hpp>
 #include <streamline/universal/make.hpp>
 
+#include "Duo2D/core/window.hpp"
+
+
 namespace d2d::vk {
-    result<physical_device> physical_device::create(VkPhysicalDevice& device_handle, surface const& dummy_surface) noexcept {
+    result<physical_device> physical_device::create(VkPhysicalDevice& device_handle, std::shared_ptr<vk::instance> instance, bool window_capability) noexcept {
         
         //Get device features and properties
         VkPhysicalDeviceProperties device_properties;
@@ -34,26 +37,33 @@ namespace d2d::vk {
 			VK_QUEUE_TRANSFER_BIT,
         }; 
 
+		//Create dummy window
+		window dummy_window{};
+		if(window_capability)
+			RESULT_TRY_MOVE(dummy_window, make<window>(instance, d2d::sz2u32{1280, 720}, "dummy"));
 
         for(std::uint32_t idx = 0; idx < family_count; ++idx) {
             VkBool32 supports_present = false;
-            vkGetPhysicalDeviceSurfaceSupportKHR(device_handle, idx, dummy_surface, &supports_present);
-			if(supports_present) 
-				device_queue_family_infos[command_family::present] = queue_family_info{true, idx};
+			if(window_capability) {
+            	vkGetPhysicalDeviceSurfaceSupportKHR(device_handle, idx, dummy_window.surface(), &supports_present);
+				if(supports_present) 
+					device_queue_family_infos[command_family::present] = queue_family_info{true, idx};
+			}
 
             for(std::size_t family_id = 0; family_id < command_family::num_distinct_families; ++family_id) {    
 				if(!(families[idx].queueFlags & flag_bit[family_id])) continue;
 				device_queue_family_infos[family_id] = queue_family_info{static_cast<bool>(supports_present), idx};
             }
         }
+		}
 
 		//Check for queue family support
-		//TODO: only check for queues that we actually need (based on graphics timeline)
-		for(std::size_t i = 0; i < command_family::num_families; ++i)
+		//TODO: only check for queues that we actually need (based on graphics timeline)?
+		const sl::size_t num_queue_families_to_verify = command_family::num_distinct_families + static_cast<sl::size_t>(window_capability);
+		for(std::size_t i = 0; i < num_queue_families_to_verify; ++i)
 			if(device_queue_family_infos[i].index == (static_cast<std::uint32_t>(sl::npos) >> 1))
 				return static_cast<errc>(error::device_lacks_necessary_queue_base + i);
 		
-		}
 		
 
         //Get device extensions

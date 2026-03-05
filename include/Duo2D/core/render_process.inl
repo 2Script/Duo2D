@@ -4,75 +4,20 @@
 #include "Duo2D/timeline/dedicated_command_group.hpp"
 
 
-namespace d2d::impl {
-	template<sl::size_t N, buffer_config_table<N> BufferConfigs, sl::size_t CommandGroupCount, buffering_policy_t... BufferingPolicyIs>
-	template<memory_policy_t... MPs>
-	result<void>    render_process<N, BufferConfigs, CommandGroupCount, sl::index_sequence_type<BufferingPolicyIs...>>::
-	initialize_allocations(sl::integer_sequence_type<memory_policy_t, MPs...>) noexcept {
-		auto init_single_alloc = [this]<buffering_policy_t BP>(sl::constant_type<buffering_policy_t, BP>) -> result<void> {
-			return ol::to_result((([this]() -> result<void> {
-				RESULT_TRY_MOVE(
-					(static_cast<allocation_type<BP, MPs>&>(*this)),
-					(make<allocation_type<BP, MPs>>(logi_device_ptr, phys_device_ptr))
-				);
-				return {};
-			}) && ...));
-		};
-
-		return ol::to_result((([&init_single_alloc]() -> result<void> {
-			return init_single_alloc(sl::constant<buffering_policy_t, BufferingPolicyIs>);
-		}) && ...));
-	}
-}
-
-
-namespace d2d::impl {
-	template<sl::size_t N, buffer_config_table<N> BufferConfigs, sl::size_t CommandGroupCount, buffering_policy_t... BufferingPolicyIs>
-	result<bool>    render_process<N, BufferConfigs, CommandGroupCount, sl::index_sequence_type<BufferingPolicyIs...>>::
-	verify_swap_chain(VkResult fn_result, bool even_if_suboptimal) noexcept {
-		switch(fn_result) {
-		case VK_SUCCESS:
-			return false;
-		case VK_SUBOPTIMAL_KHR:
-			if(!even_if_suboptimal) return false;
-			[[fallthrough]];
-		case VK_ERROR_OUT_OF_DATE_KHR: {
-			if(glfwWindowShouldClose(this->window_handle.get())) [[unlikely]] return false;
-			vkDeviceWaitIdle(*this->logi_device_ptr);
-			//VkFormat old_format = _swap_chain.format().pixel_format.id;
-			_swap_chain = {}; //delete before remaking swapchain
-			RESULT_TRY_MOVE(_swap_chain, make<vk::swap_chain>(this->logi_device_ptr, this->phys_device_ptr, pixel_format_priority, default_color_space, present_mode_priority, _surface, this->window_handle.get()));
-			//if(old_format != _swap_chain.format().pixel_format.id) {
-			//	RESULT_TRY_MOVE(_render_pass, make<vk::render_pass>(this->logi_device_ptr, _swap_chain.format()));
-			//	//RESULT_VERIFY(this->create_descriptors(_render_pass));
-			//}
-
-			RESULT_TRY_MOVE(_depth_image, make<vk::depth_image>(this->logi_device_ptr, this->phys_device_ptr, _swap_chain.extent()));
-			//for(std::size_t i = 0; i < _swap_chain.image_count(); ++i)
-			//	RESULT_TRY_MOVE(_framebuffers[i], make<vk::framebuffer>(this->logi_device_ptr, _swap_chain.image_views()[i], _depth_image.view(), _render_pass, _swap_chain.extent()));
-			//(Ts::on_swap_chain_update(*this, this->template uniform_map<Ts>()), ...);
-			return true;
-		}
-		default: 
-			return static_cast<errc>(__D2D_VKRESULT_TO_ERRC(fn_result));
-		}
-	}
-}
-
-namespace d2d::impl {
-	template<sl::size_t N, buffer_config_table<N> BufferConfigs, sl::size_t CommandGroupCount, buffering_policy_t... BufferingPolicyIs>
+namespace d2d {
+	template<auto BufferConfigs, auto AssetHeapConfigs, sl::size_t CommandGroupCount>
 	template<sl::size_t I, sl::size_t J>
-	constexpr result<void>    render_process<N, BufferConfigs, CommandGroupCount, sl::index_sequence_type<BufferingPolicyIs...>>::
+	constexpr result<void>    render_process<BufferConfigs, AssetHeapConfigs, CommandGroupCount>::
 	copy(
-		vk::device_allocation_segment<J, render_process> const& src,
+		allocation_segment_type<J> const& src,
 		sl::size_t size,
 		sl::uoffset_t dst_offset,
 		sl::uoffset_t src_offset
 	) & noexcept {
-		vk::device_allocation_segment<I, render_process>& dst = static_cast<vk::device_allocation_segment<I, render_process>&>(*this);
+		allocation_segment_type<I>& dst = static_cast<allocation_segment_type<I>&>(*this);
 		//TODO: use next frame index if theres no garauntee current transfer command buffer is not in use
 		const sl::index_t frame_idx = frame_index();
-		vk::command_buffer<N> const& transfer_command_buffer = command_buffers()[frame_idx][timeline::impl::dedicated_command_group::out_of_timeline_copy];
+		vk::command_buffer const& transfer_command_buffer = command_buffers()[frame_idx][timeline::impl::dedicated_command_group::out_of_timeline_copy];
 		const sl::uint64_t semaphore_value = command_buffer_semaphore_values()[frame_idx][timeline::impl::dedicated_command_group::out_of_timeline_copy]++;
 
 		VkSemaphoreWaitInfo semaphore_wait_info{
@@ -123,15 +68,15 @@ namespace d2d::impl {
 }
 
 namespace d2d {
-	template<sl::size_t I, sl::size_t J, sl::size_t N, buffer_config_table<N> BufferConfigs, sl::size_t CommandGroupCount>
+	template<sl::size_t I, sl::size_t J, sl::size_t N, buffer_config_table<N> BufferConfigs, typename RenderProcessT>
 	constexpr result<void> copy(
-		vk::device_allocation_segment<I, render_process<N, BufferConfigs, CommandGroupCount>>& dst,
-		vk::device_allocation_segment<J, render_process<N, BufferConfigs, CommandGroupCount>> const& src,
+		vk::device_allocation_segment<I, N, BufferConfigs, RenderProcessT>& dst,
+		vk::device_allocation_segment<J, N, BufferConfigs, RenderProcessT> const& src,
 		sl::size_t size,
 		sl::uoffset_t dst_offset,
 		sl::uoffset_t src_offset
 	) noexcept {
-		render_process<N, BufferConfigs, CommandGroupCount>& proc = static_cast<render_process<N, BufferConfigs, CommandGroupCount>&>(dst);
+		RenderProcessT& proc = static_cast<RenderProcessT&>(dst);
 		return proc.template copy<I>(src, size, dst_offset, src_offset);
 	}
 }

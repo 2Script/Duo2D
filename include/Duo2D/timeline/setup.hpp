@@ -7,7 +7,7 @@
 namespace d2d::timeline {
 	template<typename T>
 	struct setup {
-		constexpr result<sl::empty_t> operator()(auto const&) const noexcept {
+		constexpr result<sl::empty_t> operator()(auto const&, auto&) const noexcept {
 			return {};
 		}
 	};

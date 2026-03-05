@@ -14,48 +14,48 @@ __D2D_DECLARE_VK_TRAITS_DEVICE(VkBuffer);
 
 
 namespace d2d::vk::impl {
-	constexpr sl::array<buffering_policy::num_buffering_policies, sl::size_t> allocation_counts{{1, D2D_FRAMES_IN_FLIGHT}};
+	constexpr sl::array<coupling_policy::num_coupling_policies, sl::size_t> allocation_counts{{D2D_FRAMES_IN_FLIGHT, 1}};
 
 	using buffer_ptr_type = vulkan_ptr<VkBuffer, vkDestroyBuffer>;
 }
 
 
 namespace d2d::vk::impl {
-	template<sl::index_t I, typename Derived>
+	template<sl::index_t I, sl::size_t N, buffer_config_table<N>, typename Derived>
     class device_allocation_segment_base;
 }
 
 namespace d2d::vk {
-	template<sl::index_t I, typename Derived>
+	template<sl::index_t I, sl::size_t N, buffer_config_table<N>, typename Derived>
     class device_allocation_segment;
 }
 
 
 namespace d2d::vk::impl {
-	template<sl::index_t I, sl::size_t N, buffer_config_table<N> BufferConfigs, sl::size_t CommandGroupCount>
+	template<sl::index_t I, sl::size_t N, buffer_config_table<N> BufferConfigs, typename RenderProcessT>
 	struct device_allocation_segment_properties {
 		constexpr static buffer_config config = sl::universal::get<sl::second_constant>(*std::next(BufferConfigs.begin(), I));
 		constexpr static bool c = sl::universal::get<0>(sl::key_value_pair<int, int>{});
-		constexpr static sl::size_t allocation_count = allocation_counts[config.buffering];
+		constexpr static sl::size_t allocation_count = allocation_counts[config.coupling];
 
 	protected:
 		constexpr sl::index_t current_buffer_index() const noexcept;
 	public:
-		friend command_buffer<N>;
+		friend command_buffer;
 	};
 }
 
 namespace d2d::vk::impl {
-	template<sl::index_t I, sl::size_t N, buffer_config_table<N> BufferConfigs, sl::size_t CommandGroupCount>
-	class device_allocation_segment_base<I, render_process<N, BufferConfigs, CommandGroupCount>> :
-		public device_allocation_segment_properties<I, N, BufferConfigs, CommandGroupCount>
+	template<sl::index_t I, sl::size_t N, buffer_config_table<N> BufferConfigs, typename RenderProcessT>
+	class device_allocation_segment_base :
+		public device_allocation_segment_properties<I, N, BufferConfigs, RenderProcessT>
 	{
-		using base_type = device_allocation_segment_properties<I, N, BufferConfigs, CommandGroupCount>;
+		using base_type = device_allocation_segment_properties<I, N, BufferConfigs, RenderProcessT>;
 	public:
 		using base_type::config;
 		using base_type::allocation_count;
 	public:
-        static result<device_allocation_segment<I, render_process<N, BufferConfigs, CommandGroupCount>>> create(std::shared_ptr<logical_device> device, std::size_t initial_capacity, std::size_t initial_size = 0) noexcept;
+        static result<device_allocation_segment<I, N, BufferConfigs, RenderProcessT>> create(std::shared_ptr<logical_device> device, std::size_t initial_capacity, std::size_t initial_size = 0) noexcept;
 
 	public:
 		constexpr std::byte const* data() const noexcept { return ptrs[this->current_buffer_index()]; }
@@ -82,12 +82,12 @@ namespace d2d::vk::impl {
 
 		// template<sl::size_t DstI, sl::size_t SrcI>
 		// friend constexpr result<void> copy(
-			// device_allocation_segment<DstI, render_process<N, BufferConfigs, CommandGroupCount>>& dst, 
-			// device_allocation_segment<DstI, render_process<N, BufferConfigs, CommandGroupCount>> const& src, 
+			// device_allocation_segment<DstI, N, BufferConfigs, RenderProcessT>& dst, 
+			// device_allocation_segment<DstI, N, BufferConfigs, RenderProcessT> const& src, 
 		// ) noexcept;
 
 	public:
-		friend ::d2d::vk::command_buffer<N>;
+		friend ::d2d::vk::command_buffer;
 
 	protected:
 		sl::array<allocation_count, buffer_ptr_type> buffs;
@@ -102,14 +102,14 @@ namespace d2d::vk::impl {
 	};
 
 
-	template<sl::index_t I, sl::size_t N, buffer_config_table<N> BufferConfigs, sl::size_t CommandGroupCount>
+	template<sl::index_t I, sl::size_t N, buffer_config_table<N> BufferConfigs, typename RenderProcessT>
 	requires(
-		device_allocation_segment_properties<I, N, BufferConfigs, CommandGroupCount>::config.memory == memory_policy::push_constant
+		device_allocation_segment_properties<I, N, BufferConfigs, RenderProcessT>::config.memory == memory_policy::push_constant
 	)
-	class device_allocation_segment_base<I, render_process<N, BufferConfigs, CommandGroupCount>> :
-		public device_allocation_segment_properties<I, N, BufferConfigs, CommandGroupCount>
+	class device_allocation_segment_base<I, N, BufferConfigs, RenderProcessT> :
+		public device_allocation_segment_properties<I, N, BufferConfigs, RenderProcessT>
 	{
-		using base_type = device_allocation_segment_properties<I, N, BufferConfigs, CommandGroupCount>;
+		using base_type = device_allocation_segment_properties<I, N, BufferConfigs, RenderProcessT>;
 	public:
 		using base_type::config;
 		using base_type::allocation_count;
@@ -124,7 +124,7 @@ namespace d2d::vk::impl {
 		consteval sl::size_t capacity_bytes() const noexcept { return bytes.size(); }
 		
 	public:
-		friend ::d2d::vk::command_buffer<N>;
+		friend ::d2d::vk::command_buffer;
 
 	protected:
 		sl::array<allocation_count, sl::array<config.initial_capacity_bytes, std::byte>> bytes;
@@ -135,12 +135,12 @@ namespace d2d::vk::impl {
 namespace d2d::vk {
 	//Directly modifyable
 	//Assumes that reads/writes are done safely
-	template<sl::index_t I, sl::size_t N, buffer_config_table<N> BufferConfigs, sl::size_t CommandGroupCount>
-    class device_allocation_segment<I, render_process<N, BufferConfigs, CommandGroupCount>> :
-		public impl::device_allocation_segment_base<I, render_process<N, BufferConfigs, CommandGroupCount>>
+	template<sl::index_t I, sl::size_t N, buffer_config_table<N> BufferConfigs, typename RenderProcessT>
+    class device_allocation_segment :
+		public impl::device_allocation_segment_base<I, N, BufferConfigs, RenderProcessT>
 	{
 	protected:
-		using base_type = impl::device_allocation_segment_base<I, render_process<N, BufferConfigs, CommandGroupCount>>;
+		using base_type = impl::device_allocation_segment_base<I, N, BufferConfigs, RenderProcessT>;
 	public:
 		using base_type::config;
 		using base_type::allocation_count;
@@ -181,12 +181,12 @@ namespace d2d::vk {
 
 namespace d2d::vk {
 	//Not directly modifyable
-	template<sl::index_t I, sl::size_t N, buffer_config_table<N> BufferConfigs, sl::size_t CommandGroupCount>
+	template<sl::index_t I, sl::size_t N, buffer_config_table<N> BufferConfigs, typename RenderProcessT>
 	requires (
-		device_allocation_segment<I, render_process<N, BufferConfigs, CommandGroupCount>>::config.memory == memory_policy::gpu_local
+		device_allocation_segment<I, N, BufferConfigs, RenderProcessT>::config.memory == memory_policy::gpu_local
 	)
-	class device_allocation_segment<I, render_process<N, BufferConfigs, CommandGroupCount>> : 
-		public impl::device_allocation_segment_base<I, render_process<N, BufferConfigs, CommandGroupCount>> {};
+	class device_allocation_segment<I, N, BufferConfigs, RenderProcessT> : 
+		public impl::device_allocation_segment_base<I, N, BufferConfigs, RenderProcessT> {};
 }
 
 

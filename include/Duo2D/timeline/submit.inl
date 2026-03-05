@@ -1,8 +1,10 @@
 #pragma once 
 #include "Duo2D/timeline/submit.hpp"
-#include "Duo2D/core/invoke_all.def.hpp"
 
 #include <vulkan/vulkan.h>
+
+#include "Duo2D/core/invoke_all.def.hpp"
+#include "Duo2D/timeline/callback_event.hpp"
 
 
 namespace d2d::timeline::impl {
@@ -55,10 +57,11 @@ namespace d2d::timeline::impl {
 
 namespace d2d::timeline {
 	template<command_family_t CommandFamily, render_stage_flags_t CompleteStages, render_stage_flags_t WaitStages>
-	template<sl::size_t N, buffer_config_table<N> BufferConfigs, sl::size_t CommandGroupCount, sl::index_t CommandGroupIdx>
+	template<typename RenderProcessT, sl::index_t CommandGroupIdx>
 	result<void> command<::d2d::impl::submit_base<CommandFamily, signal_completion_at<CompleteStages>, wait_for<WaitStages>>>::operator()(
-		render_process<N, BufferConfigs, CommandGroupCount>& proc, 
-		timeline::state<N, BufferConfigs, CommandGroupCount>& timeline_state, 
+		RenderProcessT& proc, 
+		window&, 
+		timeline::state& timeline_state, 
 		sl::empty_t,
 		sl::index_constant_type<CommandGroupIdx>
 	) const noexcept {
@@ -91,7 +94,7 @@ namespace d2d::timeline {
 
 
 		
-		vk::command_buffer<N> const& cmd_buff = proc.command_buffers()[frame_idx][CommandGroupIdx];
+		vk::command_buffer const& cmd_buff = proc.command_buffers()[frame_idx][CommandGroupIdx];
 		RESULT_VERIFY(cmd_buff.end());
 		return cmd_buff.submit(
 			CommandFamily,
@@ -105,15 +108,16 @@ namespace d2d::timeline {
 
 namespace d2d::timeline {
 	template<render_stage_flags_t CompleteStages, render_stage_flags_t WaitStages>
-	template<sl::size_t N, buffer_config_table<N> BufferConfigs, sl::size_t CommandGroupCount, sl::index_t CommandGroupIdx>
+	template<typename RenderProcessT, sl::index_t CommandGroupIdx>
 	result<void> command<submit<command_family::present, signal_completion_at<CompleteStages>, wait_for<WaitStages>>>::operator()(
-		render_process<N, BufferConfigs, CommandGroupCount>& proc, 
-		timeline::state<N, BufferConfigs, CommandGroupCount>& timeline_state,
+		RenderProcessT& proc, 
+		window& win,
+		timeline::state& timeline_state,
 		sl::empty_t,
 		sl::index_constant_type<CommandGroupIdx>
 	) const noexcept {
 		if(proc.has_dedicated_present_queue()) {
-			vk::command_buffer<N> const& cmd_buff = proc.command_buffers()[proc.frame_index()][CommandGroupIdx];
+			vk::command_buffer const& cmd_buff = proc.command_buffers()[proc.frame_index()][CommandGroupIdx];
 
 
 			VkImageMemoryBarrier2 pre_present_barrier {
@@ -131,7 +135,7 @@ namespace d2d::timeline {
 			
 			//Call base submit function
 			RESULT_VERIFY((command<::d2d::impl::submit_base<command_family::present, signal_completion_at<CompleteStages>, wait_for<WaitStages>>>::
-			operator()(proc, timeline_state, sl::empty_t{}, sl::index_constant<CommandGroupIdx>)));
+			operator()(proc, win, timeline_state, sl::empty_t{}, sl::index_constant<CommandGroupIdx>)));
 		} else {
 		const sl::index_t frame_idx = proc.frame_index();
 			VkSemaphoreWaitInfo wait_info{
@@ -168,9 +172,14 @@ namespace d2d::timeline {
 			.pSwapchains = &proc.swap_chain(),
 			.pImageIndices = &timeline_state.image_index,
 		};
-		RESULT_TRY_COPY_UNSCOPED(bool swap_chain_updated, proc.verify_swap_chain(vkQueuePresentKHR(proc.logical_device_ptr()->queues[command_family::present], &present_info), true), sc);
+		RESULT_TRY_COPY_UNSCOPED(bool swap_chain_updated, win.verify_swap_chain(
+			vkQueuePresentKHR(proc.logical_device_ptr()->queues[command_family::present], &present_info),
+			proc.logical_device_ptr(),
+			proc.physical_device_ptr(),
+			true
+		), sc);
 		if(swap_chain_updated)
-			D2D_INVOKE_ALL(proc.timeline_callbacks(), on_swap_chain_updated_fn, proc);
+			D2D_INVOKE_ALL(proc.timeline_callbacks(), on_swap_chain_updated, proc, win, timeline_state);
 		return {};
 	}
 }

@@ -21,6 +21,10 @@ namespace d2d::test {
 			::buffer_id::positions
 		>;
 
+		constexpr static auto draw_buffers = sl::array<1, sl::key_value_pair<buffer_key_t, buffer_key_t>> {{
+			{::buffer_id::draw_commands, ::buffer_id::counts}
+		}};
+
 	public:
 		constexpr static VkIndexType index_type = VK_INDEX_TYPE_UINT16;
 	};

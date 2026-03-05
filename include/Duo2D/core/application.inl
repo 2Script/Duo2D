@@ -17,48 +17,77 @@
 #include "Duo2D/vulkan/device/physical_device.hpp"
 
 namespace d2d {
-    template<typename WindowT>
-    result<application<WindowT>> application<WindowT>::create(std::string_view name) noexcept {
+    template<typename InstanceT, bool WindowCapability>
+    result<application<InstanceT, WindowCapability>> application<InstanceT, WindowCapability>::create(std::string_view name, version app_version) noexcept {
+        application ret{};
+        ret.name = name;
+
         // Set application info
         VkApplicationInfo app_info{
-            VK_STRUCTURE_TYPE_APPLICATION_INFO, //sType
-            nullptr,                            //pNext
-            name.data(),              //App Name
-            VK_MAKE_VERSION(1, 0, 0), //App Version (temp)
-            "Duo2D",                  //Engine Name
-            VK_MAKE_VERSION(0, 0, 1), //Engine Version
-            VK_API_VERSION_1_3        //API Version
+            .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
+            .pNext = nullptr,
+            .pApplicationName = name.data(),
+            .applicationVersion = VK_MAKE_VERSION(app_version.major(), app_version.minor(), app_version.patch()),
+			.pEngineName = "Duo2D",
+            .engineVersion = VK_MAKE_VERSION(engine_version.major(), engine_version.minor(), engine_version.patch()),
+            .apiVersion = VK_API_VERSION_1_3
         };
-        
-        // Initialize GLFW
-        //if(int code; application::glfw_init.count++ == 0 && !glfwInit() && (code = glfwGetError(nullptr)))
-        //    return static_cast<errc>(code);
 
-        application ret{};
-        RESULT_VERIFY(ret.glfw_init.initialize(impl::application_count(), []() noexcept -> result<void> {
-            if(int code; !glfwInit()) {
-                if((code = glfwGetError(nullptr)))
-                    return static_cast<errc>(code | 0x00010000);
-                return errc::os_window_error;
-            }
-            return {};
-        }));
 
-        // Check for vulkan support
-        if(!glfwVulkanSupported()) 
-            return error::vulkan_not_supported;
+		std::span<char const* const> instance_extension_names{};
+		if constexpr(WindowCapability) {
+			//Initialize GLFW
+			ret.glfw_init_ptr = std::make_unique<impl::instance_tracker<void, glfwTerminate>>();
+			RESULT_VERIFY(ret.glfw_init_ptr->initialize(impl::window_system_count(), []() noexcept -> result<void> {
+			    if(int code; !glfwInit()) {
+			        if((code = glfwGetError(nullptr)))
+			            return static_cast<errc>(code | 0x00010000);
+			        return errc::os_window_error;
+			    }
+			    return {};
+			}));
+
+			//Get needed extensions
+        	sl::uint32_t glfw_ext_cnt = 0;
+        	char const* const* glfw_exts = glfwGetRequiredInstanceExtensions(&glfw_ext_cnt);
+        	__D2D_GLFW_VERIFY(glfw_exts);
+			instance_extension_names = {glfw_exts, glfw_ext_cnt};
+
+			// Check for vulkan support
+			if(!glfwVulkanSupported()) 
+			    return error::vulkan_not_supported;
+		}
+
 
         // Create instance
         vk::instance i;
-        RESULT_TRY_MOVE(i, make<vk::instance>(app_info));
+        RESULT_TRY_MOVE(i, make<vk::instance>(app_info, instance_extension_names));
         ret.instance_ptr = std::make_shared<vk::instance>(std::move(i));
 
-        ret.phys_device_ptr = std::make_shared_for_overwrite<vk::physical_device>();
-        ret.logi_device_ptr = std::make_shared_for_overwrite<vk::logical_device>();
-        ret.font_data_map_ptr = std::make_shared_for_overwrite<impl::font_data_map>();
-        ret.name = name;
+		//Create physical device list
+		{
+		std::uint32_t device_count = 0;
+        vkEnumeratePhysicalDevices(*ret.instance_ptr, &device_count, nullptr);
 
-        ret.should_be_open.store(true, std::memory_order_relaxed);
+        if(!device_count)
+            return error::no_vulkan_devices;
+
+        std::vector<VkPhysicalDevice> devices(device_count);
+        __D2D_VULKAN_VERIFY(vkEnumeratePhysicalDevices(*ret.instance_ptr, &device_count, devices.data()));
+
+
+        for(VkPhysicalDevice device_handle : devices) {
+            result<vk::physical_device> d = make<vk::physical_device>(device_handle, ret.instance_ptr, WindowCapability);
+            if(!d.has_value()) return d.error();
+            ret._devices.insert(*std::move(d));
+        }
+		}
+		
+		// Create pointers
+        ret.phys_device_ptr = std::make_shared_for_overwrite<vk::physical_device>();
+        ret.logi_device_ptr = std::make_shared<vk::logical_device>();
+
+		ret.should_be_open = std::make_unique<std::atomic<bool>>(true);
 
         return ret;
     }
@@ -66,37 +95,11 @@ namespace d2d {
 
 
 namespace d2d {
-    template<typename WindowT>
-    result<std::set<vk::physical_device>> application<WindowT>::devices() const noexcept {
-        std::uint32_t device_count = 0;
-        vkEnumeratePhysicalDevices(*instance_ptr, &device_count, nullptr);
-
-        if(!device_count)
-            return error::no_vulkan_devices;
-
-        std::vector<VkPhysicalDevice> devices(device_count);
-        __D2D_VULKAN_VERIFY(vkEnumeratePhysicalDevices(*instance_ptr, &device_count, devices.data()));
-
-        //Create dummy window
-        RESULT_TRY_MOVE_UNSCOPED(WindowT dummy, make<WindowT>("dummy", 1600, 900, instance_ptr), win);
-
-
-        std::set<vk::physical_device> ret{};
-        for(VkPhysicalDevice device_handle : devices) {
-            result<vk::physical_device> d = make<vk::physical_device>(device_handle, dummy.surface());
-            if(!d.has_value()) return d.error();
-            ret.insert(*std::move(d));
-        }
-
-        return ret;
-    }
-
-
-    template<typename WindowT>
-    result<void> application<WindowT>::initialize_device() noexcept {
+    template<typename InstanceT, bool WindowCapability>
+    result<void> application<InstanceT, WindowCapability>::initialize_device() noexcept {
         //Create logical device
         vk::logical_device l;
-        RESULT_TRY_MOVE(l, make<vk::logical_device>(phys_device_ptr));
+        RESULT_TRY_MOVE(l, make<vk::logical_device>(phys_device_ptr, WindowCapability));
         logi_device_ptr = std::make_shared<vk::logical_device>(std::move(l));
 
         return {};
@@ -105,108 +108,78 @@ namespace d2d {
 
 
 namespace d2d {
-    template<typename WindowT>
-    result<WindowT*> application<WindowT>::add_window(std::string_view title) noexcept {
+    template<typename InstanceT, bool WindowCapability>
+    result<InstanceT*> application<InstanceT, WindowCapability>::emplace_back() noexcept {
         if(!logi_device_ptr)
             return error::device_not_initialized;
 
-        
-        result<WindowT> w = make<WindowT>(title, 1600, 900, instance_ptr);
-        if(!w.has_value()) return w.error();
-        RESULT_VERIFY(w->initialize(logi_device_ptr, phys_device_ptr));
-
-        auto new_window = windows.emplace(title, *std::move(w));
-        WindowT* new_window_ptr = std::addressof(new_window.first->second);
-        input::impl::glfw_window_map().try_emplace(new_window_ptr->window_handle.get(), input::combination{}, new_window_ptr);
-
-        if(!new_window.second) 
-            return error::window_already_exists;
-        return new_window_ptr;
-    }
-
-
-    template<typename WindowT>
-    result<void> application<WindowT>::remove_window(std::string_view title) noexcept {
-        if (auto it = windows.find(std::string(title)); it != windows.end()) {
-            windows.erase(it);
-            input::impl::glfw_window_map().erase(static_cast<GLFWwindow*>(it->second));
-            return {};
-        }
- 
-        return error::window_not_found;
-    }
-}
-
-namespace d2d {
-    template<typename WindowT>
-    result<WindowT*> application<WindowT>::add_window() noexcept {
-        return add_window(name);
-    }
-
-    template<typename WindowT>
-    result<void> application<WindowT>::remove_window() noexcept {
-        return remove_window(name);
+        RESULT_VERIFY_UNSCOPED((make<InstanceT>(
+			instance_ptr,
+			logi_device_ptr,
+			phys_device_ptr,
+			name,
+			sl::bool_constant<WindowCapability>
+		)), instance);
+        _instances.emplace_back(std::make_unique<InstanceT>(*std::move(instance)));
+		return _instances.back().get();
     }
 }
 
 
 namespace d2d {
-    template<typename WindowT>
-    bool application<WindowT>::open() const noexcept {
-        return should_be_open.load(std::memory_order_relaxed);
+    template<typename InstanceT, bool WindowCapability>
+    bool application<InstanceT, WindowCapability>::is_open() const noexcept {
+        return should_be_open->load(std::memory_order_relaxed);
     }
 
-    template<typename WindowT>
-    void application<WindowT>::poll_events() noexcept {
+    template<typename InstanceT, bool WindowCapability>
+    void application<InstanceT, WindowCapability>::close() noexcept {
+        should_be_open->store(false, std::memory_order_relaxed);
+    }
+
+
+    template<typename InstanceT, bool WindowCapability>
+    void application<InstanceT, WindowCapability>::poll_events() noexcept requires (WindowCapability) {
+		if(!glfw_init_ptr) return;
+		
         glfwPollEvents();
 
-        for (auto& w : windows)
-            if(!glfwWindowShouldClose(w.second.window_handle.get()))
+        for (auto& inst : _instances) {
+			if(!inst->window_handle) continue;
+            if(!glfwWindowShouldClose(inst->window_handle.get()))
                 return;
-        should_be_open.store(false, std::memory_order_relaxed);
+		}
+        close();
     }
 
-    template<typename WindowT>
-    result<void> application<WindowT>::render() noexcept {
-        for (auto& w : windows) 
-            if(auto r = w.second.render(); !r.has_value()) [[unlikely]]
+    template<typename InstanceT, bool WindowCapability>
+    result<void> application<InstanceT, WindowCapability>::render() noexcept {
+        for (auto& inst : _instances) 
+            if(auto r = inst->render(); !r.has_value()) [[unlikely]]
                 return r.error();
         return {};
     }
 
 
-    template<typename WindowT>
-    std::future<result<void>> application<WindowT>::start_async_render() noexcept {
-        return std::async([](d2d::application<WindowT>& a) -> d2d::result<void> {
-            while(a.open())
-                if(auto r = a.render(); !r.has_value()) [[unlikely]]
-                    return r.error();
+    template<typename InstanceT, bool WindowCapability>
+    std::future<result<void>> application<InstanceT, WindowCapability>::start_async_render() noexcept {
+        return std::async([](d2d::application<InstanceT, WindowCapability>& a) -> d2d::result<void> {
+            while(a.is_open())
+				for (auto& inst : a._instances) 
+                	if(auto r = inst->render(); !r.has_value()) [[unlikely]]
+                    	return r.error();
             return {};
         }, std::ref(*this));
     }
 
-    template<typename WindowT>
-    result<void> application<WindowT>::join() const noexcept {
-        // for (auto const& w : windows) {
-            // VkSemaphoreWaitInfo wait_info {
-                // .sType = VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO,
-                // .pNext = nullptr,
-                // .flags = 0,
-                // .semaphoreCount = 1,
-                // .pSemaphores = &w.second.draw_cmd_update_semaphore,
-                // .pValues = &w.second.draw_cmd_update_count,
-            // };
-            // __D2D_VULKAN_VERIFY(vkWaitSemaphores(*logi_device_ptr, &wait_info, 3 * std::nano::den));
-        // }
-        
+    template<typename InstanceT, bool WindowCapability>
+    result<void> application<InstanceT, WindowCapability>::join() const noexcept {
         __D2D_VULKAN_VERIFY(vkDeviceWaitIdle(*logi_device_ptr));
-
-
-        return  {};
+        return {};
     }
 }
 
 //namespace d2d {
-//    template<typename WindowT>
-//    std::atomic_int64_t application<WindowT>::instance_count{};
+//    template<typename InstanceT, bool WindowCapability>
+//    std::atomic_int64_t application<InstanceT, WindowCapability>::instance_count{};
 //}

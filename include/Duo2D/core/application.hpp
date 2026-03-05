@@ -5,6 +5,7 @@
 #include <memory>
 #include <string_view>
 #include <set>
+#include <streamline/containers/version.hpp>
 
 #include <GLFW/glfw3.h>
 #include <vulkan/vulkan.h>
@@ -20,15 +21,44 @@
 
 
 namespace d2d {
-    template<typename WindowT>
-    class application {
+	using version = sl::generic::version<sl::uint16_t>;
+
+	constexpr version engine_version{0, 0, 1}; 
+}
+
+
+namespace d2d::impl {
+	template<typename InstanceT, bool WindowCapability, typename Seq>
+	class verify_instance_comatibility;
+
+
+	template<typename InstanceT, bool WindowCapability, sl::index_t... Is>
+	class verify_instance_comatibility<InstanceT, WindowCapability, sl::index_sequence_type<Is...>> {
+		using command_traits_type = typename InstanceT::command_traits_type;
+		constexpr static auto command_family_of_group = command_traits_type::group_families;
+		static_assert(
+			((command_family_of_group[Is] != command_family::present) && ...) || WindowCapability,
+			"Render timeline contains an event which requires the present command family - "
+			"You must enable window capability to use the present command family"
+		);
+	};
+}
+
+
+namespace d2d {
+    template<typename InstanceT, bool WindowCapability = true>
+    class application : impl::verify_instance_comatibility<
+		InstanceT, 
+		WindowCapability, 
+		sl::index_sequence_of_length_type<InstanceT::command_traits_type::group_count>
+	> {
     public:
         application() noexcept = default;
-        static result<application> create(std::string_view name) noexcept;
+        static result<application> create(std::string_view name, version app_version) noexcept;
 
 
     public:
-        result<std::set<vk::physical_device>> devices() const noexcept;
+        constexpr std::set<vk::physical_device> const& devices() const noexcept { return _devices; }
 
         const vk::physical_device& selected_device() const& noexcept { return *phys_device_ptr; }
         vk::physical_device& selected_device() & noexcept { return *phys_device_ptr; }
@@ -37,16 +67,13 @@ namespace d2d {
 
 
     public:
-        //TODO return reference to window instead of pointer
-        result<WindowT*> add_window(std::string_view title) noexcept;
-        result<void> remove_window(std::string_view title) noexcept;
-
-        result<WindowT*> add_window() noexcept;
-        result<void> remove_window() noexcept;
+        //TODO: better interface for instances
+		result<InstanceT*> emplace_back() noexcept;
 
     public:
-        bool open() const noexcept;
-        void poll_events() noexcept;
+        bool is_open() const noexcept;
+		void close() noexcept;
+        void poll_events() noexcept requires (WindowCapability);
         result<void> render() noexcept;
         std::future<result<void>> start_async_render() noexcept;
         result<void> join() const noexcept;
@@ -56,14 +83,14 @@ namespace d2d {
         std::shared_ptr<vk::instance>        instance_ptr;
         std::shared_ptr<vk::physical_device> phys_device_ptr;
         std::shared_ptr<vk::logical_device>  logi_device_ptr;
-        std::shared_ptr<impl::font_data_map> font_data_map_ptr;
         std::string name;
 
         //ORDER MATTERS: glfw must be terminated after all windows have been destroyed
-        impl::instance_tracker<void, glfwTerminate> glfw_init;
-        std::map<std::string, WindowT> windows;
+        std::unique_ptr<impl::instance_tracker<void, glfwTerminate>> glfw_init_ptr;
+        std::vector<std::unique_ptr<InstanceT>> _instances;
+		std::set<vk::physical_device> _devices;
 
-        moveable_atomic<bool> should_be_open;
+        std::unique_ptr<std::atomic<bool>> should_be_open;
     private:
         //inline static std::atomic_int64_t instance_count;
     };
@@ -71,7 +98,7 @@ namespace d2d {
 
 
 namespace d2d::impl {
-    inline std::atomic_int64_t& application_count() {
+    inline std::atomic_int64_t& window_system_count() {
         static std::atomic_int64_t count{};
         return count;
     }

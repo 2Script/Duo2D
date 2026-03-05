@@ -15,7 +15,7 @@ namespace d2d::vk::impl {
 namespace d2d::vk {
     struct pixel_format_info {
 
-        struct channel { enum name {
+        struct channel { enum name : std::uint_fast8_t {
             red, green, blue, alpha, depth, stencil, exponent, num_channels
         };};
     public:

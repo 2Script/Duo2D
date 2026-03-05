@@ -2,6 +2,7 @@
 #include <streamline/metaprogramming/integer_sequence.hpp>
 
 #include "Duo2D/core/render_process.hpp"
+#include "Duo2D/core/window.hpp"
 #include "Duo2D/timeline/command.fwd.hpp"
 #include "Duo2D/timeline/setup.hpp"
 #include "Duo2D/vulkan/memory/pipeline.hpp"
@@ -20,9 +21,12 @@ namespace d2d {
 namespace d2d::timeline {
 	template<typename T>
 	struct setup<dispatch<T>> {
-		template<sl::size_t N, buffer_config_table<N> BufferConfigs, sl::size_t CommandGroupCount>
-		result<vk::pipeline<vk::bind_point::compute, T, N, BufferConfigs>> operator()(render_process<N, BufferConfigs, CommandGroupCount> const& proc) const noexcept {
-			return make<vk::pipeline<vk::bind_point::compute, T, N, BufferConfigs>>(proc.logical_device_ptr());
+		template<auto BufferConfigs, auto AssetHeapConfigs, sl::size_t CommandGroupCount>
+		result<vk::pipeline<vk::bind_point::compute, T, BufferConfigs, AssetHeapConfigs>> operator()(
+			render_process<BufferConfigs, AssetHeapConfigs, CommandGroupCount> const& proc,
+			window&
+		) const noexcept {
+			return make<vk::pipeline<vk::bind_point::compute, T, BufferConfigs, AssetHeapConfigs>>(proc.logical_device_ptr());
 		};
 	};
 }
@@ -30,19 +34,24 @@ namespace d2d::timeline {
 namespace d2d::timeline {
 	template<typename T>
 	struct command<dispatch<T>> {
-		template<sl::size_t N, buffer_config_table<N> BufferConfigs, sl::size_t CommandGroupCount, sl::index_t CommandGroupIdx>
-		constexpr result<void> operator()(render_process<N, BufferConfigs, CommandGroupCount> const& proc, timeline::state<N, BufferConfigs, CommandGroupCount>&, vk::pipeline<vk::bind_point::compute, T, N, BufferConfigs>& pipeline, sl::index_constant_type<CommandGroupIdx>) const noexcept {
-			vk::command_buffer<N> const& compute_buffer = proc.command_buffers()[proc.frame_index()][CommandGroupIdx];
+		template<auto BufferConfigs, auto AssetHeapConfigs, sl::size_t CommandGroupCount, sl::index_t CommandGroupIdx>
+		constexpr result<void> operator()(
+			render_process<BufferConfigs, AssetHeapConfigs, CommandGroupCount> const& proc,
+			window&,
+			timeline::state&,
+			vk::pipeline<vk::bind_point::compute, T, BufferConfigs, AssetHeapConfigs>& pipeline,
+			sl::index_constant_type<CommandGroupIdx>
+		) const noexcept {
+			vk::command_buffer const& compute_buffer = proc.command_buffers()[proc.frame_index()][CommandGroupIdx];
 
 			compute_buffer.bind_pipeline(pipeline);
 
-			sl::size_t bind_index = 0;
 			//For each buffer declared by type T, bind the buffer (if applicable)
-			[&compute_buffer, &bind_index, &proc, &pipeline]<buffer_key_t... Is>(buffer_key_sequence_type<Is...>){
-				((compute_buffer.template bind_buffer<T>(proc[sl::constant<buffer_key_t, Is>], pipeline.layout(), bind_index)), ...);
+			[&compute_buffer, &proc, &pipeline]<buffer_key_t... Ks>(buffer_key_sequence_type<Ks...>){
+				((compute_buffer.template bind_buffer<T>(proc[buffer_key_constant<Ks>], pipeline.layout())), ...);
 			}(T::buffers);
 
-			compute_buffer.template dispatch<T>(); 
+			compute_buffer.template dispatch<T>(proc); 
 			return {};
 		};
 	};

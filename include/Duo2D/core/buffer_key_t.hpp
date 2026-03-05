@@ -4,7 +4,7 @@
 
 
 namespace d2d {
-    using buffer_key_t = sl::uint64_t;
+	using buffer_key_t = sl::uint64_t;
 }
 
 namespace d2d {

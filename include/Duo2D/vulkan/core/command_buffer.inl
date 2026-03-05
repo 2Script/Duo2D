@@ -1,20 +1,17 @@
 #pragma once
+#include <streamline/functional/functor/invoke_each.hpp>
+
 #include <vulkan/vulkan.h>
 
 #include "Duo2D/vulkan/core/command_buffer.hpp"
 
 
 namespace d2d::vk {
-	template<sl::size_t N>
-    result<command_buffer<N>> command_buffer<N>::create(std::shared_ptr<logical_device> logi_device, std::shared_ptr<physical_device> phys_device, std::shared_ptr<command_pool> pool) noexcept {
+    result<command_buffer> command_buffer::create(std::shared_ptr<logical_device> logi_device, std::shared_ptr<physical_device> phys_device, std::shared_ptr<command_pool> pool) noexcept {
         command_buffer ret{};
         ret.logi_device_ptr = logi_device;
 		ret.phys_device_ptr = phys_device;
         ret.cmd_pool_ptr = pool;
-		ret.draw_buff_refs = {};
-		ret.draw_buff_ref_count = 0;
-		ret.dispatch_buff_refs = {};
-		ret.dispatch_buff_ref_count = 0;
 
         VkCommandBufferAllocateInfo alloc_info{
             .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
@@ -30,8 +27,7 @@ namespace d2d::vk {
 
 
 namespace d2d::vk {
-	template<sl::size_t N>
-    result<void> command_buffer<N>::begin(bool one_time) const noexcept {
+    result<void> command_buffer::begin(bool one_time) const noexcept {
         VkCommandBufferBeginInfo begin_info{
             .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
             .pNext = nullptr,
@@ -41,21 +37,18 @@ namespace d2d::vk {
         return {};
     }
 
-	template<sl::size_t N>
-    result<void> command_buffer<N>::end() const noexcept {
+    result<void> command_buffer::end() const noexcept {
         __D2D_VULKAN_VERIFY(vkEndCommandBuffer(handle));
         return {};
     }
 
 
-	template<sl::size_t N>
-    result<void> command_buffer<N>::reset() const noexcept {
+    result<void> command_buffer::reset() const noexcept {
         __D2D_VULKAN_VERIFY(vkResetCommandBuffer(handle, 0));
         return {};
     }
 
-	template<sl::size_t N>
-    result<void> command_buffer<N>::submit(command_family_t family, std::span<const semaphore_submit_info> wait_semaphore_infos, std::span<const semaphore_submit_info> signal_semaphore_infos, VkFence out_fence) const noexcept {
+    result<void> command_buffer::submit(command_family_t family, std::span<const semaphore_submit_info> wait_semaphore_infos, std::span<const semaphore_submit_info> signal_semaphore_infos, VkFence out_fence) const noexcept {
         VkCommandBufferSubmitInfo cmd_buff_info {
             .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
             .pNext = nullptr,
@@ -77,22 +70,19 @@ namespace d2d::vk {
         return {};
     }
 
-	template<sl::size_t N>
-    result<void> command_buffer<N>::wait(command_family_t family) const noexcept {
+    result<void> command_buffer::wait(command_family_t family) const noexcept {
         __D2D_VULKAN_VERIFY(vkQueueWaitIdle(logi_device_ptr->queues[family]));
         return {};
     }
 
-	template<sl::size_t N>
-    void command_buffer<N>::free() const noexcept {
+    void command_buffer::free() const noexcept {
         return vkFreeCommandBuffers(*logi_device_ptr, *cmd_pool_ptr, 1, &handle);
     }
 }
 
 
 namespace d2d::vk {
-	template<sl::size_t N>
-    void command_buffer<N>::pipeline_barrier(std::span<const VkMemoryBarrier2> global_barriers, std::span<const VkBufferMemoryBarrier2> buffer_barriers, std::span<const VkImageMemoryBarrier2> image_barriers) const noexcept {
+    void command_buffer::pipeline_barrier(std::span<const VkMemoryBarrier2> global_barriers, std::span<const VkBufferMemoryBarrier2> buffer_barriers, std::span<const VkImageMemoryBarrier2> image_barriers) const noexcept {
         VkDependencyInfo barrier_info{
             .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
             .pNext = nullptr,
@@ -107,8 +97,7 @@ namespace d2d::vk {
         vkCmdPipelineBarrier2(handle, &barrier_info);
     }
 
-	template<sl::size_t N>
-    void command_buffer<N>::image_transition(image& img, VkImageLayout new_layout, VkImageLayout old_layout, std::uint32_t) const noexcept {
+    void command_buffer::image_transition(image& img, VkImageLayout new_layout, VkImageLayout old_layout, std::uint32_t) const noexcept {
         constexpr auto image_barrier_mask = [](VkImageLayout layout) noexcept -> std::pair<VkPipelineStageFlagBits2, VkAccessFlagBits2> {
             auto it = image_barrier_map.find(layout);
             if (it == image_barrier_map.end()) return {VK_PIPELINE_STAGE_2_NONE, VK_ACCESS_2_NONE};
@@ -140,8 +129,7 @@ namespace d2d::vk {
 }
 
 namespace d2d::vk {
-	template<sl::size_t N>
-    void command_buffer<N>::begin_draw(
+    void command_buffer::begin_draw(
 		std::span<const VkRenderingAttachmentInfo> color_attachments, 
 		VkRenderingAttachmentInfo const& depth_attachment, 
 		rect<std::uint32_t> render_area_bounds,
@@ -172,105 +160,105 @@ namespace d2d::vk {
     }
 
 
-	template<sl::size_t N>
-    void command_buffer<N>::end_draw() const noexcept {
+    void command_buffer::end_draw() const noexcept {
         vkCmdEndRendering(handle);
     }
 }
 
 
 namespace d2d::vk {
-	template<sl::size_t N>
-	template<typename T, sl::index_t I, typename Derived, buffer_config_table<N> BufferConfigs>
-	void command_buffer<N>::bind_buffer(device_allocation_segment<I, Derived> const& buff, pipeline_layout<shader_stage::all_graphics, T, N, BufferConfigs> const& layout, std::size_t&) const noexcept {
-		constexpr buffer_config config = device_allocation_segment<I, Derived>::config;
+	template<typename T, sl::index_t I, sl::size_t N, buffer_config_table<N> BufferConfigs, auto AssetHeapConfigs, typename RenderProcessT>
+	void command_buffer::bind_buffer(device_allocation_segment<I, N, BufferConfigs, RenderProcessT> const& buff, pipeline_layout<shader_stage::all_graphics, T, BufferConfigs, AssetHeapConfigs> const& layout) const noexcept {
+		constexpr buffer_config config = device_allocation_segment<I, N, BufferConfigs, RenderProcessT>::config;
 		
-		if constexpr(config.usage & usage_policy::index)
+		if constexpr(config.usage & buffer_usage_policy::index)
             vkCmdBindIndexBuffer(handle, buff.buffs[buff.current_buffer_index()], 0, T::index_type);
 
-		if constexpr(config.usage & usage_policy::push_constant)
+		if constexpr(config.usage & buffer_usage_policy::push_constant)
 			vkCmdPushConstants(handle, layout, config.stages, 0, config.initial_capacity_bytes, buff.bytes.data());
-
-		if constexpr(config.usage & usage_policy::draw_commands) {
-			const sl::index_t i = draw_buff_ref_count++;
-			draw_buff_refs[i] = buff.buffs[buff.current_buffer_index()];
-			draw_buff_sizes[i] = buff.allocated_bytes;
-		}
-
-		if constexpr(config.usage & usage_policy::draw_count)
-			draw_count_buff_refs[draw_count_buff_ref_count++] = buff.buffs[buff.current_buffer_index()];
 	}
 
-	template<sl::size_t N>
-	template<typename T, sl::index_t I, typename Derived, buffer_config_table<N> BufferConfigs>
-	void command_buffer<N>::bind_buffer(device_allocation_segment<I, Derived> const& buff, pipeline_layout<shader_stage::compute, T, N, BufferConfigs> const& layout, std::size_t&) const noexcept {
-		constexpr buffer_config config = device_allocation_segment<I, Derived>::config;
+	template<typename T, sl::index_t I, sl::size_t N, buffer_config_table<N> BufferConfigs, auto AssetHeapConfigs, typename RenderProcessT>
+	void command_buffer::bind_buffer(device_allocation_segment<I, N, BufferConfigs, RenderProcessT> const& buff, pipeline_layout<shader_stage::compute, T, BufferConfigs, AssetHeapConfigs> const& layout) const noexcept {
+		constexpr buffer_config config = device_allocation_segment<I, N, BufferConfigs, RenderProcessT>::config;
 
-		if constexpr(config.usage & usage_policy::push_constant)
+		if constexpr(config.usage & buffer_usage_policy::push_constant)
 			vkCmdPushConstants(handle, layout, config.stages, 0, config.initial_capacity_bytes, buff.bytes.data());
-
-		if constexpr(config.usage & usage_policy::dispatch_commands)
-			dispatch_buff_refs[dispatch_buff_ref_count++] = buff.buffs[buff.current_buffer_index()];
 	}
 
-	template<sl::size_t N>
-    template<bind_point_t BindPoint, typename T, buffer_config_table<N> BufferConfigs>
-	void command_buffer<N>::bind_pipeline(pipeline<BindPoint, T, N, BufferConfigs> const& p) const noexcept {
+    template<bind_point_t BindPoint, typename T, auto BufferConfigs, auto AssetHeapConfigs>
+	void command_buffer::bind_pipeline(pipeline<BindPoint, T, BufferConfigs, AssetHeapConfigs> const& p) const noexcept {
         vkCmdBindPipeline(handle, static_cast<VkPipelineBindPoint>(BindPoint), p);
 	}
 
 	
-	template<sl::size_t N>
-	template<typename T>
-    void command_buffer<N>::draw(sl::uoffset_t draw_offset, sl::uoffset_t count_offset) const noexcept {
-		const sl::uint32_t max_draw_count = T::max_draw_count();
-		for(sl::index_t i = 0; i < std::min(draw_buff_ref_count, draw_count_buff_ref_count); ++i) {
-			VkBuffer draw_buff = draw_buff_refs[i];
-			VkBuffer draw_count_buff = draw_count_buff_refs[i];
+	template<typename T, auto BufferConfigs, auto AssetHeapConfigs, sl::size_t CommandGroupCount>
+    void command_buffer::draw(
+		render_process<BufferConfigs, AssetHeapConfigs, CommandGroupCount> const& render_proc,
+		sl::array<decltype(T::draw_buffers)::size(), sl::uoffset_t> draw_command_buffer_offsets, 
+		sl::array<decltype(T::draw_buffers)::size(), sl::uoffset_t> draw_count_buffer_offsets 
+	) const noexcept {
+		constexpr auto draw_command = []<sl::index_t I>(
+			VkCommandBuffer cmd_buff,
+			render_process<BufferConfigs, AssetHeapConfigs, CommandGroupCount> const& proc,
+			sl::array<decltype(T::draw_buffers)::size(), sl::uoffset_t> draw_cmd_buff_offsets, 
+			sl::array<decltype(T::draw_buffers)::size(), sl::uoffset_t> draw_cnt_buff_offsets,
+			sl::index_constant_type<I>
+		) noexcept -> void {
+			const sl::uoffset_t draw_cmd_offset = draw_cmd_buff_offsets[I];
+			const sl::uoffset_t draw_cnt_offset = draw_cnt_buff_offsets[I];
+			auto const& draw_cmd_buff = sl::universal::get<T::draw_buffers[I].key>(proc);
+			auto const& draw_cnt_buff = sl::universal::get<T::draw_buffers[I].value>(proc);
+
         	if constexpr (requires { T::index_type; }) {
 				constexpr static sl::size_t stride = sizeof(indexed_draw_command_t);
-				const sl::uint32_t final_max_draw_count = std::min(max_draw_count, static_cast<sl::uint32_t>((draw_buff_sizes[i] - stride - draw_offset)/stride) + 1);
-        	    vkCmdDrawIndexedIndirectCount(handle, draw_buff, draw_offset, draw_count_buff, count_offset, final_max_draw_count, stride);
+				const sl::uint32_t final_max_draw_count = std::min(T::max_draw_count(), static_cast<sl::uint32_t>((draw_cmd_buff.capacity_bytes() - stride - draw_cmd_offset)/stride) + 1);
+        	    vkCmdDrawIndexedIndirectCount(cmd_buff, static_cast<VkBuffer>(draw_cmd_buff), draw_cmd_offset, static_cast<VkBuffer>(draw_cnt_buff), draw_cnt_offset, final_max_draw_count, stride);
 			} else {
 				constexpr static sl::size_t stride = sizeof(draw_command_t);
-				const sl::uint32_t final_max_draw_count = std::min(max_draw_count, static_cast<sl::uint32_t>((draw_buff_sizes[i] - stride - draw_offset)/stride) + 1);
-        	    vkCmdDrawIndirectCount(handle, draw_buff, draw_offset, draw_count_buff, count_offset, final_max_draw_count, stride);
+				const sl::uint32_t final_max_draw_count = std::min(T::max_draw_count(), static_cast<sl::uint32_t>((draw_cmd_buff.capacity_bytes() - stride - draw_cmd_offset)/stride) + 1);
+        	    vkCmdDrawIndirectCount(cmd_buff, static_cast<VkBuffer>(draw_cmd_buff), draw_cmd_offset, static_cast<VkBuffer>(draw_cnt_buff), draw_cnt_offset, final_max_draw_count, stride);
 			}
-		}
+		};
 
-		draw_buff_ref_count = 0;
-		draw_count_buff_ref_count = 0;
+		return sl::functor::invoke_each<draw_command>{}(sl::index_sequence_of_length<decltype(T::draw_buffers)::size()>, *this, render_proc, draw_command_buffer_offsets, draw_count_buffer_offsets);
     }
 	
-	template<sl::size_t N>
-	template<typename T>
-    void command_buffer<N>::dispatch(sl::uoffset_t offset) const noexcept {
-		for(sl::index_t i = 0; i < dispatch_buff_ref_count; ++i) 
-			vkCmdDispatchIndirect(handle, dispatch_buff_refs[i], offset);
+	template<typename T, auto BufferConfigs, auto AssetHeapConfigs, sl::size_t CommandGroupCount>
+    void command_buffer::dispatch(
+		render_process<BufferConfigs, AssetHeapConfigs, CommandGroupCount> const& render_proc,
+		sl::array<decltype(T::dispatch_buffers)::size(), sl::uoffset_t> buffer_offsets
+	) const noexcept {
+		constexpr auto dispatch_command = []<sl::index_t I>(
+			VkCommandBuffer cmd_buff,
+			render_process<BufferConfigs, AssetHeapConfigs, CommandGroupCount> const& proc,
+			sl::array<decltype(T::dispatch_buffers)::size(), sl::uoffset_t> buff_offsets, 
+			sl::index_constant_type<I>
+		) noexcept -> void {
+			vkCmdDispatchIndirect(cmd_buff, static_cast<VkBuffer>(sl::universal::get<T::dispatch_buffers[I]>(proc)), buff_offsets[I]);
+		};
 
-		dispatch_buff_ref_count = 0;
+		return sl::functor::invoke_each<dispatch_command>{}(sl::index_sequence_of_length<decltype(T::dispatch_buffers)::size()>, *this, render_proc, buffer_offsets);
     }
 }
 
 
 
 namespace d2d::vk {
-	template<sl::size_t N>
-	template<sl::index_t I, sl::size_t J, typename Derived>
-    void command_buffer<N>::copy(
-		device_allocation_segment<I, Derived>& dst, 
-		device_allocation_segment<J, Derived> const& src, 
+	template<sl::index_t I, sl::index_t J, sl::size_t N, buffer_config_table<N> BufferConfigs, typename RenderProcessT>
+    void command_buffer::copy(
+		device_allocation_segment<I, N, BufferConfigs, RenderProcessT>& dst, 
+		device_allocation_segment<J, N, BufferConfigs, RenderProcessT> const& src, 
 		std::span<const VkBufferCopy> copy_regions
 	) const noexcept {
         vkCmdCopyBuffer(handle, src.buffs[src.current_buffer_index()], dst.buffs[dst.current_buffer_index()], copy_regions.size(), copy_regions.data());
     }
 
 
-	template<sl::size_t N>
-	template<sl::index_t I, sl::size_t J, typename Derived>
-    void command_buffer<N>::copy(
-		device_allocation_segment<I, Derived>& dst, 
-		device_allocation_segment<J, Derived> const& src, 
+	template<sl::index_t I, sl::index_t J, sl::size_t N, buffer_config_table<N> BufferConfigs, typename RenderProcessT>
+    void command_buffer::copy(
+		device_allocation_segment<I, N, BufferConfigs, RenderProcessT>& dst, 
+		device_allocation_segment<J, N, BufferConfigs, RenderProcessT> const& src, 
 		std::size_t size, 
 		sl::uoffset_t dst_offset, 
 		sl::uoffset_t src_offset

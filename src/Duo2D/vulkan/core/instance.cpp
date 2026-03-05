@@ -6,17 +6,14 @@
 #include <utility>
 
 namespace d2d::vk {
-    result<instance> instance::create(VkApplicationInfo& app_info) noexcept {
-        // Get needed extensions
-        uint32_t glfw_ext_cnt = 0;
-        const char** glfw_exts = glfwGetRequiredInstanceExtensions(&glfw_ext_cnt);
-        __D2D_GLFW_VERIFY(glfw_exts);
+    result<instance> instance::create(VkApplicationInfo& app_info, std::span<char const* const> instance_extension_names) noexcept {
+
 
         VkInstanceCreateInfo create_info{
             .sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
             .pApplicationInfo = &app_info,
-            .enabledExtensionCount = glfw_ext_cnt,
-            .ppEnabledExtensionNames = glfw_exts,
+            .enabledExtensionCount = static_cast<sl::uint32_t>(instance_extension_names.size()),
+            .ppEnabledExtensionNames = instance_extension_names.data(),
         };
 
         //#define D2D_NO_VALIDATION_LAYERS
@@ -35,7 +32,7 @@ namespace d2d::vk {
                 return error::missing_validation_layer;
         }
         
-        using c_str_array = std::array<const char* const, validation_layers.size()>;
+        using c_str_array = std::array<char const* const, validation_layers.size()>;
         constexpr static auto layer_strs = []<std::size_t... Is>(std::index_sequence<Is...>){
             return c_str_array{ validation_layers[Is].data()... };
         };

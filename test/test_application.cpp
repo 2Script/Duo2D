@@ -18,15 +18,16 @@
 #include <Duo2D/core/window.hpp>
 #include <Duo2D/arith/matrix.hpp>
 #include <Duo2D/arith/point.hpp>
+#include "Duo2D/core/application_instance.hpp"
 #include "Duo2D/core/decoder.hpp"
 #include "Duo2D/input/category.hpp"
 #include "Duo2D/input/code.hpp"
+#include "Duo2D/timeline/command_traits.hpp"
 #include "Duo2D/timeline/predefined_callbacks/update_swap_extent.hpp"
 
 #include "./timeline.hpp"
 #include "./buffer_config_table.hpp"
 
-std::exception_ptr asdasdasd{};
 
 
 #if __has_feature(address_sanitizer) || defined(__SANITIZE_ADDRESS__)
@@ -34,18 +35,17 @@ extern "C" const char* __asan_default_options() { return "detect_leaks=0"; }
 #endif
 
 
-using window = d2d::window<d2d::test::novice_timeline, buffer_configs>;
-using application = d2d::application<window>;
+constexpr d2d::asset_heap_config_table<0> asset_heap_configs{{}};
 
-constexpr sl::size_t N = buffer_configs.size();
+using application_instance = d2d::application_instance<d2d::test::novice_timeline, buffer_configs, asset_heap_configs>;
+using application = d2d::application<application_instance, true>;
+
 using command_traits_type = d2d::timeline::impl::command_traits<
 	d2d::test::basic_timeline, 
 	0, 
 	sl::index_sequence_type<>, 
 	sl::integer_sequence_type<d2d::command_family_t>
 >;
-constexpr sl::size_t command_group_count = command_traits_type::group_count + d2d::timeline::impl::dedicated_command_group::num_dedicated_command_groups;
-using filter_sequence = d2d::impl::device_allocation_filter_sequence<N, buffer_configs, command_group_count, d2d::buffering_policy::multi, d2d::memory_policy::push_constant>;
 
 static_assert(command_traits_type::group_indices[0] == 0);
 static_assert(command_traits_type::group_indices[1] == 1);
@@ -61,25 +61,6 @@ static_assert(command_traits_type::group_families[1] == d2d::command_family::gra
 static_assert(command_traits_type::group_families[2] == d2d::command_family::present);
 
 
-using render_process_type = d2d::render_process<N, buffer_configs, command_group_count>;
-using device_allocation_group_type = d2d::impl::device_allocation_group<N, buffer_configs, command_group_count, d2d::buffering_policy::multi, sl::index_sequence_of_length_type<d2d::memory_policy::num_memory_policies>>;
-using device_allocation_type = d2d::vk::device_allocation<
-	D2D_FRAMES_IN_FLIGHT, 
-	filter_sequence,
-	d2d::buffering_policy::multi, 
-	d2d::memory_policy::push_constant, 
-	render_process_type
->;
-static_assert(std::is_base_of_v<d2d::vk::device_allocation_segment<0, render_process_type>,render_process_type>);
-static_assert(std::is_base_of_v<device_allocation_type, device_allocation_group_type>);
-static_assert(std::is_base_of_v<device_allocation_group_type, render_process_type>);
-
-
-
-static_assert(std::is_base_of_v<device_allocation_type, render_process_type>);
-static_assert(std::is_base_of_v<device_allocation_group_type, render_process_type>);
-
-
 constexpr sl::array<6, std::uint16_t> rect_indices{{0, 1, 2, 2, 1, 3}};
 constexpr sl::array<3, d2d::pt2u32> rect_positions{{
 	{{{0, 0}}},
@@ -88,132 +69,131 @@ constexpr sl::array<3, d2d::pt2u32> rect_positions{{
 }};
 
 int main(){
-    auto a = d2d::make<application>("Duo2D Test");
+    auto a = d2d::make<application>("Duo2D Test", d2d::version{1,0,0});
     if(!a.has_value()) return a.error();
     application app = *std::move(a);
 
 
-    auto d = app.devices();
-    if(!d.has_value()) {
-        std::cout << d2d::error::last_glfw_desc() << std::endl;
-        return d.error();
-    }
-    std::set<d2d::vk::physical_device> device_list = *d;
-    if(device_list.empty()) return d2d::error::no_vulkan_devices;
 
     std::cout << std::filesystem::current_path() << std::endl;
     const std::filesystem::path assets_path = std::filesystem::canonical(std::filesystem::path("../../test/assets"));
 
+    std::set<d2d::vk::physical_device> device_list = app.devices();
     app.selected_device() = *device_list.begin();
     auto i = app.initialize_device();
     if(!i.has_value()) return i.error(); 
 
-    auto _w = app.add_window();
-    if(!_w.has_value()) return _w.error();
-    window* win = *_w;
+    d2d::result<application_instance*> inst_result = app.emplace_back();
+    if(!inst_result.has_value()) return inst_result.error();
+    application_instance& inst = *(*inst_result);
 
-	window& w = *win;
+	//Add window
+	RESULT_VERIFY(inst.emplace_window(d2d::sz2u32{1600, 900}));
+	//RESULT_VERIFY(inst.emplace_window(d2d::sz2u32{1600, 900}, "Duo2D Test Window"));
 
+	//Initialize
+	RESULT_VERIFY(inst.initialize());
+
+ 
 	//llfio::mapped_file_handle mh;
 	//RESULT_TRY_MOVE(mh, d2d::decoder::open_file(assets_path / "test_font.ttf"));
 	//RESULT_VERIFY(d2d::decoder::decode_font(mh));
-	
 
 
 	
-	w.timeline_callbacks().push_back(typename window::timeline_callbacks_type{
-		.on_frame_begin_fn = [](typename window::render_process_type& proc) noexcept -> d2d::result<void> {
-			{
-			draw_constants constants {
-				.swap_extent = proc.swap_chain().extent(),
-				.position_buff_addr = sl::universal::get<buffer_id::positions>(proc).gpu_address()
-			};
-			std::memcpy(
-				sl::universal::get<buffer_id::draw_constants>(proc).data(),
-				&constants,
-				sizeof(draw_constants)
-			);
-			}
+	inst.timeline_callbacks()[d2d::timeline::callback_event::on_frame_begin].push_back([](typename application_instance::render_process_type& proc, d2d::window& win, auto&) noexcept -> d2d::result<void> {
+		{
+		draw_constants constants {
+			.swap_extent = win.swap_chain().extent(),
+			.position_buff_addr = sl::universal::get<buffer_id::positions>(proc).gpu_address()
+		};
+		std::memcpy(
+			sl::universal::get<buffer_id::draw_constants>(proc).data(),
+			&constants,
+			sizeof(draw_constants)
+		);
+		}
 
-			{
-			compute_constants constants {
-				.buffer_addresses_addr = sl::universal::get<buffer_id::compute_buffer_addresses>(proc).gpu_address()
-			};
-			std::memcpy(
-				sl::universal::get<buffer_id::compute_constants>(proc).data(),
-				&constants,
-				sizeof(compute_constants)
-			);
+		{
+		compute_constants constants {
+			.buffer_addresses_addr = sl::universal::get<buffer_id::compute_buffer_addresses>(proc).gpu_address()
+		};
+		std::memcpy(
+			sl::universal::get<buffer_id::compute_constants>(proc).data(),
+			&constants,
+			sizeof(compute_constants)
+		);
 
-			sl::array<3, VkDeviceAddress> compute_addresses{{
-				sl::universal::get<buffer_id::counts>(proc).gpu_address(),
+		sl::array<3, VkDeviceAddress> compute_addresses{{
+			sl::universal::get<buffer_id::counts>(proc).gpu_address(),
 
-				sl::universal::get<buffer_id::positions>(proc).gpu_address(),
-				sl::universal::get<buffer_id::draw_commands>(proc).gpu_address(),
-			}};
+			sl::universal::get<buffer_id::positions>(proc).gpu_address(),
+			sl::universal::get<buffer_id::draw_commands>(proc).gpu_address(),
+		}};
 
-			std::memcpy(
-				sl::universal::get<buffer_id::compute_buffer_addresses>(proc).data(),
-				compute_addresses.data(),
-				compute_addresses.size_bytes()
-			);
-			}
-			return {};
-		},
-		.on_swap_chain_updated_fn = &d2d::timeline::predefined_callbacks::update_swap_extent<window, buffer_id::draw_constants>,
+		std::memcpy(
+			sl::universal::get<buffer_id::compute_buffer_addresses>(proc).data(),
+			compute_addresses.data(),
+			compute_addresses.size_bytes()
+		);
+		}
+		return {};
 	});
+	inst.timeline_callbacks()[d2d::timeline::callback_event::on_swap_chain_updated].push_back(
+		&d2d::timeline::predefined_callbacks::update_swap_extent<application_instance, buffer_id::draw_constants>
+	);
 
 
-	RESULT_VERIFY((sl::universal::get<buffer_id::dispatch_commands>(w).template try_emplace_back<VkDispatchIndirectCommand>(
+	RESULT_VERIFY((sl::universal::get<buffer_id::dispatch_commands>(inst).template try_emplace_back<VkDispatchIndirectCommand>(
 		1, 1, 1
 	)));
 
 
-	RESULT_VERIFY(sl::universal::get<buffer_id::draw_commands>(w).reserve(sizeof(VkDrawIndexedIndirectCommand))); //Should do nothing
-	RESULT_VERIFY((sl::universal::get<buffer_id::draw_commands>(w).template try_emplace_back<VkDrawIndexedIndirectCommand>(
+	RESULT_VERIFY(sl::universal::get<buffer_id::draw_commands>(inst).reserve(sizeof(VkDrawIndexedIndirectCommand))); //Should do nothing
+	RESULT_VERIFY((sl::universal::get<buffer_id::draw_commands>(inst).template try_emplace_back<VkDrawIndexedIndirectCommand>(
 		6, 3, 0, 0, 0
 	)));
-	RESULT_VERIFY((sl::universal::get<buffer_id::counts>(w).template try_emplace_back<d2d::draw_count_t>(
+	RESULT_VERIFY((sl::universal::get<buffer_id::counts>(inst).template try_emplace_back<d2d::draw_count_t>(
 		1
 	)));
 
-	RESULT_VERIFY(sl::universal::get<buffer_id::staging>(w).resize(rect_indices.size_bytes()));
-	std::memcpy(sl::universal::get<buffer_id::staging>(w).data(), rect_indices.data(), rect_indices.size_bytes());
+	RESULT_VERIFY(sl::universal::get<buffer_id::staging>(inst).resize(rect_indices.size_bytes()));
+	std::memcpy(sl::universal::get<buffer_id::staging>(inst).data(), rect_indices.data(), rect_indices.size_bytes());
 	
-	RESULT_VERIFY(sl::universal::get<buffer_id::rectangle_indices>(w).resize(rect_indices.size_bytes()));
+	RESULT_VERIFY(sl::universal::get<buffer_id::rectangle_indices>(inst).resize(rect_indices.size_bytes()));
 
 	RESULT_VERIFY((d2d::copy(
-		sl::universal::get<buffer_id::rectangle_indices>(w),
-		sl::universal::get<buffer_id::staging>(w),
+		sl::universal::get<buffer_id::rectangle_indices>(inst),
+		sl::universal::get<buffer_id::staging>(inst),
 		rect_indices.size_bytes()
 	)));
-	//sl::universal::get<buffer_id::staging>(w).clear();
+	//sl::universal::get<buffer_id::staging>(inst).clear();
 
 
-	RESULT_VERIFY(sl::universal::get<buffer_id::staging>(w).resize(rect_positions.size_bytes()));
-	std::memcpy(sl::universal::get<buffer_id::staging>(w).data(), rect_positions.data(), rect_positions.size_bytes());
+	RESULT_VERIFY(sl::universal::get<buffer_id::staging>(inst).resize(rect_positions.size_bytes()));
+	std::memcpy(sl::universal::get<buffer_id::staging>(inst).data(), rect_positions.data(), rect_positions.size_bytes());
 
-	RESULT_VERIFY(sl::universal::get<buffer_id::positions>(w).resize((sizeof(d2d::pt2u32) * 16 * 16) + 1));
+	RESULT_VERIFY(sl::universal::get<buffer_id::positions>(inst).resize((sizeof(d2d::pt2u32) * 16 * 16) + 1));
 
 	RESULT_VERIFY((d2d::copy(
-		sl::universal::get<buffer_id::positions>(w),
-		sl::universal::get<buffer_id::staging>(w),
+		sl::universal::get<buffer_id::positions>(inst),
+		sl::universal::get<buffer_id::staging>(inst),
 		rect_positions.size_bytes()
 	)));
-	sl::universal::get<buffer_id::staging>(w).clear();
+	sl::universal::get<buffer_id::staging>(inst).clear();
 
 
 	constexpr sl::uint32_t rect_limit{250};
-	RESULT_VERIFY((sl::universal::get<buffer_id::staging>(w).try_push_back(
+	RESULT_VERIFY((sl::universal::get<buffer_id::staging>(inst).try_push_back(
 		rect_limit
 	)));
 	RESULT_VERIFY((d2d::copy(
-		sl::universal::get<buffer_id::counts>(w),
-		sl::universal::get<buffer_id::staging>(w),
+		sl::universal::get<buffer_id::counts>(inst),
+		sl::universal::get<buffer_id::staging>(inst),
 		sizeof(decltype(rect_limit)),
 		sizeof(d2d::draw_count_t)
 	)));
-	sl::universal::get<buffer_id::staging>(w).clear();
+	sl::universal::get<buffer_id::staging>(inst).clear();
 
     //2nd window
     /* {
@@ -223,88 +203,88 @@ int main(){
 	 
 	{
     //for(auto const& event_fn : d2d::input::defaults::interactable::event_fns<window>())
-    //    win->input_event_functions().insert(event_fn);
+    //    inst.input_event_functions().insert(event_fn);
     //for(auto const& press_binding : d2d::input::defaults::interactable::press_bindings<window>())
-    //    win->input_active_bindings().insert(press_binding);
+    //    inst.input_active_bindings().insert(press_binding);
     //for(auto const& release_binding : d2d::input::defaults::interactable::release_bindings<window>())
-    //    win->input_inactive_bindings().insert(release_binding);
+    //    inst.input_inactive_bindings().insert(release_binding);
 
 
-    d2d::input::event_set& left_active = win->input_active_bindings()[d2d::input::combination{{d2d::input::generic_code::any}, d2d::input::key_code::kb_a}];
+    d2d::input::event_set& left_active = inst.input_active_bindings()[d2d::input::combination{{d2d::input::generic_code::any}, d2d::input::key_code::kb_a}];
     left_active.applicable_categories.set(d2d::input::category::system);
     left_active.event_ids[d2d::input::category::system] = 0;
-    d2d::input::event_set& left_inactive = win->input_inactive_bindings()[d2d::input::combination{{d2d::input::generic_code::any}, d2d::input::key_code::kb_a}];
+    d2d::input::event_set& left_inactive = inst.input_inactive_bindings()[d2d::input::combination{{d2d::input::generic_code::any}, d2d::input::key_code::kb_a}];
     left_inactive.applicable_categories.set(d2d::input::category::system);
     left_inactive.event_ids[d2d::input::category::system] = 1;
-    win->input_event_functions().try_emplace(d2d::input::categorized_event_t{0, d2d::input::category::system}, [](void*, d2d::input::combination, bool pressed, d2d::input::categorized_event_t, d2d::input::mouse_aux_t, void*){
+    inst.input_event_functions().try_emplace(d2d::input::categorized_event_t{0, d2d::input::category::system}, [](void*, d2d::input::combination, bool pressed, d2d::input::categorized_event_t, d2d::input::mouse_aux_t, void*){
         std::cout << "left active (by " << (pressed ? std::string_view("press") : std::string_view("release")) << ")" << std::endl;
     });
-    win->input_event_functions().try_emplace(d2d::input::categorized_event_t{1, d2d::input::category::system}, [](void*, d2d::input::combination, bool pressed, d2d::input::categorized_event_t, d2d::input::mouse_aux_t, void*){
+    inst.input_event_functions().try_emplace(d2d::input::categorized_event_t{1, d2d::input::category::system}, [](void*, d2d::input::combination, bool pressed, d2d::input::categorized_event_t, d2d::input::mouse_aux_t, void*){
         std::cout << "left inactive (by " << (pressed ? std::string_view("press") : std::string_view("release")) << ")" << std::endl;
     });
-    //win->input_active_bindings().insert_or_assign(d2d::input::combination{{}, d2d::input::key_code::kb_a}, left_active);
-    //win->input_inactive_bindings().insert_or_assign(d2d::input::combination{{d2d::input::key_code::kb_a}, d2d::input::generic_code::any}, left_active);
-    //win->input_active_bindings().insert_or_assign(d2d::input::combination{{d2d::input::key_code::kb_a}, d2d::input::generic_code::any}, left_inactive);
-    //win->input_inactive_bindings().insert_or_assign(d2d::input::combination{{}, d2d::input::key_code::kb_a}, left_inactive);
-    //win->input_active_bindings().insert_or_assign(d2d::input::combination{{d2d::input::generic_code::any}, d2d::input::key_code::kb_a}, left_active);
-    //win->input_inactive_bindings().insert_or_assign(d2d::input::combination{{d2d::input::generic_code::any}, d2d::input::key_code::kb_a}, left_inactive);
+    //inst.input_active_bindings().insert_or_assign(d2d::input::combination{{}, d2d::input::key_code::kb_a}, left_active);
+    //inst.input_inactive_bindings().insert_or_assign(d2d::input::combination{{d2d::input::key_code::kb_a}, d2d::input::generic_code::any}, left_active);
+    //inst.input_active_bindings().insert_or_assign(d2d::input::combination{{d2d::input::key_code::kb_a}, d2d::input::generic_code::any}, left_inactive);
+    //inst.input_inactive_bindings().insert_or_assign(d2d::input::combination{{}, d2d::input::key_code::kb_a}, left_inactive);
+    //inst.input_active_bindings().insert_or_assign(d2d::input::combination{{d2d::input::generic_code::any}, d2d::input::key_code::kb_a}, left_active);
+    //inst.input_inactive_bindings().insert_or_assign(d2d::input::combination{{d2d::input::generic_code::any}, d2d::input::key_code::kb_a}, left_inactive);
 
 
-    d2d::input::event_set& ctrl_a_g = win->input_active_bindings()[d2d::input::combination{{d2d::input::key_code::kb_left_ctrl, d2d::input::key_code::kb_a}, d2d::input::key_code::kb_g}];
+    d2d::input::event_set& ctrl_a_g = inst.input_active_bindings()[d2d::input::combination{{d2d::input::key_code::kb_left_ctrl, d2d::input::key_code::kb_a}, d2d::input::key_code::kb_g}];
     ctrl_a_g.applicable_categories.set(d2d::input::category::system);
     ctrl_a_g.event_ids[d2d::input::category::system] = 2;
-    d2d::input::event_set& ctrl_g_a = win->input_active_bindings()[d2d::input::combination{{d2d::input::key_code::kb_left_ctrl, d2d::input::key_code::kb_g}, d2d::input::key_code::kb_a}];
+    d2d::input::event_set& ctrl_g_a = inst.input_active_bindings()[d2d::input::combination{{d2d::input::key_code::kb_left_ctrl, d2d::input::key_code::kb_g}, d2d::input::key_code::kb_a}];
     ctrl_g_a.applicable_categories.set(d2d::input::category::system);
     ctrl_g_a.event_ids[d2d::input::category::system] = 2;
-    win->input_event_functions().try_emplace(d2d::input::categorized_event_t{2, d2d::input::category::system}, [](void*, d2d::input::combination, bool, d2d::input::categorized_event_t, d2d::input::mouse_aux_t, void*){
+    inst.input_event_functions().try_emplace(d2d::input::categorized_event_t{2, d2d::input::category::system}, [](void*, d2d::input::combination, bool, d2d::input::categorized_event_t, d2d::input::mouse_aux_t, void*){
         std::cout << "advanced key event called" << std::endl;
     }); 
 
-    win->current_input_categories().set(d2d::input::category::ui);
-    //win->current_input_categories().set(2);
+    inst.current_input_categories().set(d2d::input::category::ui);
+    //inst.current_input_categories().set(2);
 
-    //d2d::input::event_set& inactive_mouse_move = win->input_inactive_bindings()[d2d::input::combination{{d2d::input::generic_code::any}, d2d::input::mouse_code::move}];
+    //d2d::input::event_set& inactive_mouse_move = inst.input_inactive_bindings()[d2d::input::combination{{d2d::input::generic_code::any}, d2d::input::mouse_code::move}];
     //inactive_mouse_move.applicable_categories.set(d2d::input::category::system);
     //inactive_mouse_move.event_ids[d2d::input::category::system] = 3;
-    //win->input_event_functions().try_emplace(d2d::input::categorized_event_t{3, d2d::input::category::system}, [](void*, d2d::input::combination, bool, d2d::input::categorized_event_t, d2d::input::mouse_aux_t, void*){
+    //inst.input_event_functions().try_emplace(d2d::input::categorized_event_t{3, d2d::input::category::system}, [](void*, d2d::input::combination, bool, d2d::input::categorized_event_t, d2d::input::mouse_aux_t, void*){
     //    std::cout << "mouse move (inactive)" << std::endl;
     //}); 
 
-    d2d::input::event_set& shift_mouse_move = win->input_active_bindings()[d2d::input::combination{{d2d::input::key_code::kb_left_shift}, d2d::input::mouse_code::move}];
+    d2d::input::event_set& shift_mouse_move = inst.input_active_bindings()[d2d::input::combination{{d2d::input::key_code::kb_left_shift}, d2d::input::mouse_code::move}];
     shift_mouse_move.applicable_categories.set(d2d::input::category::system);
     shift_mouse_move.event_ids[d2d::input::category::system] = 4;
-    win->input_event_functions().try_emplace(d2d::input::categorized_event_t{4, d2d::input::category::system}, [](void*, d2d::input::combination, bool, d2d::input::categorized_event_t, d2d::input::mouse_aux_t, void*){
+    inst.input_event_functions().try_emplace(d2d::input::categorized_event_t{4, d2d::input::category::system}, [](void*, d2d::input::combination, bool, d2d::input::categorized_event_t, d2d::input::mouse_aux_t, void*){
         std::cout << "shift mouse move" << std::endl;
     }); 
 
-    d2d::input::event_set& shift_scroll_up = win->input_active_bindings()[d2d::input::combination{{d2d::input::key_code::kb_left_shift}, d2d::input::mouse_code::scroll}];
+    d2d::input::event_set& shift_scroll_up = inst.input_active_bindings()[d2d::input::combination{{d2d::input::key_code::kb_left_shift}, d2d::input::mouse_code::scroll}];
     shift_scroll_up.applicable_categories.set(d2d::input::category::system);
     shift_scroll_up.event_ids[d2d::input::category::system] = 5;
-    win->input_event_functions().try_emplace(d2d::input::categorized_event_t{5, d2d::input::category::system}, [](void*, d2d::input::combination, bool, d2d::input::categorized_event_t, d2d::input::mouse_aux_t scroll_magnitude, void*){
+    inst.input_event_functions().try_emplace(d2d::input::categorized_event_t{5, d2d::input::category::system}, [](void*, d2d::input::combination, bool, d2d::input::categorized_event_t, d2d::input::mouse_aux_t scroll_magnitude, void*){
         if(scroll_magnitude->y() >= 0) return;
         std::cout << "shift scroll" << std::endl;
     }); 
 
 
-    d2d::input::event_set& left_mouse_btn = win->input_active_bindings()[d2d::input::combination{{}, d2d::input::mouse_code::button_1}];
+    d2d::input::event_set& left_mouse_btn = inst.input_active_bindings()[d2d::input::combination{{}, d2d::input::mouse_code::button_1}];
     left_mouse_btn.applicable_categories.set(d2d::input::category::system);
     left_mouse_btn.event_ids[d2d::input::category::system] = 6;
-    //win->input_modifier_flags()[d2d::input::mouse_code::button_1] |= d2d::input::modifier_flags::no_modifiers_allowed;
-    win->input_event_functions().try_emplace(d2d::input::categorized_event_t{6, d2d::input::category::system}, [](void*, d2d::input::combination, bool, d2d::input::categorized_event_t, d2d::input::mouse_aux_t, void*){
+    //inst.input_modifier_flags()[d2d::input::mouse_code::button_1] |= d2d::input::modifier_flags::no_modifiers_allowed;
+    inst.input_event_functions().try_emplace(d2d::input::categorized_event_t{6, d2d::input::category::system}, [](void*, d2d::input::combination, bool, d2d::input::categorized_event_t, d2d::input::mouse_aux_t, void*){
         std::cout << "left mouse button" << std::endl;
     }); 
 	}
 
 
 
-    std::thread edit_s([](window&) noexcept -> d2d::result<void> {//, window& w){
+    std::thread edit_s([](application_instance&) noexcept -> d2d::result<void> {//, window& w){
 		return {};
-    }, std::ref(*win));
+    }, std::ref(inst));
 
 
     std::future<d2d::result<void>> render = app.start_async_render();
 
-    while(app.open()) {
+    while(app.is_open()) {
         app.poll_events();
         //if(auto r = app.render(); !r.has_value()) [[unlikely]]
         //    return r.error();
@@ -313,14 +293,14 @@ int main(){
     if(auto r = render.get(); !r.has_value()) {
         std::cout << std::format("rendering error {}: {}", static_cast<std::int64_t>(r.error()), d2d::error::code_descs.find(r.error())->second)<< std::endl;
 
-        auto formats = win->physical_device_ptr()->query<d2d::vk::device_query::display_formats>(win->surface());
-        std::cout << std::format("{} formats ({} is selected):", formats.size(), static_cast<std::uint32_t>(win->swap_chain().format().pixel_format.id));
+        auto formats = inst.physical_device_ptr()->query<d2d::vk::device_query::display_formats>(inst.surface());
+        std::cout << std::format("{} formats ({} is selected):", formats.size(), static_cast<std::uint32_t>(inst.swap_chain().format().pixel_format.id));
         for(auto f : formats)
             std::cout << std::format("{},", static_cast<std::uint32_t>(f.pixel_format.id));
         std::cout << std::endl;
 
-        auto present_modes = win->physical_device_ptr()->query<d2d::vk::device_query::present_modes>(win->surface());
-        std::cout << std::format("{} present_modes ({} is selected):", present_modes.size(), static_cast<std::uint32_t>(win->swap_chain().mode()));
+        auto present_modes = inst.physical_device_ptr()->query<d2d::vk::device_query::present_modes>(inst.surface());
+        std::cout << std::format("{} present_modes ({} is selected):", present_modes.size(), static_cast<std::uint32_t>(inst.swap_chain().mode()));
         for(bool b : present_modes)
             std::cout << std::format("{},", b);
         std::cout << std::endl;

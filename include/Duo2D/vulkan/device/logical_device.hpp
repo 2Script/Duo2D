@@ -11,7 +11,7 @@ __D2D_DECLARE_VK_TRAITS(VkDevice);
 
 namespace d2d::vk {
     struct logical_device : vulkan_ptr<VkDevice, vkDestroyDevice> {
-        static result<logical_device> create(std::weak_ptr<physical_device> associated_phys_device) noexcept;
+        static result<logical_device> create(std::weak_ptr<physical_device> associated_phys_device, bool create_present_queue) noexcept;
 
     public:
         //May need to be per-window instead of per-device?

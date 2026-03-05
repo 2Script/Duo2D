@@ -9,7 +9,7 @@ __D2D_DECLARE_VK_TRAITS(VkInstance);
 
 namespace d2d::vk {
     struct instance : vulkan_ptr<VkInstance, vkDestroyInstance> {
-        static result<instance> create(VkApplicationInfo& app_info) noexcept;
+        static result<instance> create(VkApplicationInfo& app_info, std::span<char const* const> instance_extension_names) noexcept;
 
     private:
         constexpr static std::array<const std::string_view, 1> validation_layers = {

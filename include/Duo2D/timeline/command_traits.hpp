@@ -6,6 +6,7 @@
 #include "Duo2D/core/command_family.hpp"
 #include "Duo2D/core/render_process.fwd.hpp"
 #include "Duo2D/core/buffer_config_table.hpp"
+#include "Duo2D/core/asset_heap_config_table.hpp"
 #include "Duo2D/timeline/setup.hpp"
 
 
@@ -26,10 +27,10 @@ namespace d2d::timeline::impl {
 			>
 			//sl::conditional_t<
 			//	!sl::traits::is_same_as_v<
-			//		sl::invoke_return_type_t<setup<Head>, render_process<N, BufferConfigs, CommandGroupCount>&>,
+			//		sl::invoke_return_type_t<setup<Head>, RenderProcessT&>,
 			//		result<sl::empty_t>
 			//	>,
-			//	sl::tuple<AuxTs..., typename sl::invoke_return_type_t<setup<Head>, render_process<N, BufferConfigs, CommandGroupCount>&>::value_type>,
+			//	sl::tuple<AuxTs..., typename sl::invoke_return_type_t<setup<Head>, RenderProcessT&>::value_type>,
 			//	sl::tuple<AuxTs...>
 			//>
 		> {};

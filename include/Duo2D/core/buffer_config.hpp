@@ -5,6 +5,7 @@
 
 #include <vulkan/vulkan.h>
 
+#include "Duo2D/core/coupling_policy.hpp"
 #include "Duo2D/core/memory_policy.hpp"
 #include "Duo2D/core/render_stage.hpp"
 
@@ -17,10 +18,8 @@ namespace d2d::impl {
 
 
 namespace d2d {
-	using buffering_policy_t = bool;
-	using usage_policy_flags_t = VkFlags;
+	using buffer_usage_policy_flags_t = VkFlags;
 	using shader_stage_flags_t = VkShaderStageFlags;
-
 
 
 	using dispatch_command_t = VkDispatchIndirectCommand;
@@ -31,41 +30,18 @@ namespace d2d {
 }
 
 namespace d2d {
-	namespace buffering_policy {
-	enum : buffering_policy_t {
-		single,
-		multi
-	};
-
-	constexpr std::size_t num_buffering_policies = 2;
-	}
-
-
-	namespace usage_policy {
-	enum : usage_policy_flags_t {
+	namespace buffer_usage_policy {
+	enum : buffer_usage_policy_flags_t {
 		none,
-
-
-		sampler = 0b1 << VK_DESCRIPTOR_TYPE_SAMPLER,
-		//combined_sampled_image_and_sampler = 0b1 << VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-
-		sampled_image = 0b1 << VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
-		storage_image = 0b1 << VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
-		uniform_data  = 0b1 << VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-		//storage_data  = 0b1 << VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-		ubo  = uniform_data,
-		//ssbo = storage,
-
-		num_sampler_based_usage_policies = impl::bit_pos(sampler) + 1,
-		num_descriptor_based_usage_policies = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER + 1,
+		generic = none,
 		
+		uniform = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+		index   = VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+		vertex  = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
 
-		index   = 0b1 << (num_descriptor_based_usage_policies + 0),
-		vertex  = 0b1 << (num_descriptor_based_usage_policies + 1),
-		generic = vertex,
+		ubo = uniform,
 
-		num_buffer_based_usage_policies = impl::bit_pos(generic) + 1 - num_descriptor_based_usage_policies,
-		num_direct_usage_polcies = num_buffer_based_usage_policies + num_descriptor_based_usage_policies,
+		num_direct_usage_polcies = impl::bit_pos(vertex) + 1,
 
 
 		draw_commands     = 0b1 << (num_direct_usage_polcies + 0),
@@ -75,14 +51,12 @@ namespace d2d {
 		num_indirect_usage_policies = impl::bit_pos(draw_count) + 1 - num_direct_usage_polcies,
 		num_real_usage_policies = num_direct_usage_polcies + num_indirect_usage_policies,
 
-
-		asset_heap    = 0b1 << (num_real_usage_policies + 0),
 		push_constant = 0b1 << (num_real_usage_policies + 1),
 
 		num_pseudo_usage_policies = impl::bit_pos(push_constant) + 1 - num_real_usage_policies,
 		num_usage_policies = num_pseudo_usage_policies + num_real_usage_policies,
 
-		max_value = ~static_cast<usage_policy_flags_t>(0) >> (std::numeric_limits<usage_policy_flags_t>::digits - (num_usage_policies)),
+		max_value = ~static_cast<buffer_usage_policy_flags_t>(0) >> (std::numeric_limits<buffer_usage_policy_flags_t>::digits - (num_usage_policies)),
 	};
 	}
 
@@ -109,8 +83,8 @@ namespace d2d {
 namespace d2d {
 	struct buffer_config {
 		memory_policy_t memory;
-		buffering_policy_t buffering;
-		usage_policy_flags_t usage;
+		coupling_policy_t coupling;
+		buffer_usage_policy_flags_t usage;
 		shader_stage_flags_t stages;
 		std::size_t initial_capacity_bytes = 0;
 	};

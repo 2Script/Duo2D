@@ -4,17 +4,19 @@
 
 
 namespace d2d::vk {
-    result<logical_device> logical_device::create(std::weak_ptr<physical_device> associated_phys_device) noexcept {
+    result<logical_device> logical_device::create(std::weak_ptr<physical_device> associated_phys_device, bool create_present_queue) noexcept {
         auto phys_device_ptr = associated_phys_device.lock();
         if(!phys_device_ptr)
             return error::device_not_selected;
+
+		const sl::size_t queue_create_info_count = command_family::num_distinct_families + static_cast<sl::size_t>(create_present_queue);
 
         //Create desired queues for each queue family
         constexpr static float priority = 1.f;
         std::array<VkDeviceQueueCreateInfo, command_family::num_families> queue_create_infos{};
 		std::unordered_map<sl::uint32_t, bool> duplicate_index{};
 		sl::uint32_t queue_create_count = 0;
-        for(std::size_t i = 0; i < command_family::num_families; ++i) {
+        for(std::size_t i = 0; i < queue_create_info_count; ++i) {
 			const sl::uint32_t index = phys_device_ptr->queue_family_infos[i].index;
 			if(duplicate_index[index])
 				continue;
@@ -30,13 +32,9 @@ namespace d2d::vk {
         }
 
         //Set desired features
-		VkPhysicalDeviceDescriptorBufferFeaturesEXT desired_descriptor_buffer_features{
-			.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_BUFFER_FEATURES_EXT,
-			.descriptorBuffer = VK_TRUE,
-		};
         VkPhysicalDeviceVulkan13Features desired_1_3_features{
             .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES,
-			.pNext = &desired_descriptor_buffer_features,
+			.pNext = nullptr,
             .synchronization2 = VK_TRUE,
 			.dynamicRendering = VK_TRUE,
         };
@@ -90,7 +88,7 @@ namespace d2d::vk {
 
 
         //Create queues
-        for(std::size_t i = 0; i < command_family::num_families; ++i)
+        for(std::size_t i = 0; i < queue_create_info_count; ++i)
             vkGetDeviceQueue(ret.handle, phys_device_ptr->queue_family_infos[i].index, 0, &ret.queues[i]);
 
 

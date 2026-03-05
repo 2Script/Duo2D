@@ -1,16 +1,18 @@
 #pragma once
 #include "Duo2D/vulkan/memory/pipeline_layout.hpp"
 
+#include <streamline/metaprogramming/integer_sequence.hpp>
+
 namespace d2d::vk {
-    template<shader_stage_flags_t Stages, typename T, sl::size_t N, buffer_config_table<N> BufferConfigs>
-    result<pipeline_layout<Stages, T, N, BufferConfigs>> pipeline_layout<Stages, T, N, BufferConfigs>::create(std::shared_ptr<logical_device> device) noexcept {
+    template<shader_stage_flags_t Stages, typename T, auto BufferConfigs, auto AssetHeapConfigs>
+    result<pipeline_layout<Stages, T, BufferConfigs, AssetHeapConfigs>> pipeline_layout<Stages, T, BufferConfigs, AssetHeapConfigs>::create(std::shared_ptr<logical_device> device) noexcept {
         pipeline_layout ret{};
         ret.dependent_handle = device;
 
 
-		using push_constant_usage_filtered_sequence = sl::filtered_sequence_t<sl::index_sequence_of_length_type<N>, []<sl::index_t I>(sl::index_constant_type<I>){ 
-			constexpr buffer_config cfg = sl::universal::get<sl::second_constant>(*std::next(BufferConfigs.begin(), I));
-			return cfg.usage == usage_policy::push_constant && (cfg.stages & Stages);
+		using push_constant_usage_filtered_sequence = sl::filtered_sequence_t<sl::remove_cvref_t<decltype(T::buffers)>, []<buffer_key_t K>(buffer_key_constant_type<K>) noexcept { 
+			constexpr buffer_config cfg = BufferConfigs[K];
+			return cfg.usage == buffer_usage_policy::push_constant && (cfg.stages & Stages);
 		}>;
 		constexpr auto push_constant_ranges = sl::make<sl::array<push_constant_usage_filtered_sequence::size(), VkPushConstantRange>>(BufferConfigs, [](auto pair, auto) noexcept -> VkPushConstantRange {
 			const buffer_config cfg = pair[sl::second_constant];

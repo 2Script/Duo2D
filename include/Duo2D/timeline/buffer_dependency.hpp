@@ -2,7 +2,7 @@
 #include "Duo2D/core/memory_operation.hpp"
 #include "Duo2D/timeline/command.fwd.hpp"
 #include "Duo2D/timeline/setup.hpp"
-#include "Duo2D/core/render_process.hpp"
+#include "Duo2D/core/window.hpp"
 #include "Duo2D/vulkan/memory/pipeline.hpp"
 #include "Duo2D/timeline/state.hpp"
 #include "Duo2D/timeline/event.hpp"
@@ -29,14 +29,14 @@ namespace d2d::timeline {
 		buffer_key_t... BufferKeys
 	>
 	struct command<buffer_dependency<ExecutionCommandFamily, SourceStages, SourceMemoryOp, DestinationStages, DestinationMemoryOp, buffer_key_sequence_type<BufferKeys...>>> {
-		template<sl::size_t N, buffer_config_table<N> BufferConfigs, sl::size_t CommandGroupCount, sl::index_t CommandGroupIdx>
-		constexpr result<void> operator()(render_process<N, BufferConfigs, CommandGroupCount> const& proc, timeline::state<N, BufferConfigs, CommandGroupCount>&, sl::empty_t, sl::index_constant_type<CommandGroupIdx>) const noexcept {
+		template<typename RenderProcessT, sl::index_t CommandGroupIdx>
+		constexpr result<void> operator()(RenderProcessT const& proc, window&, timeline::state&, sl::empty_t, sl::index_constant_type<CommandGroupIdx>) const noexcept {
 			constexpr std::optional<command_family_t> src_command_family = ::d2d::impl::to_command_family(SourceStages);
 			constexpr std::optional<command_family_t> dst_command_family = ::d2d::impl::to_command_family(DestinationStages);
 			constexpr bool is_inter_command = src_command_family.has_value() && dst_command_family.has_value() && *src_command_family != *dst_command_family;
 			const bool different_queues = is_inter_command && proc.physical_device_ptr()->queue_family_infos[*src_command_family].index != proc.physical_device_ptr()->queue_family_infos[*dst_command_family].index;
 
-			vk::command_buffer<N> const& cmd_buff = proc.command_buffers()[proc.frame_index()][CommandGroupIdx];
+			vk::command_buffer const& cmd_buff = proc.command_buffers()[proc.frame_index()][CommandGroupIdx];
 			
 			//If it's an inter-command dependency and the queues are the same, do nothing (submit<> will handle the syncronization)
 			if constexpr(is_inter_command)
