@@ -108,7 +108,21 @@ namespace d2d::vk {
         //Create swap chain image views
         _image_views.resize(_image_count);
         for (size_t i = 0; i < _image_count; i++) {
-            RESULT_TRY_MOVE(_image_views[i], make<image_view>(logi_device, _images[i], _display_format.pixel_format.id));
+        	VkImageViewCreateInfo image_view_create_info{
+        	    .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+        	    .image = _images[i],
+        	    .viewType = VK_IMAGE_VIEW_TYPE_2D,
+        	    .format = _display_format.pixel_format.id,
+        	    .components{},
+        	    .subresourceRange{
+        	        .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+        	        .baseMipLevel = 0,
+        	        .levelCount = 1,
+        	        .baseArrayLayer = 0,
+        	        .layerCount = 1,
+        	    },
+        	};
+            RESULT_TRY_MOVE(_image_views[i], make<image_view>(logi_device, image_view_create_info));
         }
 
 		return {};

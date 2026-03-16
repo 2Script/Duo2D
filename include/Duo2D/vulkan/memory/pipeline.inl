@@ -8,12 +8,13 @@
 
 namespace d2d::vk {
     template<typename T, auto BufferConfigs, auto AssetHeapConfigs>
-    result<pipeline<bind_point::graphics, T, BufferConfigs, AssetHeapConfigs>>    pipeline<bind_point::graphics, T, BufferConfigs, AssetHeapConfigs>::
-	create(std::shared_ptr<logical_device> device, std::span<const VkFormat> color_attachment_formats, VkFormat depth_attachment_format) noexcept {
+    template<typename RenderProcessT>
+	result<pipeline<bind_point::graphics, T, BufferConfigs, AssetHeapConfigs>>    pipeline<bind_point::graphics, T, BufferConfigs, AssetHeapConfigs>::
+	create(std::shared_ptr<logical_device> logi_device, RenderProcessT&& proc, std::span<const VkFormat> color_attachment_formats, VkFormat depth_attachment_format) noexcept {
         pipeline ret{};
-        ret.dependent_handle = device;
+        ret.dependent_handle = logi_device;
 
-		RESULT_TRY_MOVE(ret._layout, (make<pipeline_layout<shader_stage::all_graphics, T, BufferConfigs, AssetHeapConfigs>>(device)))
+		RESULT_TRY_MOVE(ret._layout, (make<pipeline_layout<shader_stage::all_graphics, T, BufferConfigs, AssetHeapConfigs>>(logi_device, sl::forward<RenderProcessT>(proc))))
 
 
         //Specify vertex input state
@@ -114,14 +115,19 @@ namespace d2d::vk {
 		};
 
 
-        RESULT_TRY_MOVE_UNSCOPED(shader_module vert_shader, make<shader_module>(device, T::vert_shader_data, VK_SHADER_STAGE_VERTEX_BIT), vs);
-        RESULT_TRY_MOVE_UNSCOPED(shader_module frag_shader, make<shader_module>(device, T::frag_shader_data, VK_SHADER_STAGE_FRAGMENT_BIT), fs);
+        RESULT_TRY_MOVE_UNSCOPED(shader_module vert_shader, make<shader_module>(logi_device, T::vert_shader_data, VK_SHADER_STAGE_VERTEX_BIT), vs);
+        RESULT_TRY_MOVE_UNSCOPED(shader_module frag_shader, make<shader_module>(logi_device, T::frag_shader_data, VK_SHADER_STAGE_FRAGMENT_BIT), fs);
         std::array<VkPipelineShaderStageCreateInfo, 2> shader_stages = {vert_shader.stage_info(), frag_shader.stage_info()};
 
-        
+        //VkPipelineCreateFlags2CreateInfoKHR pipeline_create_flags{
+		//	.sType = VK_STRUCTURE_TYPE_PIPELINE_CREATE_FLAGS_2_CREATE_INFO_KHR,
+		//	.pNext = &rendering_info,
+		//	.flags = VK_PIPELINE_CREATE_2_DESCRIPTOR_HEAP_BIT_EXT,
+		//};
         VkGraphicsPipelineCreateInfo pipeline_create_info{
             .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
-			.pNext = &rendering_info,
+			.pNext = &rendering_info, //&pipeline_create_flags,
+			.flags = VkPipelineCreateFlags{},
             .stageCount = shader_stages.size(),
             .pStages = shader_stages.data(),
             .pVertexInputState = &vertex_input_info,
@@ -139,7 +145,7 @@ namespace d2d::vk {
             .basePipelineHandle = VK_NULL_HANDLE,
             .basePipelineIndex = -1,
         };
-        __D2D_VULKAN_VERIFY(vkCreateGraphicsPipelines(*device, VK_NULL_HANDLE, 1, &pipeline_create_info, nullptr, &ret.handle));
+        __D2D_VULKAN_VERIFY(vkCreateGraphicsPipelines(*logi_device, VK_NULL_HANDLE, 1, &pipeline_create_info, nullptr, &ret.handle));
         return ret;
     }
 }
@@ -147,25 +153,31 @@ namespace d2d::vk {
 
 namespace d2d::vk {
     template<typename T, auto BufferConfigs, auto AssetHeapConfigs>
-    result<pipeline<bind_point::compute, T, BufferConfigs, AssetHeapConfigs>>    pipeline<bind_point::compute, T, BufferConfigs, AssetHeapConfigs>::
-	create(std::shared_ptr<logical_device> device) noexcept {
+    template<typename RenderProcessT>
+	result<pipeline<bind_point::compute, T, BufferConfigs, AssetHeapConfigs>>    pipeline<bind_point::compute, T, BufferConfigs, AssetHeapConfigs>::
+	create(std::shared_ptr<logical_device> logi_device, RenderProcessT&& proc) noexcept {
         pipeline ret{};
-        ret.dependent_handle = device;
+        ret.dependent_handle = logi_device;
 
-		RESULT_TRY_MOVE(ret._layout, (make<pipeline_layout<shader_stage::compute, T, BufferConfigs, AssetHeapConfigs>>(device)))
+		RESULT_TRY_MOVE(ret._layout, (make<pipeline_layout<shader_stage::compute, T, BufferConfigs, AssetHeapConfigs>>(logi_device, sl::forward<RenderProcessT>(proc))))
 
-        RESULT_TRY_MOVE_UNSCOPED(shader_module comp_shader, make<shader_module>(device, T::comp_shader_data, VK_SHADER_STAGE_COMPUTE_BIT), cs);
+        RESULT_TRY_MOVE_UNSCOPED(shader_module comp_shader, make<shader_module>(logi_device, T::comp_shader_data, VK_SHADER_STAGE_COMPUTE_BIT), cs);
 
+        //VkPipelineCreateFlags2CreateInfoKHR pipeline_create_flags{
+		//	.sType = VK_STRUCTURE_TYPE_PIPELINE_CREATE_FLAGS_2_CREATE_INFO_KHR,
+		//	.pNext = nullptr,
+		//	.flags = VK_PIPELINE_CREATE_2_DESCRIPTOR_HEAP_BIT_EXT,
+		//};
         VkComputePipelineCreateInfo pipeline_create_info{
 			.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
-			.pNext = nullptr,
+			.pNext = nullptr, //&pipeline_create_flags,
 			.flags = VkPipelineCreateFlags{},
 			.stage = comp_shader.stage_info(),
 			.layout = ret._layout,
 			.basePipelineHandle = VK_NULL_HANDLE,
 			.basePipelineIndex = -1,
 		};
-        __D2D_VULKAN_VERIFY(vkCreateComputePipelines(*device, VK_NULL_HANDLE, 1, &pipeline_create_info, nullptr, &ret.handle));
+        __D2D_VULKAN_VERIFY(vkCreateComputePipelines(*logi_device, VK_NULL_HANDLE, 1, &pipeline_create_info, nullptr, &ret.handle));
         return ret;
     }
 }

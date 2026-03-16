@@ -7,12 +7,14 @@
 #include "Duo2D/shaders/rect.hpp"
 
 #include "./buffer_config_table.hpp"
+#include "./asset_heap_config_table.hpp"
 
 namespace d2d::test {
 	struct styled_rect : public d2d::drawable {
         constexpr static auto vert_shader_data = std::to_array(d2d::shaders::rect::vert);
         constexpr static auto frag_shader_data = std::to_array(d2d::shaders::rect::frag);
-		constexpr static auto buffers = sl::integer_sequence<buffer_key_t, 
+	public:
+		constexpr static auto buffers = buffer_key_sequence<
 			::buffer_id::draw_constants,
 			::buffer_id::draw_commands,
 			::buffer_id::counts,
@@ -20,8 +22,8 @@ namespace d2d::test {
 			::buffer_id::rectangle_indices,
 			::buffer_id::positions
 		>;
-
-		constexpr static auto draw_buffers = sl::array<1, sl::key_value_pair<buffer_key_t, buffer_key_t>> {{
+	public:
+		constexpr static sl::array<1, sl::key_value_pair<buffer_key_t, buffer_key_t>> draw_buffers{{
 			{::buffer_id::draw_commands, ::buffer_id::counts}
 		}};
 

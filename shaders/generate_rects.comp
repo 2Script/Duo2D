@@ -11,19 +11,20 @@ struct draw_command {
 };
 
 
-layout(buffer_reference, std430, buffer_reference_align = 8) writeonly buffer PositionsBuffer { 
+layout(buffer_reference, std430, buffer_reference_align = 4) writeonly buffer PositionsBuffer { 
 	uvec2 positions[];
 };
 
-layout(buffer_reference, std430, buffer_reference_align = 8) buffer DrawCommandsBuffer { 
+layout(buffer_reference, std430, buffer_reference_align = 4) buffer DrawCommandsBuffer { 
 	draw_command draw_cmds[];
 };
 
-layout(buffer_reference, std430, buffer_reference_align = 8) buffer CountBuffer { 
+layout(buffer_reference, std430, buffer_reference_align = 4) buffer CountBuffer { 
 	uint draw_count;
 	uint rect_limit;
 	
-	uvec2 _padding;
+	uint _padding1;
+	uint _padding2;
 };
 
 
@@ -38,6 +39,14 @@ layout(std430, push_constant) uniform PushConstants {
 } push_constants;
 
 
+layout(std140, set = 0, binding = 0) uniform UBO {
+	uint offset;
+	
+	//uint _padding1;
+	//uint _padding2;
+	//uint _padding3;
+} ubo;
+
 layout (local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
 
 
@@ -46,13 +55,17 @@ void main() {
 	const uint y = gl_GlobalInvocationID.y;
 	const uint i = x + (16 * y);
 	
-	const uint n = push_constants.addrs.count_buff.rect_limit.x;
+	const uint n = push_constants.addrs.count_buff.rect_limit + ubo.offset;
 
 	if(i >= n)
 		return;
 
+	push_constants.addrs.draw_cmd_buff.draw_cmds[0].firstInstance = ubo.offset;
 	push_constants.addrs.pos_buff.positions[i] = uvec2(100 * x, 50 * y);
-	atomicMax(push_constants.addrs.draw_cmd_buff.draw_cmds[0].instanceCount, i + 1);
+
+	if(i < ubo.offset)
+		return;
+	atomicMax(push_constants.addrs.draw_cmd_buff.draw_cmds[0].instanceCount, i + 1 - ubo.offset);
 
 	//push_constants.addrs.draw_cmd_buff.draw_cmds[i] = draw_command(6, 3, 0, 0, 0);
 	//atomicMax(push_constants.addrs.count_buff.draw_count, i + 1);

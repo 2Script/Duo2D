@@ -1,16 +1,17 @@
 #pragma once
 #include <cstdint>
+#include <limits>
 #include <vulkan/vulkan.h>
 
 
 namespace d2d::vk {
-    enum class device_type : std::uint32_t {
+    enum class device_type : std::uint8_t {
         other,
         integrated_gpu,
         discrete_gpu,
         virtual_gpu,
         cpu,
 
-        unknown = VK_PHYSICAL_DEVICE_TYPE_MAX_ENUM,
+        unknown = std::numeric_limits<std::uint8_t>::max(),
     };
 }

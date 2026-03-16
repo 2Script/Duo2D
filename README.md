@@ -219,6 +219,8 @@ In addition to the above dependencies, the following are also needed at compile 
 | Horizon (Nintendo Switch) | 15.0.0<sup>1</sup> |
 | Android | 13 |
 
+> <sup>1</sup>This is an educated guess made based on the date of the official [Vulkan Conformant Products submission][switch-vulkan-conformance] and the [system update history for the Nintendo Switch][switch-update-history]
+
 <h3>Instruction Set Architectures</h3>
 
 In general, all modern 64-bit ISAs are supported.
@@ -226,38 +228,55 @@ In general, all modern 64-bit ISAs are supported.
 The following additionally have optional support for runtime dispatching of SIMD extensions/vector intrinsics and are tested and verified:
 
 | ISA Name    | Required Microarchitecture | Optional Extensions | 
-| ----------- | ------------------- | ------------------- |
-| x86         | x86-64-v1              | POPCNT, SSE4.2, AVX, AVX2, FMA, BMI1, BMI2, AVX512F, AVX512BW, AVX512DQ, AVX10 |
-| ARM AArch64 | -                      | SVE, SVE2 |
-| RISC-V      | RV64IMAFD or RV64EMAFD | B, P, C |
+| ----------- | -------------------------- | ------------------- |
+| x86         | x86-64-v1                  | POPCNT, SSE4.2, AVX, AVX2, FMA, BMI1, BMI2, AVX512F, AVX512BW, AVX512DQ, AVX10 |
+| ARM AArch64 | -                          | SVE, SVE2 |
+| RISC-V      | RV64IMAFD or RV64EMAFD     | B, P, C |
 
 
 
-> <sup>1</sup>This is an educated guess made based on the date of the official [Vulkan Conformant Products submission][switch-vulkan-conformance] and the [system update history for the Nintendo Switch][switch-update-history]
 
-<h3>Devices</h3>
+<h3>Devices & Drivers</h3>
 
-The client's graphics device must at least support Vulkan 1.3.
+The client's graphics device must at least support Vulkan 1.3 and, additionally, the `VK_KHR_push_descriptor` extension (included as part of Vulkan 1.4). <!--the `VK_KHR_maintenance5` (included as part of Vulkan 1.4) and `VK_EXT_descriptor_heap` extensions.-->
 
-The minimum microarchitecture (along with their associated devices) of each vendor that meets these requirements is listed below.
-> This table assumes that the client is using the latest possible graphics driver.
->
-> On Linux, the Mesa driver is assumed to be used (RADV for AMD and NVK for Nvidia). However, even if using the proprietary Nvidia driver on Linux, the table below is still accurate.
+The minimum requirements for microarchitecture and graphics driver combination (along with its associated devices) that satisfy the above conditions are listed below.
 
-| GPU Vendor  | Platforms              | Microarchitecture Name         | Desktop Devices | Mobile Devices |
-| ----------  | ---------------------- | -------------------            | --------------- | -------------- |
-| Nvidia      | Windows, Linux, Switch | Maxwell                        | GeForce GTX 745, GTX 750 [Ti]; GeForce 900 series | GeForce 830M, 840M, 845M, GTX 850M; GeForce 900M series |
-| AMD         | Linux                  | GCN 1 (Sea Islands)            | Radeon HD 7000 series | Radeon HD 7000M series |
-| AMD         | Windows                | GCN 4 (Arctic Islands/Polaris) | Radeon 400 series | Radeon M400 series | 
-| Qualcomm    | Android, Linux         | N/A                            | - | Adreno 710, 720, 722, 732, 735, 740, 750; Adreno 800 series |
-| Arm Limited | Android                | Valhall 4th gen                | - | Mali G615, G715; Immortalis G715 |
-| Arm Limited | Linux                  | Bifrost 1st Gen                | - | Mali G31, G51, G71 |
-| Broadcomm   | Linux                  | VideoCore VI                   | - | BCM2711 | 
+| GPU Vendor  | Platform | Driver               | Microarchitecture        | Desktop Devices | Mobile Devices |
+| ----------  | ---------| ------------------   | -----------------        | --------------- | -------------- |
+| Nvidia      | Windows  | Nvidia Proprietary   | Maxwell                  | GeForce GTX 745, GTX 750 [Ti]; GeForce 900 series | GeForce 830M, 840M, 845M, GTX 850M; GeForce 900M series |              
+| Nvidia      | Linux    | Nvidia Proprietary   | Maxwell                  | GeForce GTX 745, GTX 750 [Ti]; GeForce 900 series | GeForce 830M, 840M, 845M, GTX 850M; GeForce 900M series |              
+| Nvidia      | Linux    | Mesa (NVK)           | Kepler                   | Geforce 600 series | GeForce GT 640M, GT 645M, GT 650M, GTX 660M, GTX 670MX, GTX 675MX, GTX 680M, GTX 680MX; GeForce 700M series |
+| Nvidia      | Switch   | Nintendo Proprietary | Maxwell (Tegra)          | - | T210, T214 |
+| AMD         | Windows  | AMD Proprietary      | GCN 4 (Arctic Islands)   | Radeon 400 series; Ryzen 2000 APU series | Radeon RX 5000M series | 
+| AMD         | Linux    | Mesa (RADV)          | GCN 1 (Southern Islands) | Radeon HD 7000 series; Athlon 5000 APU series | Radeon HD 7000M series |
+| Intel       | Windows  | Intel Proprietary    | Skylake                  | Core 6000 APU series; Pentium G4000 APU series; Celeron G3000 APU series | Core 6000 APU series; Pentium 4000 
+| Intel       | Linux    | Mesa (ANV)           | Skylake                  | Core 6000 APU series; Pentium G4000 APU series; Celeron G3000 APU series | Core 6000 APU series; Pentium 4000 APU series; Celeron 3000 APU series |
+| Qualcomm    | Android  | Qualcomm Proprietary | N/A                      | - | Adreno 710, 720, 722, 732, 735, 740, 750; Adreno 800 series |
+| Qualcomm    | Linux    | Mesa (Turnip)        | N/A                      | - | Adreno 600 series |
+| Arm Limited | Android  | Arm Proprietary      | Valhall 4th gen          | - | Mali G615, G715; Immortalis G715 |
+| Arm Limited | Linux    | Mesa (PanVK)         | Valhall 3rd gen          | - | Mali G310, G510, G610, G710  |
 
+<!--
+| GPU Vendor  | Platform | Driver               | Driver Version                    | Microarchitecture        | Desktop Devices | Mobile Devices |
+| ----------  | ---------| ------------------   | --------------------------------- | -----------------        | --------------- | -------------- |
+| Nvidia      | Windows  | Nvidia Proprietary   | 582.30+ (except 590.00 to 595.59) | Maxwell                  | GeForce GTX 745, GTX 750 [Ti]; GeForce 900 series | GeForce 830M, 840M, 845M, GTX 850M; GeForce 900M series |              
+| Nvidia      | Linux    | Nvidia Proprietary   | 580.94.16+                        | Maxwell                  | GeForce GTX 745, GTX 750 [Ti]; GeForce 900 series | GeForce 830M, 840M, 845M, GTX 850M; GeForce 900M series |              
+| Nvidia      | Linux    | Mesa (NVK)           | 26.1+                             | Kepler                   | Geforce 600 series | GeForce GT 640M, GT 645M, GT 650M, GTX 660M, GTX 670MX, GTX 675MX, GTX 680M, GTX 680MX; GeForce 700M series |
+| Nvidia      | Switch   | Nintendo Proprietary | N/A                               | Maxwell (Tegra)          | - | T210, T214 |
+| AMD         | Windows  | AMD Proprietary      | 25.30.17.02+                      | GCN 4 (Arctic Islands)   | Radeon 400 series; Ryzen 2000 APU series | Radeon RX 5000M series | 
+| AMD         | Linux    | Mesa (RADV)          | 26.1+                             | GCN 1 (Southern Islands) | Radeon HD 7000 series; Athlon 5000 APU series | Radeon HD 7000M series |
+| Intel       | Windows  | Intel Proprietary    | 32.0.101.8509(?)+                 | Alchemist                | Arc A series; Core Ultra 100 APU series | Arc AM series; Core Ultra 100 APU series |
+| Intel       | Linux    | Mesa (ANV)           | 26.1+                             | Skylake                  | Core 6000 APU series; Pentium G4000 APU series; Celeron G3000 APU series  | Core 6000 APU series; Pentium 4000 APU series; Celeron 3000 APU series |
+| Qualcomm    | Android  | Qualcomm Proprietary | N/A                               | N/A                      | - | Adreno 710, 720, 722, 732, 735, 740, 750; Adreno 800 series |
+| Qualcomm    | Linux    | Mesa (Turnip)        | TBD                               | N/A                      | - | Adreno 600 series |
+| Arm Limited | Android  | Arm Proprietary      | N/A                               | Valhall 4th gen          | - | Mali G615, G715; Immortalis G715 |
+| Arm Limited | Linux    | Mesa (PanVK)         | TBD                               | Valhall 3rd gen          | - | Mali G310, G510, G610, G710  |
+-->
 
 <h3>Compilers</h3>
 
-Only GCC and Clang (and its derivatives) are officially supported; The MSVC compiler is not.
+Only GCC and Clang (and its derivatives) are officially supported; The MSVC compiler is not supported at all.
 
 The compiler must support at least C++20, OpenMP, and gnu-style attributes.
 

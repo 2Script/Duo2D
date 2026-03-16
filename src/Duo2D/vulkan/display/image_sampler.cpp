@@ -3,9 +3,6 @@
 
 namespace d2d::vk {
     result<image_sampler> image_sampler::create(std::shared_ptr<logical_device> logi_device, std::weak_ptr<physical_device> phys_device, pt3<VkSamplerAddressMode> address_modes) noexcept {
-        image_sampler ret{};
-        ret.dependent_handle = logi_device;
-        ret.addr_modes = address_modes;
         __D2D_WEAK_PTR_TRY_LOCK(phys_device_ptr, phys_device);
 
 	    const VkSamplerCreateInfo sampler_create_info {
@@ -27,7 +24,17 @@ namespace d2d::vk {
             .unnormalizedCoordinates = VK_FALSE,
         };
 
-        __D2D_VULKAN_VERIFY(vkCreateSampler(*logi_device, &sampler_create_info, nullptr, &ret.handle));
+        return create(logi_device, sampler_create_info);
+    }
+}
+
+namespace d2d::vk {
+    result<image_sampler> image_sampler::create(std::shared_ptr<logical_device> logi_device, VkSamplerCreateInfo create_info) noexcept {
+        image_sampler ret{};
+        ret.dependent_handle = logi_device;
+        ret.addr_modes = {create_info.addressModeU, create_info.addressModeV, create_info.addressModeW};
+
+        __D2D_VULKAN_VERIFY(vkCreateSampler(*logi_device, &create_info, nullptr, &ret.handle));
         return ret;
     }
 }

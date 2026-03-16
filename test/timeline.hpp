@@ -13,6 +13,7 @@
 
 #include "./generate_rects.hpp"
 #include "./styled_rect.hpp"
+#include "./texture_rect.hpp"
 
 namespace d2d::test {
 	using basic_timeline = sl::tuple<
@@ -68,6 +69,7 @@ namespace d2d::test {
 		d2d::begin_draw_phase,
 
 		d2d::draw<d2d::test::styled_rect>,
+		d2d::draw<d2d::test::texture_rect>,
 
 		d2d::end_draw_phase,
 		d2d::submit<d2d::command_family::graphics, signal_completion_at<d2d::render_stage::group::all_graphics>, wait_for<d2d::render_stage::compute_shader>>,

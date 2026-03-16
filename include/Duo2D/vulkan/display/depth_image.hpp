@@ -7,7 +7,7 @@
 #include "Duo2D/vulkan/device/physical_device.hpp"
 #include "Duo2D/vulkan/display/image_view.hpp"
 #include "Duo2D/vulkan/memory/image.hpp"
-#include "Duo2D/vulkan/memory/device_allocation.fwd.hpp"
+#include "Duo2D/vulkan/memory/generic_allocation.fwd.hpp"
 
 
 namespace d2d::vk {

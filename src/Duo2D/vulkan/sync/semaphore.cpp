@@ -22,3 +22,17 @@ namespace d2d::vk {
         return ret;
     }
 }
+
+namespace d2d::vk {
+	result<void> semaphore::wait(sl::uint64_t value, sl::uint64_t timeout) const noexcept {
+		VkSemaphoreWaitInfo semaphore_post_wait_info{
+			.sType = VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO,
+			.flags = 0,
+			.semaphoreCount = 1,
+			.pSemaphores = &handle,
+			.pValues = &value
+		};
+		__D2D_VULKAN_VERIFY(vkWaitSemaphores(*dependent_handle, &semaphore_post_wait_info, timeout));
+		return {};
+	}
+}

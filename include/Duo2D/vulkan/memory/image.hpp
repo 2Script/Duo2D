@@ -8,40 +8,40 @@
 #include "Duo2D/vulkan/device/logical_device.hpp"
 #include "Duo2D/vulkan/core/vulkan_ptr.hpp"
 #include "Duo2D/vulkan/display/pixel_format.hpp"
+#include "Duo2D/core/asset_heap_config.hpp"
 
 
 __D2D_DECLARE_VK_TRAITS_DEVICE(VkImage);
 
 namespace d2d::vk {
     struct image : public vulkan_ptr<VkImage, vkDestroyImage> {
-        static result<image> create(std::shared_ptr<logical_device> device, std::uint32_t width, std::uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, std::uint32_t array_count = 1) noexcept;
-    protected:
-        static result<image> create(std::shared_ptr<logical_device> device, std::uint32_t width, std::uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, std::uint32_t array_count, std::size_t mem_offset) noexcept;
-    
-    public:
-        result<image> clone(std::shared_ptr<logical_device> device) const noexcept;
+        static result<image> create(std::shared_ptr<logical_device> device, VkImageCreateInfo create_info) noexcept;
         
     public:
-        constexpr extent2 size() const noexcept { return extent; } 
-        constexpr std::size_t size_bytes() const noexcept { return bytes; } 
-        constexpr bool empty() const noexcept { return bytes == 0 || extent.empty(); }
-        constexpr std::size_t memory_offset() const noexcept { return offset; }
+		constexpr sl::size_t dimensions() const noexcept { return static_cast<sl::size_t>(info.imageType) + 1; } 
 
-        constexpr VkFormat format() const noexcept { return image_format; }
-        constexpr VkImageLayout const& layout() const noexcept { return image_layout; }
-        constexpr VkImageLayout      & layout()       noexcept { return image_layout; }
-        constexpr std::uint32_t count() const noexcept { return image_count; }
+		constexpr VkImageCreateInfo     const& creation_info()   const& noexcept { return info; }
+        constexpr VkFormat              const& format_id()       const& noexcept { return info.format; }
+        constexpr VkExtent3D            const& size()            const& noexcept { return info.extent; }
+        constexpr sl::uint32_t          const& mip_level_count() const& noexcept { return info.mipLevels; }
+        constexpr sl::uint32_t          const& layer_count()     const& noexcept { return info.arrayLayers; }
+        constexpr VkSampleCountFlagBits const& sample_count()    const& noexcept { return info.samples; }
+        constexpr VkImageTiling         const& tiling()          const& noexcept { return info.tiling; }
+        constexpr VkImageUsageFlags     const& usage()           const& noexcept { return info.usage; }
+		
+		constexpr VkMemoryRequirements const& memory_requirements() const& noexcept { return mem_reqs; }
+        constexpr sl::size_t           const& size_bytes()          const& noexcept { return mem_reqs.size; }
+        constexpr sl::size_t           const& alignment()           const& noexcept { return mem_reqs.alignment; }
+
+        constexpr VkImageLayout const& layout() const& noexcept { return this->current_layout; }
+
 
     protected:
-        extent2 extent = {};
-        std::size_t bytes = 0;
-        std::size_t offset = 0;
-        VkFormat image_format;
-        VkImageTiling image_tiling;
-        VkImageLayout image_layout;
-        VkImageUsageFlags flags;
-        std::uint32_t image_count;
+	    VkImageCreateInfo info;
+		VkMemoryRequirements mem_reqs;
+		VkImageLayout current_layout;
     public:
-        //friend struct device_allocation_base;
+		template<sl::index_t, asset_heap_config, typename>
+		friend class asset_heap_allocation;
     };
 }

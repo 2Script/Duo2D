@@ -15,7 +15,23 @@
 #include "Duo2D/vulkan/device/feature.hpp"
 #include "Duo2D/vulkan/device/device_type.hpp"
 #include "Duo2D/vulkan/display/surface.hpp"
+#include "Duo2D/vulkan/memory/asset_group.hpp"
+#include "Duo2D/vulkan/memory/descriptor_heap.hpp"
+#include "Duo2D/vulkan/memory/asset_usage_policy.hpp"
 
+
+namespace d2d::vk {
+	struct asset_group_info {
+		sl::size_t size;
+		sl::size_t alignment;
+	};
+
+	struct descriptor_heap_info {
+		sl::size_t minimum_reserved_bytes;
+		sl::size_t alignment;
+		sl::size_t max_size;
+	};
+}
 
 namespace d2d::vk {
     struct physical_device : vulkan_ptr_base<VkPhysicalDevice> {
@@ -31,11 +47,16 @@ namespace d2d::vk {
     public:
         std::string_view name;
         device_type type = device_type::unknown;
-
-        VkPhysicalDeviceLimits limits{};
-        sl::array<command_family::num_families, queue_family_info> queue_family_infos{};
         extensions_t extensions{};
         features_t features{};
+        VkPhysicalDeviceLimits limits{};
+		sl::array<asset_usage_policy::num_usage_policies, sl::uint32_t> descriptor_count_limits{};
+		sl::array<asset_usage_policy::num_usage_policies, sl::uint32_t> per_stage_descriptor_count_limits{};
+
+		sl::size_t max_push_data_bytes;
+		sl::array<asset_group::num_asset_groups, asset_group_info> asset_group_infos{};
+		sl::array<descriptor_heap::num_descriptor_heaps, descriptor_heap_info> descriptor_heap_infos{};
+        sl::array<command_family::num_families, queue_family_info> queue_family_infos{};
 
     public:
         constexpr friend std::strong_ordering operator<=>(const physical_device& a, const physical_device& b) noexcept;

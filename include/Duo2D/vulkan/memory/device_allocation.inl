@@ -6,40 +6,28 @@
 #include <streamline/functional/functor/invoke_each_result.hpp>
 
 #include "Duo2D/timeline/dedicated_command_group.hpp"
+#include "Duo2D/vulkan/core/command_buffer.hpp"
 
 
 namespace d2d::vk {
     template<sl::size_t FiF, sl::index_t... Is, coupling_policy_t CP, memory_policy_t MP, sl::size_t N, buffer_config_table<N> BufferConfigs, typename RenderProcessT>
     result<device_allocation<FiF, sl::index_sequence_type<Is...>, CP, MP, N, BufferConfigs, RenderProcessT>>
 		device_allocation<FiF, sl::index_sequence_type<Is...>, CP, MP, N, BufferConfigs, RenderProcessT>::
-	create(std::shared_ptr<logical_device> logi_device, std::shared_ptr<physical_device> phys_device, std::shared_ptr<command_pool> transfer_command_pool) noexcept {
+	create(
+		std::shared_ptr<logical_device> logi_device,
+		std::shared_ptr<physical_device> phys_device//,
+		//std::shared_ptr<command_pool> transfer_command_pool
+	) noexcept {
         device_allocation ret{}; 
-        ret.mems = sl::universal::make<sl::array<allocation_count, memory_ptr_type>>(
-			logi_device, 
-			sl::in_place_repeat_tag<allocation_count>, 
-			[](std::shared_ptr<logical_device>& logi_device_ptr, auto) noexcept {
-				return memory_ptr_type(logi_device_ptr);
-			}
-		);
-		ret.logi_device_ptr = logi_device;
-		ret.phys_device_ptr = phys_device;
+        RESULT_VERIFY(ret.initialize(logi_device, phys_device));//, transfer_command_pool));
 
-		constexpr auto make_buffer = []<sl::index_t I>(std::shared_ptr<logical_device> logi_device_ptr, device_allocation& ret, sl::index_constant_type<I>) noexcept -> result<void> {
-			constexpr std::size_t buff_capacity_bytes = std::max(
-				segment_type<I>::config.initial_capacity_bytes,
-				minimum_buffer_capacity_size_bytes
-			);
-
-			segment_type<I>& segment = static_cast<segment_type<I>&>(ret);
-            RESULT_TRY_MOVE(segment, (make<segment_type<I>>(logi_device_ptr, buff_capacity_bytes, 0)));
-			return {};
+		constexpr auto make_single_buffer = []<sl::index_t I>(
+			device_allocation& ret,
+			sl::index_constant_type<I>
+		) noexcept -> result<void> {
+			return ret.make_buffer(sl::index_constant<I>);
 		};
-		RESULT_VERIFY((sl::functor::invoke_each_result<result<void>, make_buffer>{}(sl::index_sequence<Is...>, logi_device, ret)));
-
-		for(sl::index_t i = 0; i < allocation_count; ++i) {
-			RESULT_TRY_MOVE(ret.realloc_command_buffers[i], make<command_buffer>(logi_device, phys_device, transfer_command_pool))
-			RESULT_TRY_MOVE(ret.realloc_fences[i], make<fence>(logi_device));
-		}
+		RESULT_VERIFY((sl::functor::invoke_each_result<result<void>, make_single_buffer>{}(sl::index_sequence<Is...>, ret)));
 		
 		constexpr static sl::array<allocation_count, sl::index_t> alloc_indices = sl::universal::make_deduced<sl::generic::array>(sl::index_sequence_of_length<allocation_count>);
 		RESULT_VERIFY(ret.initialize_buffers(alloc_indices));
@@ -49,6 +37,22 @@ namespace d2d::vk {
 
 
 namespace d2d::vk {
+    template<sl::size_t FiF, sl::index_t... Is, coupling_policy_t CP, memory_policy_t MP, sl::size_t N, buffer_config_table<N> BufferConfigs, typename RenderProcessT>
+	template<sl::index_t I>
+    constexpr result<void>
+		device_allocation<FiF, sl::index_sequence_type<Is...>, CP, MP, N, BufferConfigs, RenderProcessT>::
+	make_buffer(sl::index_constant_type<I>) noexcept {
+		constexpr std::size_t buff_capacity_bytes = std::max(
+			segment_type<I>::config.initial_capacity_bytes,
+			minimum_buffer_capacity_size_bytes
+		);
+
+        RESULT_TRY_MOVE(static_cast<segment_type<I>&>(*this), (make<segment_type<I>>(this->logi_device_ptr, buff_capacity_bytes, 0)));
+		segment_type<I>::allocated_bytes = buff_capacity_bytes;
+		return {};
+	}
+
+
     template<sl::size_t FiF, sl::index_t... Is, coupling_policy_t CP, memory_policy_t MP, sl::size_t N, buffer_config_table<N> BufferConfigs, typename RenderProcessT>
 	template<sl::size_t AllocIdxCount>
     result<void>
@@ -60,12 +64,12 @@ namespace d2d::vk {
 		constinit static mem_reqs_table mem_reqs = sl::universal::make<mem_reqs_table>(
 			sl::index_sequence<Is...>, sl::functor::identity{}, sl::functor::default_construct<VkMemoryRequirements>{}
 		);
-		(vkGetBufferMemoryRequirements(*logi_device_ptr, static_cast<VkBuffer>(segment_type<Is>::buffs[0]), &mem_reqs[Is]), ...);
+		(vkGetBufferMemoryRequirements(*this->logi_device_ptr, static_cast<VkBuffer>(segment_type<Is>::buffs[0]), &mem_reqs[Is]), ...);
 		
 		//TODO do this once in physical_device
 		//Get the memory properties
         VkPhysicalDeviceMemoryProperties mem_props;
-        vkGetPhysicalDeviceMemoryProperties(*phys_device_ptr, &mem_props);
+        vkGetPhysicalDeviceMemoryProperties(*this->phys_device_ptr, &mem_props);
 
 		//Find the index of a suitable GPU memory type
 		sl::uint32_t mem_type_idx = static_cast<uint32_t>(sl::npos);
@@ -97,19 +101,19 @@ namespace d2d::vk {
 			{Is, (calc_offset(allocation_size, sl::index_constant<Is>))}...
 		}}};
 		
-		const sl::lookup_table<buffer_count, sl::index_t, sl::size_t> segment_sizes = sl::universal::make_deduced<sl::generic::lookup_table>(
-			sl::index_sequence<Is...>, sl::functor::identity{}, [segment_offsets]<sl::index_t J>(auto, sl::index_constant_type<J>){
-				if constexpr (J == buffer_count - 1)
-					return sl::universal::get<sl::second_constant>(*std::next(mem_reqs.begin(), J)).size;
-				else return 
-					sl::universal::get<sl::second_constant>(*std::next(segment_offsets.begin(), J + 1)) -
-					sl::universal::get<sl::second_constant>(*std::next(segment_offsets.begin(), J));
-			}
-		);
+		// const sl::lookup_table<buffer_count, sl::index_t, sl::size_t> segment_sizes = sl::universal::make_deduced<sl::generic::lookup_table>(
+		// 	sl::index_sequence<Is...>, sl::functor::identity{}, [segment_offsets]<sl::index_t J>(auto, sl::index_constant_type<J>){
+		// 		if constexpr (J == buffer_count - 1)
+		// 			return sl::universal::get<sl::second_constant>(*std::next(mem_reqs.begin(), J)).size;
+		// 		else return 
+		// 			sl::universal::get<sl::second_constant>(*std::next(segment_offsets.begin(), J + 1)) -
+		// 			sl::universal::get<sl::second_constant>(*std::next(segment_offsets.begin(), J));
+		// 	}
+		// );
 		
-		(([this, segment_offsets, segment_sizes](){
+		(([this, segment_offsets/*, segment_sizes*/](){
 			segment_type<Is>::offset = segment_offsets[Is];
-			segment_type<Is>::allocated_bytes = segment_sizes[Is];
+			//segment_type<Is>::allocated_bytes = segment_sizes[Is];
 		}()), ...);
 
 
@@ -128,33 +132,33 @@ namespace d2d::vk {
 		};
 		
 		for(std::size_t i = 0; i < alloc_indices.size(); ++i)
-			__D2D_VULKAN_VERIFY(vkAllocateMemory(*logi_device_ptr, &malloc_info, nullptr, &mems[alloc_indices[i]]));
+			__D2D_VULKAN_VERIFY(vkAllocateMemory(*this->logi_device_ptr, &malloc_info, nullptr, &this->mems[alloc_indices[i]]));
 
 			
 		//Bind all the buffers to the raw memory and get their gpu address
 		RESULT_VERIFY(ol::to_result((([this, alloc_indices]() noexcept -> result<void> {
 			for(std::size_t i = 0; i < alloc_indices.size(); ++i) {
 				__D2D_VULKAN_VERIFY(vkBindBufferMemory(
-					*logi_device_ptr, 
+					*this->logi_device_ptr, 
 					segment_type<Is>::buffs[alloc_indices[i]],
-					mems[alloc_indices[i]], 
+					this->mems[alloc_indices[i]], 
 					segment_type<Is>::offset
 				));
 				VkBufferDeviceAddressInfo device_address_info{
 					.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO_KHR,
 					.buffer = segment_type<Is>::buffs[alloc_indices[i]]
 				};
-				segment_type<Is>::device_addresses[alloc_indices[i]] = vkGetBufferDeviceAddress(*logi_device_ptr, &device_address_info);
+				segment_type<Is>::device_addresses[alloc_indices[i]] = vkGetBufferDeviceAddress(*this->logi_device_ptr, &device_address_info);
 			}
 			return {};
 		}) && ...)))
 
 
 		//Map host-visible buffers
-		if constexpr(is_host_visible_memory(MP)) {
+		if constexpr(memory_policy::is_cpu_visible(MP)) {
 			for(std::size_t i = 0; i < alloc_indices.size(); ++i) {
 				void* map;
-				__D2D_VULKAN_VERIFY(vkMapMemory(*logi_device_ptr, mems[alloc_indices[i]], 0, VK_WHOLE_SIZE, 0, &map));
+				__D2D_VULKAN_VERIFY(vkMapMemory(*this->logi_device_ptr, this->mems[alloc_indices[i]], 0, VK_WHOLE_SIZE, 0, &map));
 				std::byte* base_ptr = std::launder(reinterpret_cast<std::byte*>(map));
 				((segment_type<Is>::ptrs[alloc_indices[i]] = base_ptr + segment_type<Is>::offset), ...);
 			}
@@ -170,30 +174,35 @@ namespace d2d::vk{
     result<void>    device_allocation<FiF, sl::index_sequence_type<Is...>, CP, MP, N, BufferConfigs, RenderProcessT>::
 	realloc(sl::index_constant_type<I>, sl::uint64_t timeout) noexcept 
 	requires((I == Is) || ...) {
-		const sl::index_t i = allocation_index();
+		const sl::index_t i = this->allocation_index();
 
 		const sl::array<buffer_count, sl::size_t> buff_sizes{{
 			segment_type<Is>::size_bytes()...
 		}};
 
-		const memory_ptr_type old_mem = std::move(mems[i]);
+		const memory_ptr_type old_mem = std::move(this->mems[i]);
 		const sl::array<buffer_count, impl::buffer_ptr_type> old_buffs{{
 			std::move(segment_type<Is>::buffs[i])...
 		}};
+		const sl::array<buffer_count, std::byte*> old_ptrs{{
+			segment_type<Is>::ptrs[i]...
+		}};
 		
 		//Re-initialize old memory
-		mems[i] = memory_ptr_type(logi_device_ptr);
+		this->mems[i] = memory_ptr_type(this->logi_device_ptr);
 
 		//Clone old buffers
 		RESULT_VERIFY(ol::to_result((([this, i]() noexcept -> result<void> {
-			segment_type<Is>::buffs[i] = impl::buffer_ptr_type{logi_device_ptr};
+			segment_type<Is>::buffs[i] = impl::buffer_ptr_type{this->logi_device_ptr};
+			const sl::size_t buffer_allocation_size = std::max(segment_type<Is>::desired_bytes, segment_type<Is>::allocated_bytes);
 			VkBufferCreateInfo buffer_create_info{
 			    .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-			    .size = std::max(segment_type<Is>::desired_bytes, segment_type<Is>::allocated_bytes),
+			    .size = buffer_allocation_size,
 			    .usage = segment_type<Is>::flags,
 			    .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
 			};
-			__D2D_VULKAN_VERIFY(vkCreateBuffer(*logi_device_ptr, &buffer_create_info, nullptr, &segment_type<Is>::buffs[i]));
+			__D2D_VULKAN_VERIFY(vkCreateBuffer(*this->logi_device_ptr, &buffer_create_info, nullptr, &segment_type<Is>::buffs[i]));
+			segment_type<Is>::allocated_bytes = buffer_allocation_size;
 			return {};
 		}) && ...)));
 
@@ -207,15 +216,30 @@ namespace d2d::vk{
 
 
 		//Copy data from old buffers to new buffers
+		
+		//For host-writable buffers, just do a memcpy
+		if constexpr(memory_policy::is_cpu_writable(MP)) {
+			const sl::array<buffer_count, std::byte*> new_ptrs{{
+				segment_type<Is>::ptrs[i]...
+			}};
+			
+			for(sl::index_t j = 0; j < buffer_count; ++j)
+				std::memcpy(new_ptrs[j], old_ptrs[j], buff_sizes[j]);
+			
+			return {};
+		}
+
+
 		const sl::array<buffer_count, impl::buffer_ptr_type*> buff_refs{{
 			std::addressof(segment_type<Is>::buffs[i])...
 		}};
 		
-		RESULT_VERIFY(realloc_fences[i].wait(timeout));
-		RESULT_VERIFY(realloc_fences[i].reset());
+		RenderProcessT& proc = static_cast<RenderProcessT&>(*this);
+		const sl::index_t frame_idx = proc.frame_index();
+		vk::command_buffer const& transfer_command_buffer = proc.command_buffers()[frame_idx][timeline::impl::dedicated_command_group::realloc];
+		
+		RESULT_TRY_COPY_UNSCOPED(const sl::uint64_t post_copy_wait_value, proc.begin_dedicated_copy(timeline::impl::dedicated_command_group::realloc, timeout), pcwv_result);
 
-		RESULT_VERIFY(realloc_command_buffers[i].reset());
-        RESULT_VERIFY(realloc_command_buffers[i].begin(true));
 		for(sl::index_t j = 0; j < buffer_count; ++j) {
 			if(buff_sizes[j] == 0) continue;
 			
@@ -224,7 +248,7 @@ namespace d2d::vk{
             	.dstOffset = 0,
             	.size = buff_sizes[j],
 			};
-        	vkCmdCopyBuffer(realloc_command_buffers[i], old_buffs[j], *buff_refs[j], 1, &copy_region);
+        	vkCmdCopyBuffer(transfer_command_buffer, old_buffs[j], *buff_refs[j], 1, &copy_region);
 
 			sl::array<2, VkBufferMemoryBarrier2> post_copy_barriers {{
 				VkBufferMemoryBarrier2{
@@ -248,12 +272,9 @@ namespace d2d::vk{
 					.size = buff_sizes[j]
 				},
 			}};
-			realloc_command_buffers[i].pipeline_barrier({}, post_copy_barriers, {});
+			transfer_command_buffer.pipeline_barrier({}, post_copy_barriers, {});
 		}
-		RESULT_VERIFY(realloc_command_buffers[i].end());
-		RESULT_VERIFY(realloc_command_buffers[i].submit(command_family::transfer, {}, {}, realloc_fences[i]));
-
-		RESULT_VERIFY(realloc_fences[i].wait(timeout));
-		return {};
+		
+		return proc.end_dedicated_copy(post_copy_wait_value, timeline::impl::dedicated_command_group::realloc, timeout);
 	}
 }

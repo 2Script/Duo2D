@@ -1,9 +1,10 @@
 #pragma once
+#include "Duo2D/vulkan/core/command_buffer.hpp"
 #include <streamline/functional/functor/invoke_each.hpp>
 
 #include <vulkan/vulkan.h>
 
-#include "Duo2D/vulkan/core/command_buffer.hpp"
+#include "Duo2D/core/render_process.hpp"
 
 
 namespace d2d::vk {
@@ -96,36 +97,6 @@ namespace d2d::vk {
         };
         vkCmdPipelineBarrier2(handle, &barrier_info);
     }
-
-    void command_buffer::image_transition(image& img, VkImageLayout new_layout, VkImageLayout old_layout, std::uint32_t) const noexcept {
-        constexpr auto image_barrier_mask = [](VkImageLayout layout) noexcept -> std::pair<VkPipelineStageFlagBits2, VkAccessFlagBits2> {
-            auto it = image_barrier_map.find(layout);
-            if (it == image_barrier_map.end()) return {VK_PIPELINE_STAGE_2_NONE, VK_ACCESS_2_NONE};
-            return it->second;
-        };
-        VkImageMemoryBarrier2 image_barrier{
-            .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
-            .srcStageMask = image_barrier_mask(old_layout).first,
-            .srcAccessMask = image_barrier_mask(old_layout).second,
-            .dstStageMask = image_barrier_mask(new_layout).first,
-            .dstAccessMask = image_barrier_mask(new_layout).second,
-            .oldLayout = old_layout,
-            .newLayout = new_layout,
-            .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-            .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-            .image = img,
-            .subresourceRange = {
-                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-                .baseMipLevel = 0,
-                .levelCount = 1,
-                .baseArrayLayer = 0,
-                .layerCount = 1,
-            },
-        };
-
-        pipeline_barrier({}, {}, std::span<const VkImageMemoryBarrier2, 1>{&image_barrier, 1});
-        img.layout() = new_layout;
-    }
 }
 
 namespace d2d::vk {
@@ -167,7 +138,7 @@ namespace d2d::vk {
 
 
 namespace d2d::vk {
-	template<typename T, sl::index_t I, sl::size_t N, buffer_config_table<N> BufferConfigs, auto AssetHeapConfigs, typename RenderProcessT>
+	template<sl::index_t I, sl::size_t N, buffer_config_table<N> BufferConfigs, typename T, auto AssetHeapConfigs, typename RenderProcessT>
 	void command_buffer::bind_buffer(device_allocation_segment<I, N, BufferConfigs, RenderProcessT> const& buff, pipeline_layout<shader_stage::all_graphics, T, BufferConfigs, AssetHeapConfigs> const& layout) const noexcept {
 		constexpr buffer_config config = device_allocation_segment<I, N, BufferConfigs, RenderProcessT>::config;
 		
@@ -175,23 +146,113 @@ namespace d2d::vk {
             vkCmdBindIndexBuffer(handle, buff.buffs[buff.current_buffer_index()], 0, T::index_type);
 
 		if constexpr(config.usage & buffer_usage_policy::push_constant)
-			vkCmdPushConstants(handle, layout, config.stages, 0, config.initial_capacity_bytes, buff.bytes.data());
+			vkCmdPushConstants(handle, layout, config.stages, 0, config.initial_capacity_bytes, buff.data());
+		//if constexpr(config.usage & buffer_usage_policy::push_constant) {
+		//	const VkPushDataInfoEXT push_data{
+		//		.sType = VK_STRUCTURE_TYPE_PUSH_DATA_INFO_EXT,
+		//		.offset = 0,
+		//		.data{
+		//			.address = buff.data(),
+		//			.size = buff.size_bytes(),
+		//		},
+		//	};
+		//	sl::invoke(logi_device_ptr->vulkan_functions()[sl::index_constant<extended_functions::vkCmdPushData>], handle, &push_data);
+		//}
+
+		if constexpr(config.usage & buffer_usage_policy::uniform) {
+			constexpr buffer_key_t key = sl::universal::get<sl::first_constant>(*std::next(BufferConfigs.begin(), I));
+			const VkDescriptorBufferInfo buffer_info{
+				.buffer = static_cast<VkBuffer>(buff),
+				.offset = 0,
+				.range = buff.size_bytes()
+			};
+			const VkWriteDescriptorSet write{
+				.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+				.pNext = nullptr,
+				.dstBinding = decltype(layout)::uniform_buffer_indices[key],
+				.descriptorCount = 1,
+				.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+				.pBufferInfo = &buffer_info
+			};
+			sl::invoke(logi_device_ptr->vulkan_functions()[sl::index_constant<extended_function::vkCmdPushDescriptorSet>], 
+				handle,
+				static_cast<VkPipelineBindPoint>(bind_point::graphics),
+				layout,
+				0, 
+				1, &write
+			);
+		}
 	}
 
-	template<typename T, sl::index_t I, sl::size_t N, buffer_config_table<N> BufferConfigs, auto AssetHeapConfigs, typename RenderProcessT>
+	template<sl::index_t I, sl::size_t N, buffer_config_table<N> BufferConfigs, typename T, auto AssetHeapConfigs, typename RenderProcessT>
 	void command_buffer::bind_buffer(device_allocation_segment<I, N, BufferConfigs, RenderProcessT> const& buff, pipeline_layout<shader_stage::compute, T, BufferConfigs, AssetHeapConfigs> const& layout) const noexcept {
 		constexpr buffer_config config = device_allocation_segment<I, N, BufferConfigs, RenderProcessT>::config;
 
 		if constexpr(config.usage & buffer_usage_policy::push_constant)
-			vkCmdPushConstants(handle, layout, config.stages, 0, config.initial_capacity_bytes, buff.bytes.data());
+			vkCmdPushConstants(handle, layout, config.stages, 0, config.initial_capacity_bytes, buff.data());
+		//if constexpr(config.usage & buffer_usage_policy::push_constant) {
+		//	const VkPushDataInfoEXT push_data{
+		//		.sType = VK_STRUCTURE_TYPE_PUSH_DATA_INFO_EXT,
+		//		.offset = 0,
+		//		.data{
+		//			.address = buff.data(),
+		//			.size = buff.size_bytes(),
+		//		},
+		//	};
+		//	sl::invoke(logi_device_ptr->vulkan_functions()[sl::index_constant<extended_functions::vkCmdPushData>], handle, &push_data);
+		//}
+
+		if constexpr(config.usage & buffer_usage_policy::uniform) {
+			constexpr buffer_key_t key = sl::universal::get<sl::first_constant>(*std::next(BufferConfigs.begin(), I));
+			using pipeline_layout_type = pipeline_layout<shader_stage::compute, T, BufferConfigs, AssetHeapConfigs>;
+			static_assert(pipeline_layout_type::uniform_buffer_binding_indices.contains(key));
+
+			const VkDescriptorBufferInfo buffer_info{
+				.buffer = static_cast<VkBuffer>(buff),
+				.offset = 0,
+				.range = buff.size_bytes()
+			};
+			const VkWriteDescriptorSet write{
+				.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+				.pNext = nullptr,
+				.dstBinding = pipeline_layout_type::uniform_buffer_binding_indices[key],
+				.descriptorCount = 1,
+				.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+				.pBufferInfo = &buffer_info
+			};
+			sl::invoke(logi_device_ptr->vulkan_functions()[sl::index_constant<extended_function::vkCmdPushDescriptorSet>], 
+				handle,
+				static_cast<VkPipelineBindPoint>(bind_point::compute),
+				layout,
+				0, 
+				1, &write
+			);
+		}
 	}
+
+
+	template<sl::index_t I, asset_heap_config Config, typename RenderProcessT, shader_stage_flags_t ShaderStages, typename T, auto BufferConfigs, auto AssetHeapConfigs>
+	void command_buffer::bind_asset_heap(asset_heap_allocation<I, Config, RenderProcessT> const& heap, pipeline_layout<ShaderStages, T, BufferConfigs, AssetHeapConfigs> const& layout) const noexcept {		
+		const sl::array<asset_usage_policy::num_usage_policies, VkDescriptorSet> descriptor_set_handles = 
+			sl::universal::make_deduced<sl::generic::array>(heap.descirptor_sets(), sl::functor::forward_construct<VkDescriptorSet>{});
+		vkCmdBindDescriptorSets(
+			handle,
+			static_cast<VkPipelineBindPoint>(ShaderStages & shader_stage::compute ? bind_point::compute : bind_point::graphics),
+			layout,
+			1,
+			asset_usage_policy::num_usage_policies, descriptor_set_handles.data(), 
+			0, nullptr
+		);
+	}
+
 
     template<bind_point_t BindPoint, typename T, auto BufferConfigs, auto AssetHeapConfigs>
 	void command_buffer::bind_pipeline(pipeline<BindPoint, T, BufferConfigs, AssetHeapConfigs> const& p) const noexcept {
         vkCmdBindPipeline(handle, static_cast<VkPipelineBindPoint>(BindPoint), p);
 	}
+}
 
-	
+namespace d2d::vk {
 	template<typename T, auto BufferConfigs, auto AssetHeapConfigs, sl::size_t CommandGroupCount>
     void command_buffer::draw(
 		render_process<BufferConfigs, AssetHeapConfigs, CommandGroupCount> const& render_proc,
@@ -207,8 +268,8 @@ namespace d2d::vk {
 		) noexcept -> void {
 			const sl::uoffset_t draw_cmd_offset = draw_cmd_buff_offsets[I];
 			const sl::uoffset_t draw_cnt_offset = draw_cnt_buff_offsets[I];
-			auto const& draw_cmd_buff = sl::universal::get<T::draw_buffers[I].key>(proc);
-			auto const& draw_cnt_buff = sl::universal::get<T::draw_buffers[I].value>(proc);
+			auto const& draw_cmd_buff = sl::universal::get<sl::universal::get<I>(T::draw_buffers).key>(proc);
+			auto const& draw_cnt_buff = sl::universal::get<sl::universal::get<I>(T::draw_buffers).value>(proc);
 
         	if constexpr (requires { T::index_type; }) {
 				constexpr static sl::size_t stride = sizeof(indexed_draw_command_t);

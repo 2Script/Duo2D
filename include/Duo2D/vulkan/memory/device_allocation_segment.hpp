@@ -1,20 +1,26 @@
 #pragma once
 #include <vulkan/vulkan.h>
 
-#include "Duo2D/core/render_process.fwd.hpp"
+#include "Duo2D/core/asset_heap_config.hpp"
+#include "Duo2D/graphics/core/texture_view.hpp"
 #include "Duo2D/vulkan/core/command_buffer.fwd.hpp"
-#include "Duo2D/core/frames_in_flight.def.hpp"
 #include "Duo2D/core/buffer_config_table.hpp"
 #include "Duo2D/vulkan/device/logical_device.hpp"
 #include "Duo2D/vulkan/core/vulkan_ptr.hpp"
 #include "Duo2D/core/buffer_config.hpp"
+#include "Duo2D/vulkan/memory/generic_allocation.fwd.hpp"
+#include "Duo2D/vulkan/memory/texture_data_info.hpp"
+//#include "Duo2D/core/render_process.fwd.hpp"
+//#include "Duo2D/core/frames_in_flight.def.hpp"
+//#include "Duo2D/vulkan/memory/asset_group.hpp"
+//#include "Duo2D/vulkan/memory/asset_heap_allocation.hpp"
+//#include "Duo2D/vulkan/memory/descriptor_heap.hpp"
 
 
 __D2D_DECLARE_VK_TRAITS_DEVICE(VkBuffer);
 
 
 namespace d2d::vk::impl {
-	constexpr sl::array<coupling_policy::num_coupling_policies, sl::size_t> allocation_counts{{D2D_FRAMES_IN_FLIGHT, 1}};
 
 	using buffer_ptr_type = vulkan_ptr<VkBuffer, vkDestroyBuffer>;
 }
@@ -55,11 +61,15 @@ namespace d2d::vk::impl {
 		using base_type::config;
 		using base_type::allocation_count;
 	public:
-        static result<device_allocation_segment<I, N, BufferConfigs, RenderProcessT>> create(std::shared_ptr<logical_device> device, std::size_t initial_capacity, std::size_t initial_size = 0) noexcept;
+        static result<device_allocation_segment<I, N, BufferConfigs, RenderProcessT>> create(
+			std::shared_ptr<logical_device> logi_device,
+			std::size_t initial_capacity,
+			std::size_t initial_size = 0
+		) noexcept;
 
 	public:
-		constexpr std::byte const* data() const noexcept { return ptrs[this->current_buffer_index()]; }
-		constexpr std::byte      * data()       noexcept { return ptrs[this->current_buffer_index()]; }
+		constexpr std::byte const* data() const noexcept requires(memory_policy::is_cpu_visible(config.memory))  { return ptrs[this->current_buffer_index()]; }
+		constexpr std::byte      * data()       noexcept requires(memory_policy::is_cpu_writable(config.memory)) { return ptrs[this->current_buffer_index()]; }
 
 		constexpr sl::size_t size() const noexcept { return data_bytes; }
 		constexpr sl::size_t size_bytes() const noexcept { return data_bytes; }
@@ -118,10 +128,10 @@ namespace d2d::vk::impl {
 		constexpr std::byte const* data() const noexcept { return bytes[this->current_buffer_index()].data(); }
 		constexpr std::byte      * data()       noexcept { return bytes[this->current_buffer_index()].data(); }
 
-		consteval sl::size_t size() const noexcept { return bytes.size(); }
-		consteval sl::size_t size_bytes() const noexcept { return bytes.size(); }
-		consteval sl::size_t capacity() const noexcept { return bytes.size(); }
-		consteval sl::size_t capacity_bytes() const noexcept { return bytes.size(); }
+		consteval sl::size_t size() const noexcept { return config.initial_capacity_bytes; }
+		consteval sl::size_t size_bytes() const noexcept { return config.initial_capacity_bytes; }
+		consteval sl::size_t capacity() const noexcept { return config.initial_capacity_bytes; }
+		consteval sl::size_t capacity_bytes() const noexcept { return config.initial_capacity_bytes; }
 		
 	public:
 		friend ::d2d::vk::command_buffer;
@@ -136,7 +146,11 @@ namespace d2d::vk {
 	//Directly modifyable
 	//Assumes that reads/writes are done safely
 	template<sl::index_t I, sl::size_t N, buffer_config_table<N> BufferConfigs, typename RenderProcessT>
-    class device_allocation_segment :
+	requires(
+		!(impl::device_allocation_segment_base<I, N, BufferConfigs, RenderProcessT>::config.usage & (buffer_usage_policy::texture_data)) &&
+		impl::device_allocation_segment_base<I, N, BufferConfigs, RenderProcessT>::config.memory != memory_policy::gpu_local
+	)
+    class device_allocation_segment<I, N, BufferConfigs, RenderProcessT> :
 		public impl::device_allocation_segment_base<I, N, BufferConfigs, RenderProcessT>
 	{
 	protected:
@@ -144,6 +158,11 @@ namespace d2d::vk {
 	public:
 		using base_type::config;
 		using base_type::allocation_count;
+	public:
+		// static_assert(
+		// 	!(device_allocation_segment<I, N, BufferConfigs, RenderProcessT>::config.usage & (buffer_usage_policy::texture_data)) &&
+		// 	device_allocation_segment<I, N, BufferConfigs, RenderProcessT>::config.memory != memory_policy::gpu_local
+		// );
 
 	public:
 		template<typename T>
@@ -168,7 +187,7 @@ namespace d2d::vk {
 		requires(sl::traits::is_constructible_from_v<T, Args&&...>);
 
 
-	private:
+	protected:
 		template<typename T>
 		constexpr result<void> push_to(sl::uoffset_t offset, T&& t) 
 		noexcept(sl::traits::is_noexcept_constructible_from_v<T, T&&>);
@@ -180,10 +199,104 @@ namespace d2d::vk {
 }
 
 namespace d2d::vk {
+	//Directly modifiable (specifically for textures)
+	template<sl::index_t I, sl::size_t N, buffer_config_table<N> BufferConfigs, typename RenderProcessT>
+	requires (
+		static_cast<bool>(impl::device_allocation_segment_base<I, N, BufferConfigs, RenderProcessT>::config.usage & (buffer_usage_policy::texture_data))
+	)
+	class device_allocation_segment<I, N, BufferConfigs, RenderProcessT> : 
+		public impl::device_allocation_segment_base<I, N, BufferConfigs, RenderProcessT>
+	{
+	protected:
+		using base_type = impl::device_allocation_segment_base<I, N, BufferConfigs, RenderProcessT>;
+	public:
+		using base_type::config;
+		using base_type::allocation_count;
+
+	public:
+		constexpr result<void> push_back(texture_view t) noexcept;
+
+		constexpr result<void> try_push_back(texture_view t) noexcept;
+
+	private:
+		template<sl::index_t, asset_heap_config, typename>
+		friend class asset_heap_allocation;
+
+	private:
+		std::vector<texture_data_info> texture_data_infos;
+	};
+}
+
+// namespace d2d::vk {
+// 	//Directly modifiable buffer for descriptor heaps
+// 	template<sl::index_t I, sl::size_t N, buffer_config_table<N> BufferConfigs, typename RenderProcessT>
+// 	requires (
+// 		device_allocation_segment<I, N, BufferConfigs, RenderProcessT>::config.usage == buffer_usage_policy::asset_heap_table &&
+// 		device_allocation_segment<I, N, BufferConfigs, RenderProcessT>::config.memory != memory_policy::gpu_local
+// 	)
+// 	class device_allocation_segment<I, N, BufferConfigs, RenderProcessT> : 
+// 		public impl::device_allocation_segment_base<I, N, BufferConfigs, RenderProcessT>
+// 	{
+// 		struct asset_group_info : descriptor_info {
+// 			sl::size_t count;
+// 		};
+// 	private:
+// 		template<sl::index_t J>
+// 		using uniform_buffer_segment = device_allocation_segment<J, N, BufferConfigs, RenderProcessT>;
+// 	protected:
+// 		using base_type = impl::device_allocation_segment_base<I, N, BufferConfigs, RenderProcessT>;
+// 	public:
+// 		using base_type::config;
+// 		using base_type::allocation_count;
+// 	public:
+// 		template<asset_heap_config Config, sl::index_t... Js>
+// 		constexpr result<void> emplace(
+// 			asset_heap_allocation<Config, RenderProcessT> const& asset_heap,
+// 			uniform_buffer_segment<Js> const&... uniform_buffs
+// 		) noexcept
+// 		requires((uniform_buffer_segment<Js>::config.usage == buffer_usage_policy::uniform) && ...);
+
+// 		template<asset_heap_config Config, sl::index_t... Js>
+// 		constexpr result<void> try_emplace(
+// 			asset_heap_allocation<Config, RenderProcessT> const& asset_heap,
+// 			uniform_buffer_segment<Js> const&... uniform_buffs
+// 		) noexcept
+// 		requires((uniform_buffer_segment<Js>::config.usage == buffer_usage_policy::uniform) && ...);
+
+
+// 		template<asset_heap_config Config, sl::index_t... Js>
+// 		constexpr result<void> emplace(
+// 			uniform_buffer_segment<Js> const&... uniform_buffs
+// 		) noexcept
+// 		requires((uniform_buffer_segment<Js>::config.usage == buffer_usage_policy::uniform) && ...);
+
+// 		template<asset_heap_config Config, sl::index_t... Js>
+// 		constexpr result<void> try_emplace(
+// 			uniform_buffer_segment<Js> const&... uniform_buffs
+// 		) noexcept
+// 		requires((uniform_buffer_segment<Js>::config.usage == buffer_usage_policy::uniform) && ...);
+// 	private:
+// 		template<bool ForceResize, asset_heap_config Config, sl::index_t... Js>
+// 		constexpr result<void> write_descriptors(
+// 			sl::bool_constant_type<ForceResize>,
+// 			asset_heap_allocation<Config, RenderProcessT> const& asset_heap,
+// 			uniform_buffer_segment<Js> const&... uniform_buffs
+// 		) noexcept;
+
+
+// 	public:
+// 		friend ::d2d::vk::command_buffer;
+
+// 	private:
+// 		sl::array<descriptor_heap::num_descriptor_heaps, sl::size_t> heap_offsets;
+// 	};
+// }
+
+namespace d2d::vk {
 	//Not directly modifyable
 	template<sl::index_t I, sl::size_t N, buffer_config_table<N> BufferConfigs, typename RenderProcessT>
 	requires (
-		device_allocation_segment<I, N, BufferConfigs, RenderProcessT>::config.memory == memory_policy::gpu_local
+		impl::device_allocation_segment_base<I, N, BufferConfigs, RenderProcessT>::config.memory == memory_policy::gpu_local
 	)
 	class device_allocation_segment<I, N, BufferConfigs, RenderProcessT> : 
 		public impl::device_allocation_segment_base<I, N, BufferConfigs, RenderProcessT> {};

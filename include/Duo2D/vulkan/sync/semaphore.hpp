@@ -12,6 +12,9 @@ __D2D_DECLARE_VK_TRAITS_DEVICE(VkSemaphore);
 namespace d2d::vk {
     struct semaphore : vulkan_ptr<VkSemaphore, vkDestroySemaphore> {
         static result<semaphore> create(std::shared_ptr<logical_device> device, VkSemaphoreType semaphore_type = VK_SEMAPHORE_TYPE_BINARY) noexcept;
+
+	public:
+		result<void> wait(sl::uint64_t value, sl::uint64_t timeout = std::numeric_limits<sl::uint64_t>::max()) const noexcept;
     };
 }
 

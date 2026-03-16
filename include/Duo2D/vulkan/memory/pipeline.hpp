@@ -20,7 +20,8 @@ namespace d2d::vk {
 namespace d2d::vk {
     template<typename T, auto BufferConfigs, auto AssetHeapConfigs>
     struct pipeline<bind_point::graphics, T, BufferConfigs, AssetHeapConfigs> : vulkan_ptr<VkPipeline, vkDestroyPipeline> {
-        static result<pipeline> create(std::shared_ptr<logical_device> device, std::span<const VkFormat> color_attachment_formats, VkFormat depth_attachment_format) noexcept;
+		template<typename RenderProcessT>
+        static result<pipeline> create(std::shared_ptr<logical_device> logi_device, RenderProcessT&& proc, std::span<const VkFormat> color_attachment_formats, VkFormat depth_attachment_format) noexcept;
 
 	public:
 		constexpr auto&& layout(this auto&& self) noexcept { return sl::forward_like<decltype(self)>(self._layout); }
@@ -32,7 +33,8 @@ namespace d2d::vk {
 
     template<typename T, auto BufferConfigs, auto AssetHeapConfigs>
     struct pipeline<bind_point::compute, T, BufferConfigs, AssetHeapConfigs> : vulkan_ptr<VkPipeline, vkDestroyPipeline> {
-        static result<pipeline> create(std::shared_ptr<logical_device> device) noexcept;
+		template<typename RenderProcessT>
+        static result<pipeline> create(std::shared_ptr<logical_device> logi_device, RenderProcessT&& proc) noexcept;
 
 	public:
 		constexpr auto&& layout(this auto&& self) noexcept { return sl::forward_like<decltype(self)>(self._layout); }

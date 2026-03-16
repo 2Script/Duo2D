@@ -18,7 +18,7 @@
 
 namespace d2d {
     template<typename InstanceT, bool WindowCapability>
-    result<application<InstanceT, WindowCapability>> application<InstanceT, WindowCapability>::create(std::string_view name, version app_version) noexcept {
+    result<application<InstanceT, WindowCapability>> application<InstanceT, WindowCapability>::create(std::string_view name, version app_version, bool prefer_synchronous_rendering) noexcept {
         application ret{};
         ret.name = name;
 
@@ -77,7 +77,7 @@ namespace d2d {
 
 
         for(VkPhysicalDevice device_handle : devices) {
-            result<vk::physical_device> d = make<vk::physical_device>(device_handle, ret.instance_ptr, WindowCapability);
+            result<vk::physical_device> d = make<vk::physical_device>(device_handle, ret.instance_ptr, prefer_synchronous_rendering, WindowCapability);
             if(!d.has_value()) return d.error();
             ret._devices.insert(*std::move(d));
         }

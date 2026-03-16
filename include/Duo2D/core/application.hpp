@@ -54,7 +54,7 @@ namespace d2d {
 	> {
     public:
         application() noexcept = default;
-        static result<application> create(std::string_view name, version app_version) noexcept;
+        static result<application> create(std::string_view name, version app_version, bool prefer_synchronous_rendering = false) noexcept;
 
 
     public:

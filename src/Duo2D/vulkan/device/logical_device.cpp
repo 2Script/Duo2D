@@ -32,9 +32,19 @@ namespace d2d::vk {
         }
 
         //Set desired features
+		// VkPhysicalDeviceDescriptorHeapFeaturesEXT desired_descriptor_heap_features{
+			// .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_HEAP_FEATURES_EXT,
+			// .pNext = nullptr,
+			// .descriptorHeap = VK_TRUE,
+		// };
+		// VkPhysicalDeviceMaintenance5FeaturesKHR desired_maintenance_5_features{
+			// .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_5_FEATURES_KHR,
+			// .pNext = &desired_descriptor_heap_features,
+			// .maintenance5 = VK_TRUE,
+		// };
         VkPhysicalDeviceVulkan13Features desired_1_3_features{
             .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES,
-			.pNext = nullptr,
+			.pNext = nullptr,//&desired_maintenance_5_features,
             .synchronization2 = VK_TRUE,
 			.dynamicRendering = VK_TRUE,
         };
@@ -45,7 +55,10 @@ namespace d2d::vk {
             .descriptorIndexing = VK_TRUE,
             .shaderUniformBufferArrayNonUniformIndexing = VK_TRUE,
             .shaderSampledImageArrayNonUniformIndexing = VK_TRUE,
+            .shaderStorageImageArrayNonUniformIndexing = VK_TRUE,
+			.descriptorBindingVariableDescriptorCount = VK_TRUE,
             .runtimeDescriptorArray = VK_TRUE,
+			.scalarBlockLayout = VK_TRUE,
             .timelineSemaphore = VK_TRUE,
 			.bufferDeviceAddress = VK_TRUE,
         };
@@ -91,6 +104,15 @@ namespace d2d::vk {
         for(std::size_t i = 0; i < queue_create_info_count; ++i)
             vkGetDeviceQueue(ret.handle, phys_device_ptr->queue_family_infos[i].index, 0, &ret.queues[i]);
 
+
+		//Load extended functions
+		#define EXT_FN(name, suffix) \
+		ret.vulkan_fns[sl::index_constant<extended_function::name>] = reinterpret_cast<PFN_##name##suffix>(vkGetDeviceProcAddr(ret.handle, #name #suffix)); \
+		if(!ret.vulkan_fns[sl::index_constant<extended_function::name>]) \
+			return errc::missing_vulkan_extension;
+
+		__D2D_VK_EXT_FNS
+		#undef EXT_FN
 
         return ret;
     }

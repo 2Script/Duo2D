@@ -58,8 +58,8 @@ namespace d2d {
 		}
 
 		
-		//Initialize allocations
-		constexpr auto init_single_alloc = []<coupling_policy_t CP, memory_policy_t MP>(
+		//Initialize buffer allocations
+		constexpr auto init_single_buffer_alloc = []<coupling_policy_t CP, memory_policy_t MP>(
 			application_instance& app_inst,
 			sl::constant_type<coupling_policy_t, CP>,
 			sl::constant_type<memory_policy_t, MP>
@@ -73,18 +73,38 @@ namespace d2d {
 			>;
 			RESULT_TRY_MOVE(
 				(static_cast<allocation_type&>(app_inst)),
-				(make<allocation_type>(app_inst.logi_device_ptr, app_inst.phys_device_ptr, app_inst._command_pool_ptrs[command_family::transfer]))
+				(make<allocation_type>(app_inst.logi_device_ptr, app_inst.phys_device_ptr))//, app_inst._command_pool_ptrs[command_family::transfer]))
 			);
 			return {};
 		};
 		
 		RESULT_VERIFY((sl::functor::invoke_each_result<
 			result<void>, 
-			sl::functor::invoke_each_result<result<void>, init_single_alloc>{}
+			sl::functor::invoke_each_result<result<void>, init_single_buffer_alloc>{}
 		>{}(
 			sl::integer_sequence_of_length<coupling_policy_t, coupling_policy::num_coupling_policies>,
 			sl::integer_sequence_of_length<memory_policy_t, memory_policy::num_memory_policies>,
 			ret
+		)));
+
+		//Init asset heap allocations
+		constexpr auto init_single_asset_heap_alloc = []<sl::index_t I>(
+			application_instance& app_inst,
+			sl::index_constant_type<I>
+		) noexcept -> result<void> {
+			using allocation_type = vk::asset_heap_allocation<
+				BufferConfigs.size() + I, 
+				sl::universal::get<sl::second_constant>(*std::next(AssetHeapConfigs.begin(), I)),
+				render_process_type
+			>;
+			RESULT_TRY_MOVE(
+				(static_cast<allocation_type&>(app_inst)),
+				(make<allocation_type>(app_inst.logi_device_ptr, app_inst.phys_device_ptr))//, app_inst._command_pool_ptrs[command_family::transfer]))
+			);
+			return {};
+		};
+		RESULT_VERIFY((sl::functor::invoke_each_result<result<void>, init_single_asset_heap_alloc>{}(
+			sl::index_sequence_of_length<AssetHeapConfigs.size()>, ret
 		)));
 
 

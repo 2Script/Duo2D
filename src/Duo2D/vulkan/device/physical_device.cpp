@@ -11,17 +11,24 @@ namespace d2d::vk {
     result<physical_device> physical_device::create(VkPhysicalDevice& device_handle, std::shared_ptr<vk::instance> instance, bool window_capability) noexcept {
         
         //Get device features and properties
-        VkPhysicalDeviceProperties device_properties;
+		//VkPhysicalDeviceDescriptorHeapPropertiesEXT device_descriptor_heap_properties{
+		//	.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_HEAP_PROPERTIES_EXT,
+		//};
+        VkPhysicalDeviceProperties2 device_properties{
+	    	.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2,
+			//.pNext = &device_descriptor_heap_properties,
+		};
         VkPhysicalDeviceFeatures device_features;
-        vkGetPhysicalDeviceProperties(device_handle, &device_properties);
+        vkGetPhysicalDeviceProperties2(device_handle, &device_properties);
         vkGetPhysicalDeviceFeatures(device_handle, &device_features);
 
 
+		constexpr static sl::uint32_t nidx = (static_cast<std::uint32_t>(sl::npos) >> 1);
         //Get device queue family indicies
         auto device_queue_family_infos = sl::universal::make<sl::array<command_family::num_families, queue_family_info>>(
 			sl::in_place_tag,
 			false, 
-			(static_cast<std::uint32_t>(sl::npos) >> 1)
+			nidx
 		);
         
 		{
@@ -61,7 +68,7 @@ namespace d2d::vk {
 		//TODO: only check for queues that we actually need (based on graphics timeline)?
 		const sl::size_t num_queue_families_to_verify = command_family::num_distinct_families + static_cast<sl::size_t>(window_capability);
 		for(std::size_t i = 0; i < num_queue_families_to_verify; ++i)
-			if(device_queue_family_infos[i].index == (static_cast<std::uint32_t>(sl::npos) >> 1))
+			if(device_queue_family_infos[i].index == nidx)
 				return static_cast<errc>(error::device_lacks_necessary_queue_base + i);
 		
 		
@@ -89,12 +96,43 @@ namespace d2d::vk {
 
         //Create device info
         physical_device ret{
-            .name = device_properties.deviceName,
-            .type = static_cast<device_type>(device_properties.deviceType),
-            .limits = device_properties.limits,
-            .queue_family_infos = device_queue_family_infos,
+            .name = device_properties.properties.deviceName,
+            .type = static_cast<device_type>(device_properties.properties.deviceType),
             .extensions = device_extensions,
             .features = std::bit_cast<features_t>(device_features),
+            .limits = device_properties.properties.limits,
+			.descriptor_count_limits{{
+				device_properties.properties.limits.maxDescriptorSetSamplers,
+
+				device_properties.properties.limits.maxDescriptorSetSampledImages,
+				device_properties.properties.limits.maxDescriptorSetStorageImages,
+			}},
+			.per_stage_descriptor_count_limits{{
+				device_properties.properties.limits.maxPerStageDescriptorSamplers,
+				
+				device_properties.properties.limits.maxPerStageDescriptorSampledImages,
+				device_properties.properties.limits.maxPerStageDescriptorStorageImages,
+			}},
+
+			.max_push_data_bytes = 0,//device_descriptor_heap_properties.maxPushDataSize,
+			.asset_group_infos{{
+				// {device_descriptor_heap_properties.samplerDescriptorSize, device_descriptor_heap_properties.samplerDescriptorAlignment},
+				// {device_descriptor_heap_properties.imageDescriptorSize, device_descriptor_heap_properties.imageDescriptorAlignment},
+				// {device_descriptor_heap_properties.bufferDescriptorSize, device_descriptor_heap_properties.bufferDescriptorAlignment},
+			}},
+			.descriptor_heap_infos{{
+				// {
+				// 	device_descriptor_heap_properties.minSamplerHeapReservedRange,
+				// 	device_descriptor_heap_properties.samplerHeapAlignment,
+				// 	device_descriptor_heap_properties.maxSamplerHeapSize
+				// },
+				// {
+				// 	device_descriptor_heap_properties.minResourceHeapReservedRange,
+				// 	device_descriptor_heap_properties.resourceHeapAlignment,
+				// 	device_descriptor_heap_properties.maxResourceHeapSize
+				// },
+			}},
+            .queue_family_infos = device_queue_family_infos,
         };
         ret.handle = device_handle;
         return ret;

@@ -6,6 +6,7 @@ namespace d2d::timeline::impl {
 		out_of_timeline_execute,
 		out_of_timeline_copy,
 		realloc,
+		image_data_upload,
 
 		num_dedicated_command_groups
 	};

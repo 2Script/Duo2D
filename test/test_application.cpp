@@ -27,6 +27,7 @@
 
 #include "./timeline.hpp"
 #include "./buffer_config_table.hpp"
+#include "./asset_heap_config_table.hpp"
 
 
 
@@ -35,7 +36,6 @@ extern "C" const char* __asan_default_options() { return "detect_leaks=0"; }
 #endif
 
 
-constexpr d2d::asset_heap_config_table<0> asset_heap_configs{{}};
 
 using application_instance = d2d::application_instance<d2d::test::novice_timeline, buffer_configs, asset_heap_configs>;
 using application = d2d::application<application_instance, true>;
@@ -69,7 +69,7 @@ constexpr sl::array<3, d2d::pt2u32> rect_positions{{
 }};
 
 int main(){
-    auto a = d2d::make<application>("Duo2D Test", d2d::version{1,0,0});
+    auto a = d2d::make<application>("Duo2D Test", d2d::version{1,0,0}, false);
     if(!a.has_value()) return a.error();
     application app = *std::move(a);
 
@@ -101,6 +101,7 @@ int main(){
 
 
 	
+	//Set callback to update gpu address
 	inst.timeline_callbacks()[d2d::timeline::callback_event::on_frame_begin].push_back([](typename application_instance::render_process_type& proc, d2d::window& win, auto&) noexcept -> d2d::result<void> {
 		{
 		draw_constants constants {
@@ -143,20 +144,38 @@ int main(){
 		&d2d::timeline::predefined_callbacks::update_swap_extent<application_instance, buffer_id::draw_constants>
 	);
 
-
+	//Set dispatch commands
 	RESULT_VERIFY((sl::universal::get<buffer_id::dispatch_commands>(inst).template try_emplace_back<VkDispatchIndirectCommand>(
 		1, 1, 1
 	)));
 
 
-	RESULT_VERIFY(sl::universal::get<buffer_id::draw_commands>(inst).reserve(sizeof(VkDrawIndexedIndirectCommand))); //Should do nothing
-	RESULT_VERIFY((sl::universal::get<buffer_id::draw_commands>(inst).template try_emplace_back<VkDrawIndexedIndirectCommand>(
+	//Set initial draw commads
+	RESULT_VERIFY(sl::universal::get<buffer_id::draw_commands>(inst).reserve(sizeof(d2d::indexed_draw_command_t))); //Should do nothing
+	RESULT_VERIFY((sl::universal::get<buffer_id::draw_commands>(inst).template try_emplace_back<d2d::indexed_draw_command_t>(
 		6, 3, 0, 0, 0
 	)));
 	RESULT_VERIFY((sl::universal::get<buffer_id::counts>(inst).template try_emplace_back<d2d::draw_count_t>(
 		1
 	)));
 
+
+	RESULT_VERIFY((sl::universal::get<buffer_id::staging>(inst).template emplace_back<d2d::indexed_draw_command_t>(
+		6, 1, 0, 0, 0
+	)));
+
+	RESULT_VERIFY(sl::universal::get<buffer_id::single_instance_draw_command>(inst).resize(sizeof(d2d::indexed_draw_command_t)));
+	RESULT_VERIFY((d2d::copy(
+		sl::universal::get<buffer_id::single_instance_draw_command>(inst),
+		sl::universal::get<buffer_id::staging>(inst),
+		sizeof(d2d::indexed_draw_command_t)
+	)));
+	sl::universal::get<buffer_id::staging>(inst).clear();
+
+
+
+
+	//Set rectangle indices
 	RESULT_VERIFY(sl::universal::get<buffer_id::staging>(inst).resize(rect_indices.size_bytes()));
 	std::memcpy(sl::universal::get<buffer_id::staging>(inst).data(), rect_indices.data(), rect_indices.size_bytes());
 	
@@ -167,9 +186,10 @@ int main(){
 		sl::universal::get<buffer_id::staging>(inst),
 		rect_indices.size_bytes()
 	)));
-	//sl::universal::get<buffer_id::staging>(inst).clear();
+	sl::universal::get<buffer_id::staging>(inst).clear();
 
 
+	//Set rectangle positions
 	RESULT_VERIFY(sl::universal::get<buffer_id::staging>(inst).resize(rect_positions.size_bytes()));
 	std::memcpy(sl::universal::get<buffer_id::staging>(inst).data(), rect_positions.data(), rect_positions.size_bytes());
 
@@ -183,10 +203,15 @@ int main(){
 	sl::universal::get<buffer_id::staging>(inst).clear();
 
 
+	//Set draw count
 	constexpr sl::uint32_t rect_limit{250};
+	//RESULT_VERIFY((sl::universal::get<buffer_id::counts>(inst).try_push_back(
+	//	rect_limit
+	//)));
 	RESULT_VERIFY((sl::universal::get<buffer_id::staging>(inst).try_push_back(
 		rect_limit
 	)));
+	RESULT_VERIFY(sl::universal::get<buffer_id::counts>(inst).try_resize(sizeof(sl::uint32_t) + sizeof(d2d::draw_count_t)));
 	RESULT_VERIFY((d2d::copy(
 		sl::universal::get<buffer_id::counts>(inst),
 		sl::universal::get<buffer_id::staging>(inst),
@@ -194,6 +219,62 @@ int main(){
 		sizeof(d2d::draw_count_t)
 	)));
 	sl::universal::get<buffer_id::staging>(inst).clear();
+
+	//Set offset
+	constexpr sl::uint32_t offset{2};
+	//std::memcpy(sl::universal::get<buffer_id::staging>(inst).data(), zeros.data(), sl::universal::get<buffer_id::staging>(inst).capacity_bytes());
+	RESULT_VERIFY((sl::universal::get<buffer_id::staging>(inst).try_push_back(
+		offset
+	)));
+	RESULT_VERIFY(sl::universal::get<buffer_id::offset>(inst).resize(sizeof(decltype(offset))));
+	RESULT_VERIFY((d2d::copy(
+		sl::universal::get<buffer_id::offset>(inst),
+		sl::universal::get<buffer_id::staging>(inst),
+		sizeof(decltype(offset))
+	)));
+	sl::universal::get<buffer_id::staging>(inst).clear();
+
+
+	//Textures
+	llfio::mapped_file_handle texture_mh;
+	RESULT_TRY_MOVE(texture_mh, d2d::decoder::open_file(assets_path / "test_img_alpha_2.ktx2"));
+	RESULT_TRY_MOVE_UNSCOPED(const d2d::texture sampled_t, d2d::decoder::decode_texture(texture_mh, d2d::texture_usage::sampled), sampled_tex_result);
+	//RESULT_TRY_MOVE_UNSCOPED(const d2d::texture storage_t, d2d::decoder::decode_texture(texture_mh, d2d::texture_usage::storage), storage_tex_result);
+
+
+	//Sampler
+	const VkSamplerCreateInfo sampler_info{
+		.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
+		.pNext = nullptr,
+		.flags = VkSamplerCreateFlags{},
+	    .magFilter               = VK_FILTER_LINEAR,
+	    .minFilter               = VK_FILTER_LINEAR,
+	    .mipmapMode              = VK_SAMPLER_MIPMAP_MODE_LINEAR,
+	    .addressModeU            = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,
+	    .addressModeV            = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,
+	    .addressModeW            = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,
+        .mipLodBias              = 0.0f,
+        .anisotropyEnable        = VK_TRUE,
+        .maxAnisotropy           = inst.physical_device_ptr()->limits.maxSamplerAnisotropy,
+        .compareEnable           = VK_FALSE,
+        .compareOp               = VK_COMPARE_OP_NEVER,
+        .minLod                  = 0.0f,
+	    .maxLod                  = static_cast<float>(sampled_t.mip_level_count),
+        .borderColor             = VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK,
+        .unnormalizedCoordinates = VK_FALSE,
+	};
+	RESULT_VERIFY(sl::universal::get<asset_heap_id::graphics>(inst).push_back(sl::move(sampler_info)));
+
+
+	RESULT_VERIFY(sl::universal::get<buffer_id::texture_staging>(inst).push_back(sampled_t));
+	//RESULT_VERIFY(sl::universal::get<buffer_id::texture_staging>(inst).push_back(storage_t));
+
+	RESULT_VERIFY(sl::universal::get<asset_heap_id::graphics>(inst).emplace_back(sl::universal::get<buffer_id::texture_staging>(inst)));
+	RESULT_VERIFY(sl::universal::get<asset_heap_id::graphics>(inst).emplace_back(sl::universal::get<buffer_id::texture_staging>(inst)));
+
+
+
+	
 
     //2nd window
     /* {

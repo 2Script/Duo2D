@@ -26,7 +26,10 @@ namespace d2d::timeline {
 			render_process<BufferConfigs, AssetHeapConfigs, CommandGroupCount> const& proc,
 			window&
 		) const noexcept {
-			return make<vk::pipeline<vk::bind_point::compute, T, BufferConfigs, AssetHeapConfigs>>(proc.logical_device_ptr());
+			return make<vk::pipeline<vk::bind_point::compute, T, BufferConfigs, AssetHeapConfigs>>(
+				proc.logical_device_ptr(),
+				proc
+			);
 		};
 	};
 }
@@ -48,8 +51,12 @@ namespace d2d::timeline {
 
 			//For each buffer declared by type T, bind the buffer (if applicable)
 			[&compute_buffer, &proc, &pipeline]<buffer_key_t... Ks>(buffer_key_sequence_type<Ks...>){
-				((compute_buffer.template bind_buffer<T>(proc[buffer_key_constant<Ks>], pipeline.layout())), ...);
+				((compute_buffer.bind_buffer(proc[buffer_key_constant<Ks>], pipeline.layout())), ...);
 			}(T::buffers);
+
+			[&compute_buffer, &proc, &pipeline]<asset_heap_key_t... Ks>(asset_heap_key_sequence_type<Ks...>){
+				((compute_buffer.bind_asset_heap(proc[asset_heap_key_constant<Ks>], pipeline.layout())), ...);
+			}(T::asset_heaps);
 
 			compute_buffer.template dispatch<T>(proc); 
 			return {};

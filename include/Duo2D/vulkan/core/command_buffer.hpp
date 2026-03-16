@@ -9,10 +9,10 @@
 #include <frozen/unordered_map.h>
 
 #include "Duo2D/core/buffer_config_table.hpp"
-#include "Duo2D/core/asset_heap_config_table.hpp"
+#include "Duo2D/core/render_process.fwd.hpp"
 #include "Duo2D/vulkan/memory/bind_point.hpp"
-#include "Duo2D/vulkan/memory/device_allocation.fwd.hpp"
 #include "Duo2D/vulkan/memory/device_allocation_segment.hpp"
+#include "Duo2D/vulkan/memory/asset_heap_allocation.hpp"
 #include "Duo2D/vulkan/memory/image.hpp"
 #include "Duo2D/vulkan/device/logical_device.hpp"
 #include "Duo2D/vulkan/core/vulkan_ptr.hpp"
@@ -54,11 +54,15 @@ namespace d2d::vk {
     	inline void free() const noexcept;
 		
 		
-		template<typename T, sl::index_t I, sl::size_t N, buffer_config_table<N> BufferConfigs, auto AssetHeapConfigs, typename RenderProcessT>
+		template<sl::index_t I, sl::size_t N, buffer_config_table<N> BufferConfigs, typename T, auto AssetHeapConfigs, typename RenderProcessT>
 		void bind_buffer(device_allocation_segment<I, N, BufferConfigs, RenderProcessT> const& buff, pipeline_layout<shader_stage::all_graphics, T, BufferConfigs, AssetHeapConfigs> const& layout) const noexcept;
-		template<typename T, sl::index_t I, sl::size_t N, buffer_config_table<N> BufferConfigs, auto AssetHeapConfigs, typename RenderProcessT>
+		template<sl::index_t I, sl::size_t N, buffer_config_table<N> BufferConfigs, typename T, auto AssetHeapConfigs, typename RenderProcessT>
 		void bind_buffer(device_allocation_segment<I, N, BufferConfigs, RenderProcessT> const& buff, pipeline_layout<shader_stage::compute, T, BufferConfigs, AssetHeapConfigs> const& layout) const noexcept;
-    	template<bind_point_t BindPoint, typename T, auto BufferConfigs, auto AssetHeapConfigs>
+
+		template<sl::index_t I, asset_heap_config Config, typename RenderProcessT, shader_stage_flags_t ShaderStages, typename T, auto BufferConfigs, auto AssetHeapConfigs>
+		void bind_asset_heap(asset_heap_allocation<I, Config, RenderProcessT> const& heap, pipeline_layout<ShaderStages, T, BufferConfigs, AssetHeapConfigs> const& layout) const noexcept;
+    	
+		template<bind_point_t BindPoint, typename T, auto BufferConfigs, auto AssetHeapConfigs>
 		void bind_pipeline(pipeline<BindPoint, T, BufferConfigs, AssetHeapConfigs> const& p) const noexcept;
 
 	public:

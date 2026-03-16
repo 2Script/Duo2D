@@ -1,8 +1,10 @@
 #pragma once
+#include <string_view>
+
+#include <vulkan/vulkan.h>
+
 #include "Duo2D/vulkan/core/vulkan_ptr.hpp"
 #include "Duo2D/traits/vk_traits.hpp"
-#include <string_view>
-#include <vulkan/vulkan_core.h>
 
 
 __D2D_DECLARE_VK_TRAITS(VkInstance);

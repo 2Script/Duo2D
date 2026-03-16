@@ -61,9 +61,7 @@ namespace d2d::vk::impl {
 			N, BufferConfigs, RenderProcessT, CouplingPolicyIs, sl::index_sequence_of_length_type<memory_policy::num_memory_policies>
 		>... 
 	{
-		template<sl::index_t, sl::size_t _N, buffer_config_table<_N>, typename>
-		friend class vk::impl::device_allocation_segment_base;
-	private:
+	protected:
 		using device_allocations_grouped_by_buffer_policy<
 			N, BufferConfigs, RenderProcessT, CouplingPolicyIs, sl::index_sequence_of_length_type<memory_policy::num_memory_policies>
 		>::realloc...;

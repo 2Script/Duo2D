@@ -1,25 +1,17 @@
 #pragma once
-#include <bit>
-#include <cstdint>
 #include <limits>
 
 #include <vulkan/vulkan.h>
 
 #include "Duo2D/core/coupling_policy.hpp"
 #include "Duo2D/core/memory_policy.hpp"
-#include "Duo2D/core/render_stage.hpp"
+#include "Duo2D/core//shader_stage.hpp"
 
 
-namespace d2d::impl {
-	constexpr std::uint8_t bit_pos(std::uintmax_t val) noexcept {
-		return std::countr_zero(val);
-	}
-}
 
 
 namespace d2d {
 	using buffer_usage_policy_flags_t = VkFlags;
-	using shader_stage_flags_t = VkShaderStageFlags;
 
 
 	using dispatch_command_t = VkDispatchIndirectCommand;
@@ -51,30 +43,14 @@ namespace d2d {
 		num_indirect_usage_policies = impl::bit_pos(draw_count) + 1 - num_direct_usage_polcies,
 		num_real_usage_policies = num_direct_usage_polcies + num_indirect_usage_policies,
 
-		push_constant = 0b1 << (num_real_usage_policies + 1),
+		asset_heap_table = 0b1 << (num_real_usage_policies + 0),
+		texture_data     = 0b1 << (num_real_usage_policies + 1),
+		push_constant    = 0b1 << (num_real_usage_policies + 2),
 
 		num_pseudo_usage_policies = impl::bit_pos(push_constant) + 1 - num_real_usage_policies,
 		num_usage_policies = num_pseudo_usage_policies + num_real_usage_policies,
 
 		max_value = ~static_cast<buffer_usage_policy_flags_t>(0) >> (std::numeric_limits<buffer_usage_policy_flags_t>::digits - (num_usage_policies)),
-	};
-	}
-
-
-	namespace shader_stage {
-	enum : shader_stage_flags_t {
-		vertex            = VK_SHADER_STAGE_VERTEX_BIT,
-		tessellation_ctrl = VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT,
-		tessellation_eval = VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT,
-		geometry          = VK_SHADER_STAGE_GEOMETRY_BIT,
-		fragment          = VK_SHADER_STAGE_FRAGMENT_BIT,
-		compute           = VK_SHADER_STAGE_COMPUTE_BIT,
-
-		all_graphics = VK_SHADER_STAGE_ALL_GRAPHICS,
-		all = VK_SHADER_STAGE_ALL,
-
-
-		num_shader_stages = impl::bit_pos(compute) - impl::bit_pos(vertex) + 1
 	};
 	}
 }

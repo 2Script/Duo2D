@@ -2,7 +2,6 @@
 #include "Duo2D/core/render_process.fwd.hpp"
 
 #include <vector>
-#include <cstddef>
 #include <memory>
 #include <streamline/functional/functor/subscript.hpp>
 #include <streamline/functional/functor/identity_index.hpp>
@@ -12,23 +11,14 @@
 #include "Duo2D/core/frames_in_flight.def.hpp"
 #include "Duo2D/timeline/callback_event.hpp"
 #include "Duo2D/timeline/state.hpp"
+#include "Duo2D/vulkan/memory/asset_heap_allocation_group.hpp"
 #include "Duo2D/vulkan/memory/device_allocation_group.hpp"
 #include "Duo2D/vulkan/memory/device_allocation_segment.hpp"
-#include "Duo2D/vulkan/memory/device_allocation.hpp"
-#include "Duo2D/arith/size.hpp"
 #include "Duo2D/vulkan/core/command_buffer.hpp"
 #include "Duo2D/vulkan/core/command_pool.hpp"
 #include "Duo2D/vulkan/device/logical_device.hpp"
 #include "Duo2D/vulkan/device/physical_device.hpp"
-#include "Duo2D/vulkan/display/surface.hpp"
-#include "Duo2D/vulkan/display/swap_chain.hpp"
-#include "Duo2D/vulkan/display/framebuffer.hpp"
-#include "Duo2D/vulkan/display/depth_image.hpp"
-#include "Duo2D/vulkan/display/render_pass.hpp"
 #include "Duo2D/core/buffer_config_table.hpp"
-#include "Duo2D/core/asset_heap_config_table.hpp"
-#include "Duo2D/vulkan/memory/texture_map.hpp"
-#include "Duo2D/vulkan/sync/fence.hpp"
 #include "Duo2D/vulkan/sync/semaphore.hpp"
 #include "Duo2D/core/asset_heap_key_t.hpp"
 
@@ -41,8 +31,29 @@ namespace d2d {
 			BufferConfigs.size(), BufferConfigs,
 			render_process<BufferConfigs, AssetHeapConfigs, CommandGroupCount>,
 			sl::index_sequence_of_length_type<coupling_policy::num_coupling_policies>
+		>,
+		public vk::impl::asset_heap_allocation_group<
+			BufferConfigs.size(),
+			AssetHeapConfigs,
+			render_process<BufferConfigs, AssetHeapConfigs, CommandGroupCount>,
+			sl::index_sequence_of_length_type<AssetHeapConfigs.size()>
 		>
 	{
+		template<sl::index_t, sl::size_t _N, buffer_config_table<_N>, typename>
+		friend class vk::impl::device_allocation_segment_base;
+	private:
+		using vk::impl::device_allocation_group<
+			BufferConfigs.size(), BufferConfigs,
+			render_process<BufferConfigs, AssetHeapConfigs, CommandGroupCount>,
+			sl::index_sequence_of_length_type<coupling_policy::num_coupling_policies>
+		>::realloc;
+		using vk::impl::asset_heap_allocation_group<
+			BufferConfigs.size(),
+			AssetHeapConfigs,
+			render_process<BufferConfigs, AssetHeapConfigs, CommandGroupCount>,
+			sl::index_sequence_of_length_type<AssetHeapConfigs.size()>
+		>::realloc;
+
 	public:
 		constexpr static sl::size_t frames_in_flight = D2D_FRAMES_IN_FLIGHT;
 		constexpr static sl::size_t command_buffer_count = CommandGroupCount;
@@ -55,7 +66,7 @@ namespace d2d {
 			BufferConfigs, sl::functor::subscript<0>{}, sl::functor::identity_index{}
 		);
 		constexpr static sl::lookup_table<M, asset_heap_key_t, sl::index_t> asset_heap_key_indices = sl::universal::make_deduced<sl::generic::lookup_table>(
-			AssetHeapConfigs, sl::functor::subscript<0>{}, sl::functor::identity_index{}
+			AssetHeapConfigs, sl::functor::subscript<0>{}, []<sl::index_t I>(auto, sl::index_constant_type<I>){ return N + I; }
 		);
 
 		template<sl::index_t I>
@@ -79,17 +90,17 @@ namespace d2d {
 		}
 		
 	public:
-		// template<asset_heap_key_t Key>
-		// constexpr auto&& operator[](this auto&& self, sl::constant_type<asset_heap_key_t, Key>) noexcept 
-		// requires (AssetHeapConfigs.contains(Key)) {
-			// return static_cast<sl::copy_cvref_t<decltype(self), vk::device_allocation_segment<asset_heap_key_indices[Key], render_process>>>(self);
-		// }
+		template<asset_heap_key_t Key>
+		constexpr auto&& operator[](this auto&& self, sl::constant_type<asset_heap_key_t, Key>) noexcept 
+		requires (AssetHeapConfigs.contains(Key)) {
+			return static_cast<sl::copy_cvref_t<decltype(self), vk::asset_heap_allocation<asset_heap_key_indices[Key], AssetHeapConfigs[Key], render_process>>>(self);
+		}
 		
-		// template<asset_heap_key_t Key>
-		// constexpr auto&& get(this auto&& self, sl::constant_type<asset_heap_key_t, Key> = {}) noexcept 
-		// requires (AssetHeapConfigs.contains(Key)) {
-			// return sl::forward_like<decltype(self)>(self[sl::constant<asset_heap_key_t, Key>]);
-		// }
+		template<asset_heap_key_t Key>
+		constexpr auto&& get(this auto&& self, sl::constant_type<asset_heap_key_t, Key> = {}) noexcept 
+		requires (AssetHeapConfigs.contains(Key)) {
+			return sl::forward_like<decltype(self)>(self[sl::constant<asset_heap_key_t, Key>]);
+		}
 
 	public:
 		constexpr std::shared_ptr<vk::logical_device>  logical_device_ptr()  const noexcept { return logi_device_ptr; }
@@ -120,15 +131,42 @@ namespace d2d {
 
 		constexpr auto&& timeline_callbacks(this auto&& self) noexcept {return sl::forward_like<decltype(self)>(self._timeline_callbacks); }
 
+
 	public:
-		template<sl::size_t I, sl::size_t J>
+		//Any buffer to gpu_local buffer
+		//(cpu_local_gpu_write buffer to gpu_local buffer not allowed?)
+		template<sl::size_t DstI, sl::size_t SrcI>
 		constexpr result<void> copy(
-			allocation_segment_type<J> const& src,
+			allocation_segment_type<SrcI> const& src,
 			sl::size_t size,
 			sl::uoffset_t offset = 0,
 			sl::uoffset_t src_offset = 0
-		) & noexcept;
+		) & noexcept
+		requires(
+			!memory_policy::is_cpu_visible(allocation_segment_type<DstI>::config.memory)
+		);
 
+		//Any host-visible buffer to any other host-visible buffer
+		//(Any host-visible buffer to cpu_local_gpu_write buffer not allowed)
+		template<sl::size_t DstI, sl::size_t SrcI>
+		constexpr result<void> copy(
+			allocation_segment_type<SrcI> const& src,
+			sl::size_t size,
+			sl::uoffset_t offset = 0,
+			sl::uoffset_t src_offset = 0
+		) & noexcept
+		requires(
+			memory_policy::is_cpu_visible(allocation_segment_type<DstI>::config.memory) &&
+			memory_policy::is_cpu_visible(allocation_segment_type<SrcI>::config.memory)
+		);
+
+
+		//gpu_local buffer to cpu_local_gpu_write buffer
+		//(gpu_local buffer to cpu_local_upload buffer not allowed)
+
+	public:
+		constexpr result<sl::uint64_t> begin_dedicated_copy(sl::index_t command_group_idx, sl::uint64_t timeout) & noexcept;
+		constexpr result<void> end_dedicated_copy(sl::uint64_t wait_value, sl::index_t command_group_idx, sl::uint64_t timeout) const& noexcept;
 
 
 	protected:
@@ -153,10 +191,10 @@ namespace d2d {
 }
 
 namespace d2d {
-	template<sl::size_t I, sl::size_t J, sl::size_t N, buffer_config_table<N> BufferConfigs, typename RenderProcessT>
+	template<sl::size_t DstI, sl::size_t SrcI, sl::size_t N, buffer_config_table<N> BufferConfigs, typename RenderProcessT>
 	constexpr result<void> copy(
-		vk::device_allocation_segment<I, N, BufferConfigs, RenderProcessT>& dst,
-		vk::device_allocation_segment<J, N, BufferConfigs, RenderProcessT> const& src,
+		vk::device_allocation_segment<DstI, N, BufferConfigs, RenderProcessT>& dst,
+		vk::device_allocation_segment<SrcI, N, BufferConfigs, RenderProcessT> const& src,
 		sl::size_t size,
 		sl::uoffset_t dst_offset = 0,
 		sl::uoffset_t src_offset = 0

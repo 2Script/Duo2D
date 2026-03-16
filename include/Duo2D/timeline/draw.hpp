@@ -27,7 +27,8 @@ namespace d2d::timeline {
 			window& win
 		) const noexcept {
 			return make<vk::pipeline<vk::bind_point::graphics, T, BufferConfigs, AssetHeapConfigs>>(
-				proc.logical_device_ptr(), 
+				proc.logical_device_ptr(),
+				proc,
 				std::span<const VkFormat, 1>{&win.swap_chain().format().pixel_format.id, 1}, 
 				win.depth_image().format()
 			);
@@ -51,9 +52,13 @@ namespace d2d::timeline {
 			graphics_buffer.bind_pipeline(pipeline);
 
 			//For each buffer declared by type T, bind the buffer (if applicable)
-			[&graphics_buffer, &proc, &pipeline]<buffer_key_t... Is>(buffer_key_sequence_type<Is...>){
-				((graphics_buffer.template bind_buffer<T>(proc[sl::constant<buffer_key_t, Is>], pipeline.layout())), ...);
+			[&graphics_buffer, &proc, &pipeline]<buffer_key_t... Ks>(buffer_key_sequence_type<Ks...>){
+				((graphics_buffer.bind_buffer(proc[buffer_key_constant<Ks>], pipeline.layout())), ...);
 			}(T::buffers);
+
+			[&graphics_buffer, &proc, &pipeline]<asset_heap_key_t... Ks>(asset_heap_key_sequence_type<Ks...>){
+				((graphics_buffer.bind_asset_heap(proc[asset_heap_key_constant<Ks>], pipeline.layout())), ...);
+			}(T::asset_heaps);
 
 			graphics_buffer.template draw<T>(proc); 
 

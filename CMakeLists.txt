@@ -19,7 +19,6 @@ set(CPP_FILES
     vulkan/display/image_view.cpp
     vulkan/display/surface.cpp
     vulkan/display/swap_chain.cpp
-    vulkan/display/sampled_image.cpp
     
     vulkan/memory/image.cpp
 
@@ -31,6 +30,8 @@ list(TRANSFORM CPP_FILES PREPEND src/Duo2D/)
 set(SHADER_INPUT_FILES
     rect.vert
     rect.frag
+    texture_rect.vert
+    texture_rect.frag
 	generate_rects.comp
 )
 list(TRANSFORM SHADER_INPUT_FILES PREPEND shaders/)
