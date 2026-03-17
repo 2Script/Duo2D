@@ -1,53 +1,71 @@
 <div align="center">
     <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/d/d7/SMPTE-C_RGB_color_cube.png/250px-SMPTE-C_RGB_color_cube.png" alt="Placeholder Logo"/>
-    <h1>Duo2D</h1>
+    <h1>Sirius</h1>
 </div>
 
-> Duo2D is in a very early development stage and may be subject to significant changes, including to its API
+> Sirius is in a early development stage and may be subject to significant changes, including to its API
 > 
 > Any features *italicized* are not currently implemented but are planned to be before the full release
 
-Duo2D is a cross-platform, comprehensive general-purpose Vulkan graphics engine built heavily around **performance**, **efficiency**, and **ease of use**, and designed based on the [zero-overhead principle](https://en.cppreference.com/w/cpp/language/Zero-overhead_principle.html).
+Sirius is a cross-platform, comprehensive graphics engine library built using Vulkan 1.3 and designed to be **efficient**, **adaptable**, and **easy to use**.
 <br/>
-It handles windowing, UI, 2D and 3D graphics, 2D animations, inputs, and graphical arithmetic computations.
-<br/>
-It's written in C++ and it natively supports Windows, Linux, BSD, *Android* and Nintendo Switch 1 & 2.
 
-Duo2D was developed as a **no-compromises** engine - it uses modern optimization techniques rarely used (especially in graphics engines) and gives complete control of therendering process to the developer while still having a straightforward, easy-to-use API.
+Sirius was developed as a **no-compromises** engine - it gives complete control of a modern and optimized rendering process to the developer while still having a straightforward, easy to use API.
+<br/>
+
+It supports windowed and window-less rendering, fully custom compute and graphics shaders, and contains utilities for graphical arithmetic computations. It's written in C++ and it natively supports Windows, Linux, BSD, *Android* and Nintendo Switch 1 & 2.
+
 
 <h2>Features</h2>
 
-**Performance & Efficiency**
+<h3>Design Principles</h3>
 
-- **Runtime** SIMD dispatching wherever practical
+- **WYSIWYG** - Anything written by the developer in Sirius is 1:1 with what the graphics API and/or other internal processes execute; There are no under the hood processes that the developer doesn't have control over.
+- **[Zero-Overhead](https://en.cppreference.com/w/cpp/language/Zero-overhead_principle.html)** - You don't pay for what you don't use
+- **Bindless** - There are as little pipelines and draw calls as possible; Large buffers for data, Runtime-sized arrays for textures, and no vertex attributes.
+- **GPU Driven Rendering** - As little GPU-issued draw calls as possible and no CPU-issued draw calls at all; Multi and indirect rendering so that the CPU is free for other work and the GPU can do as much work as possible all at once.
+- **Extensibility** - The developer and the end-user can extend/customize any built-in functionality
+
+<h3>API</h3>
+
+- *Built-in native modding/plugin API*
+- Straightforward and fully customizable initialization process and render timeline declaration
+- Developer selectable resource models - complete control over how your resources are used by the GPU
+<br/> <br/>
+- Familiar API consistent with that of the C++ standard library
+- Rich event-based categorized input system
+- Complete control over which graphics device to utilize
+- Built-in arithmetic types (e.g. vectors, matricies)
+- Simple, standardized API for image loading - use the built-in image decoder or create your own decoder that interfaces with a standardized texture API
+- Built-in decoding of [ktx2][ktx-software] image files
+- Rich result return types on all falliable functions instead of exceptions
+
+
+<h3>Efficiency</h3>
+
+- Compile-time offloading - almost all rendering logic happens at compile time
+- No dependence on any platform-specific libraries, SDL, GLM, VMA, ImGui, FreeType, *or even the standard C++ library*.
+- Pre-compiled shaders - no shader compilation necessary for the end-user
+- Fully asynchronous rendering
+- Multithreaded, asynchronous input handling
+<br/> <br/>
 - No use of exceptions or RTTI - compile with `-fno-exceptions` and `-fno-rtti`
 - No use of virtual functions - all polymorphism is static
-- Use of indirect rendering - **only 1 draw call for the entire window**
-- No dependence on any platform-specific libraries, SDL, GLM, VMA, ImGui, FreeType, *or even the standard C++ library*.
-- Multithreaded input handling *and image loading*
-- Async rendering and event handling
-- Optimized manual management of GPU memory with custom memory models and buffer sub-allocation
-- O(1) space complexity for GPU buffers - constant number of memory allocations for all graphical objects
-- Use of memory-mapped files for I/O
-- Thread-safe async GPU memory modification
-- Compile-time generation of draw functions for zero runtime overhead
+- Constant number of memory allocations for buffers - 0(1) space complexity thanks to buffer sub-allocation
+- Memory-mapped files for I/O
+- **Runtime** dispatched SIMD wherever practical
 
-**Ease of Use**
 
-- API consistent with that of the C++ standard library
-- Pre-compiled shaders - no shader compilation necessary for the end-user
-- *Built-in native modding/plugin API*
-- *CSS-like UI styling system*
-- Custom shader/graphical object creation system with developer-chosen memory models
-- Built-in shaders for common UI elements
-- Single function calls for adding graphical objects, adding assets, rendering, event polling
-- Fully customizable event-based input system
-- Free choice over which graphical device to render on
-- Support for virtually any image format, including compressed [ktx2][ktx-software]
-- On-the-fly MTSDF font generation - turn any font into a arbitrarily scalable set of glyphs
-- Built-in arithmetic types and related functions commonly used for graphics (e.g. vectors, matrices)
-- Robust result and error code system used globally
-- *In-depth, robust documentation similar to that of the standard library*
+<h3>Documentation</h3>
+
+- *In-depth API documentation formatted similar to that of the standard library*
+- *Thorough guides for both high-level and low-level funtionality*
+- *Comprehensive examples that showcase a wide range of objectives*
+
+
+<h2>Showcase</h2>
+
+(Under Construction)
 
 
 <h2>Example</h2>
@@ -180,32 +198,15 @@ int main(){
 
 <h2>Dependencies</h2>
 
-
-<h3>Runtime</h3>
-
 | Name | Minimum Version | Purpose | License | Primary Author(s) |
 | ---- | --------------- | ------- | ------- | ----------------- |
 | Vulkan | 1.3 | Graphics API | N/A (graphics driver dependent) | [Khronos Group](https://www.khronos.org/) |
+| [streamline](https://github.com/open-lite/streamline)            | master branch | General purpose | `GPL-3.0 WITH GCC-exception-3.1` | [OpenLite](https://github.com/open-lite) [Artin Alavi ([Arastais](https://github.com/Arastais))]
 | [GLFW](https://github.com/glfw/glfw)                        | 3.4.0  | Window system | `Zlib` | [GLFW Team](https://www.glfw.org/) |
-| [DuoDecode](https://github.com/2Script/DuoDecode)           | master branch | Image loading (except KTX2) | `LGPL-3.0-or-later` | [2Script](https://github.com/2Script) [Artin Alavi ([Arastais](https://github.com/Arastais))] |
-| [FFmpeg](https://github.com/FFmpeg/FFmpeg)                  | -      | Image decoding (except KTX2) | `LGPL-2.1-or-later` | [FFmpeg Team](https://ffmpeg.org/) |
-| [llfio](https://github.com/ned14/llfio)                     | develop branch (c94d2e0) | File I/O | `Apache-2.0 OR BSL-1.0` | Niall Douglas ([ned14](https://github.com/ned14)) |
-| [msdfgen](https://github.com/Chlumsky/msdfgen)              | 1.12.1 | MTSDF font generation | `MIT` | Viktor Chlumsky ([Chlumsky](https://github.com/Chlumsky)) | 
 | [harfbuzz](https://github.com/harfbuzz/harfbuzz)            | 12.0.0 | Font file loading | `MIT-Modern-Variant` | Behdad Esfahbod ([behdad](https://github.com/behdad)) |
-| [libktx][ktx-software]                                      | 1.3    | Image loading and decoding (KTX2 only) | `Apache-2.0` | [Khronos Group](https://www.khronos.org/) [Mark Callow ([MarkCallow](https://github.com/MarkCallow))] |
-| [frozen](https://github.com/serge-sans-paille/frozen)       | 1.2.0  | Compile-time containers | `Apache-2.0` | [serge-sans-paille](https://github.com/serge-sans-paille) |
+| [libktx][ktx-software]                                      | 1.3    | KTX2 Image loading and decoding | `Apache-2.0` | [Khronos Group](https://www.khronos.org/) [Mark Callow ([MarkCallow](https://github.com/MarkCallow))] |
 | [BS::thread_pool](https://github.com/bshoshany/thread-pool) | 5.0.0  | Generalized multi-threading | `MIT` | Barak Shoshany ([bshoshany](https://github.com/bshoshany)) |
 
-<h3>Compile Time</h3>
-
-In addition to the above dependencies, the following are also needed at compile time.
-
-> Only **direct** dependencies are listed; They may require dependencies of their own not listed here.
-
-| Name | Minimum Version | Purpose | License | Primary Author(s) |
-| ---- | --------------- | ------- | ------- | ----------------- |
-| [zsimd](https://github.com/open-lite/zsimd)   | master branch | Runtime SIMD functions | `MPL-2.0` | [OpenLite](https://github.com/open-lite) [Artin Alavi ([Arastais](https://github.com/Arastais))]
-| [result](https://github.com/open-lite/result) | master branch | Rich result            | `MPL-2.0` | [OpenLite](https://github.com/open-lite) [Artin Alavi ([Arastais](https://github.com/Arastais))]
 
 <h2>Supported Platforms</h2>
 
@@ -214,26 +215,13 @@ In addition to the above dependencies, the following are also needed at compile 
 | Name | Minimum Version Name |
 | ---- | -------------------- |
 | Windows | 7 |
-| Linux | N/A (graphics driver dependent) |
+| Linux<sup>1</sup> | N/A (graphics driver dependent) |
 | BSD | N/A (graphics driver dependent) |
-| Horizon (Nintendo Switch) | 15.0.0<sup>1</sup> |
+| Horizon (Nintendo Switch) | 15.0.0<sup>2</sup> |
 | Android | 13 |
 
-> <sup>1</sup>This is an educated guess made based on the date of the official [Vulkan Conformant Products submission][switch-vulkan-conformance] and the [system update history for the Nintendo Switch][switch-update-history]
-
-<h3>Instruction Set Architectures</h3>
-
-In general, all modern 64-bit ISAs are supported.
-
-The following additionally have optional support for runtime dispatching of SIMD extensions/vector intrinsics and are tested and verified:
-
-| ISA Name    | Required Microarchitecture | Optional Extensions | 
-| ----------- | -------------------------- | ------------------- |
-| x86         | x86-64-v1                  | POPCNT, SSE4.2, AVX, AVX2, FMA, BMI1, BMI2, AVX512F, AVX512BW, AVX512DQ, AVX10 |
-| ARM AArch64 | -                          | SVE, SVE2 |
-| RISC-V      | RV64IMAFD or RV64EMAFD     | B, P, C |
-
-
+> <sup>1</sup>Only wayland is supported on Linux <br/>
+> <sup>2</sup>This is an educated guess made based on the date of the official [Vulkan Conformant Products submission][switch-vulkan-conformance] and the [system update history for the Nintendo Switch][switch-update-history]
 
 
 <h3>Devices & Drivers</h3>
@@ -244,18 +232,19 @@ The minimum requirements for microarchitecture and graphics driver combination (
 
 | GPU Vendor  | Platform | Driver               | Microarchitecture        | Desktop Devices | Mobile Devices |
 | ----------  | ---------| ------------------   | -----------------        | --------------- | -------------- |
-| Nvidia      | Windows  | Nvidia Proprietary   | Maxwell                  | GeForce GTX 745, GTX 750 [Ti]; GeForce 900 series | GeForce 830M, 840M, 845M, GTX 850M; GeForce 900M series |              
-| Nvidia      | Linux    | Nvidia Proprietary   | Maxwell                  | GeForce GTX 745, GTX 750 [Ti]; GeForce 900 series | GeForce 830M, 840M, 845M, GTX 850M; GeForce 900M series |              
-| Nvidia      | Linux    | Mesa (NVK)           | Kepler                   | Geforce 600 series | GeForce GT 640M, GT 645M, GT 650M, GTX 660M, GTX 670MX, GTX 675MX, GTX 680M, GTX 680MX; GeForce 700M series |
+| Nvidia      | Windows  | Nvidia Proprietary   | Maxwell                  | GeForce 900 series; GeForce GTX 745, GTX 750 [Ti] | GeForce 900M series; GeForce 830M, 840M, 845M, GTX 850M  |              
+| Nvidia      | Linux    | Nvidia Proprietary   | Maxwell                  | GeForce 900 series; GeForce GTX 745, GTX 750 [Ti] | GeForce 900M series; GeForce 830M, 840M, 845M, GTX 850M  |              
+| Nvidia      | Linux    | Mesa (NVK)           | Kepler                   | Geforce 600 series | GeForce 700M series; GeForce GT 640M, GT 645M, GT 650M, GTX 660M, GTX 670MX, GTX 675MX, GTX 680M, GTX 680MX |
 | Nvidia      | Switch   | Nintendo Proprietary | Maxwell (Tegra)          | - | T210, T214 |
 | AMD         | Windows  | AMD Proprietary      | GCN 4 (Arctic Islands)   | Radeon 400 series; Ryzen 2000 APU series | Radeon RX 5000M series | 
 | AMD         | Linux    | Mesa (RADV)          | GCN 1 (Southern Islands) | Radeon HD 7000 series; Athlon 5000 APU series | Radeon HD 7000M series |
-| Intel       | Windows  | Intel Proprietary    | Skylake                  | Core 6000 APU series; Pentium G4000 APU series; Celeron G3000 APU series | Core 6000 APU series; Pentium 4000 
-| Intel       | Linux    | Mesa (ANV)           | Skylake                  | Core 6000 APU series; Pentium G4000 APU series; Celeron G3000 APU series | Core 6000 APU series; Pentium 4000 APU series; Celeron 3000 APU series |
+| Intel       | Windows  | Intel Proprietary    | GT Gen9 (Skylake)        | HD Graphics 500 series; Iris [Pro] Graphics 500 series | HD Graphics 500 series; Iris [Pro] Graphics 500 series |
+| Intel       | Linux    | Mesa (ANV)           | GT Gen9 (Skylake)        | HD Graphics 500 series; Iris [Pro] Graphics 500 series | HD Graphics 500 series; Iris [Pro] Graphics 500 series |
 | Qualcomm    | Android  | Qualcomm Proprietary | N/A                      | - | Adreno 710, 720, 722, 732, 735, 740, 750; Adreno 800 series |
 | Qualcomm    | Linux    | Mesa (Turnip)        | N/A                      | - | Adreno 600 series |
 | Arm Limited | Android  | Arm Proprietary      | Valhall 4th gen          | - | Mali G615, G715; Immortalis G715 |
 | Arm Limited | Linux    | Mesa (PanVK)         | Valhall 3rd gen          | - | Mali G310, G510, G610, G710  |
+
 
 <!--
 | GPU Vendor  | Platform | Driver               | Driver Version                    | Microarchitecture        | Desktop Devices | Mobile Devices |
@@ -274,11 +263,26 @@ The minimum requirements for microarchitecture and graphics driver combination (
 | Arm Limited | Linux    | Mesa (PanVK)         | TBD                               | Valhall 3rd gen          | - | Mali G310, G510, G610, G710  |
 -->
 
+<h3>Instruction Set Architectures</h3>
+
+In general, all modern 64-bit ISAs are supported.
+
+The following additionally have optional support for runtime dispatching of SIMD extensions/vector intrinsics and are tested and verified:
+
+| ISA Name    | Required Microarchitecture | Optional Extensions | 
+| ----------- | -------------------------- | ------------------- |
+| x86         | x86-64-v1                  | POPCNT, SSE4.2, AVX, AVX2, FMA, BMI1, BMI2, AVX512F, AVX512BW, AVX512DQ, AVX10 |
+| ARM AArch64 | -                          | SVE, SVE2 |
+| RISC-V      | RV64IMAFD or RV64EMAFD     | B, P, C |
+
+
 <h3>Compilers</h3>
+
+> This section is only relevant if you are building Sirius from source
 
 Only GCC and Clang (and its derivatives) are officially supported; The MSVC compiler is not supported at all.
 
-The compiler must support at least C++20, OpenMP, and gnu-style attributes.
+The compiler must support gnu-style attributes.
 
 | Compiler | Minimum Version |
 | -------- | --------------- |
@@ -286,6 +290,7 @@ The compiler must support at least C++20, OpenMP, and gnu-style attributes.
 | Clang    | 10 |
 | ICX      | 2022.1 |
 | AOCC     | 2.3.0 |
+
 
 <h2>License</h2>
 
