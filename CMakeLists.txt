@@ -25,7 +25,7 @@ set(CPP_FILES
     vulkan/sync/semaphore.cpp
     vulkan/sync/fence.cpp
 )
-list(TRANSFORM CPP_FILES PREPEND src/Duo2D/)
+list(TRANSFORM CPP_FILES PREPEND src/${PROJECT_NAME}/)
 
 set(SHADER_INPUT_FILES
     rect.vert
@@ -64,13 +64,8 @@ target_compile_options(${PROJECT_NAME} PUBLIC "$<$<CONFIG:RELEASE>:-ffast-math>"
 if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang") # clang only
     #target_compile_options(${PROJECT_NAME} PUBLIC "-Wc++20-compat-pedantic")
     target_compile_options(${PROJECT_NAME} PUBLIC "-fsized-deallocation")
-    if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL "19.1.0")
-        # Don't show warnings for C++20 designated field initializers.
-        target_compile_options(${PROJECT_NAME} PUBLIC "-Wno-missing-designated-field-initializers")
-    else()
-        # If clang is "outdated", then we have to disable the entire warning category
-        target_compile_options(${PROJECT_NAME} PUBLIC "-Wno-missing-field-initializers")
-    endif()
+    # Don't show warnings for C++20 designated field initializers.
+    target_compile_options(${PROJECT_NAME} PUBLIC "-Wno-missing-designated-field-initializers")
 else() # gcc only
     #target_compile_options(${PROJECT_NAME} PUBLIC "-Wc++20-compat")
     # gcc has no "missing-designated-field-initializers" (https://gcc.gnu.org/bugzilla/show_bug.cgi?id=96868)

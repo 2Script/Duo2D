@@ -286,10 +286,10 @@ The compiler must support gnu-style attributes.
 
 | Compiler | Minimum Version |
 | -------- | --------------- |
-| GCC      | 10 |
-| Clang    | 10 |
-| ICX      | 2022.1 |
-| AOCC     | 2.3.0 |
+| GCC      | 14 |
+| Clang    | 21.1.0 |
+| ICX      | 2025.3 |
+| AOCC     | TBD |
 
 
 <h2>License</h2>
