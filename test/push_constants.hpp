@@ -1,9 +1,9 @@
 #pragma once
 #include <vulkan/vulkan.h>
-#include <Duo2D/arith/size.hpp>
+#include <sirius/arith/size.hpp>
 
 struct draw_constants {
-	d2d::extent2 swap_extent;
+	acma::extent2 swap_extent;
 	VkDeviceAddress position_buff_addr;
 };
 

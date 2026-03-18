@@ -2,192 +2,192 @@
 
 #include <streamline/containers/tuple.hpp>
 
-#include "Duo2D/timeline/acquire_image.hpp"
-#include "Duo2D/timeline/dispatch.hpp"
-#include "Duo2D/timeline/initialize.hpp"
-#include "Duo2D/timeline/submit.hpp"
-#include "Duo2D/timeline/begin_draw_phase.hpp"
-#include "Duo2D/timeline/end_draw_phase.hpp"
-#include "Duo2D/timeline/draw.hpp"
-#include "Duo2D/timeline/buffer_dependency.hpp"
+#include "sirius/timeline/acquire_image.hpp"
+#include "sirius/timeline/dispatch.hpp"
+#include "sirius/timeline/initialize.hpp"
+#include "sirius/timeline/submit.hpp"
+#include "sirius/timeline/begin_draw_phase.hpp"
+#include "sirius/timeline/end_draw_phase.hpp"
+#include "sirius/timeline/draw.hpp"
+#include "sirius/timeline/buffer_dependency.hpp"
 
 #include "./generate_rects.hpp"
 #include "./styled_rect.hpp"
 #include "./texture_rect.hpp"
 
-namespace d2d::test {
+namespace acma::test {
 	using basic_timeline = sl::tuple<
-		d2d::acquire_image,
+		acma::acquire_image,
 
-		d2d::initialize<d2d::command_family::graphics>, 
-		d2d::begin_draw_phase,
+		acma::initialize<acma::command_family::graphics>, 
+		acma::begin_draw_phase,
 
-		d2d::draw<d2d::test::styled_rect>,
+		acma::draw<acma::test::styled_rect>,
 
-		d2d::end_draw_phase,
-		d2d::submit<d2d::command_family::graphics>,
+		acma::end_draw_phase,
+		acma::submit<acma::command_family::graphics>,
 
-		d2d::initialize<d2d::command_family::present>,
-		d2d::submit<d2d::command_family::present>
+		acma::initialize<acma::command_family::present>,
+		acma::submit<acma::command_family::present>
 	>;
 }
 
-namespace d2d::test {
+namespace acma::test {
 	using novice_timeline = sl::tuple<
-		d2d::acquire_image,
+		acma::acquire_image,
 
 
-		d2d::initialize<d2d::command_family::compute>,
+		acma::initialize<acma::command_family::compute>,
 
-		d2d::dispatch<d2d::test::generate_rects>,
+		acma::dispatch<acma::test::generate_rects>,
 		
-		d2d::buffer_dependency<d2d::command_family::compute,
-			d2d::render_stage::compute_shader, d2d::memory_operation::write,
-			d2d::render_stage::draw_commands, d2d::memory_operation::read,
+		acma::buffer_dependency<acma::command_family::compute,
+			acma::render_stage::compute_shader, acma::memory_operation::write,
+			acma::render_stage::draw_commands, acma::memory_operation::read,
 			buffer_key_sequence_type<::buffer_id::draw_commands, ::buffer_id::counts>
 		>,
-		d2d::buffer_dependency<d2d::command_family::compute,
-			d2d::render_stage::compute_shader, d2d::memory_operation::write,
-			d2d::render_stage::vertex_shader, d2d::memory_operation::read,
+		acma::buffer_dependency<acma::command_family::compute,
+			acma::render_stage::compute_shader, acma::memory_operation::write,
+			acma::render_stage::vertex_shader, acma::memory_operation::read,
 			buffer_key_sequence_type<::buffer_id::positions>
 		>,
-		d2d::submit<d2d::command_family::compute, signal_completion_at<d2d::render_stage::compute_shader>>,
+		acma::submit<acma::command_family::compute, signal_completion_at<acma::render_stage::compute_shader>>,
 
 
-		d2d::initialize<d2d::command_family::graphics>, 
-		d2d::buffer_dependency<d2d::command_family::graphics,
-			d2d::render_stage::compute_shader, d2d::memory_operation::write,
-			d2d::render_stage::draw_commands, d2d::memory_operation::read,
+		acma::initialize<acma::command_family::graphics>, 
+		acma::buffer_dependency<acma::command_family::graphics,
+			acma::render_stage::compute_shader, acma::memory_operation::write,
+			acma::render_stage::draw_commands, acma::memory_operation::read,
 			buffer_key_sequence_type<::buffer_id::draw_commands, ::buffer_id::counts>
 		>,
-		d2d::buffer_dependency<d2d::command_family::graphics,
-			d2d::render_stage::compute_shader, d2d::memory_operation::write,
-			d2d::render_stage::vertex_shader, d2d::memory_operation::read,
+		acma::buffer_dependency<acma::command_family::graphics,
+			acma::render_stage::compute_shader, acma::memory_operation::write,
+			acma::render_stage::vertex_shader, acma::memory_operation::read,
 			buffer_key_sequence_type<::buffer_id::positions>
 		>,
 		
-		d2d::begin_draw_phase,
+		acma::begin_draw_phase,
 
-		d2d::draw<d2d::test::styled_rect>,
-		d2d::draw<d2d::test::texture_rect>,
+		acma::draw<acma::test::styled_rect>,
+		acma::draw<acma::test::texture_rect>,
 
-		d2d::end_draw_phase,
-		d2d::submit<d2d::command_family::graphics, signal_completion_at<d2d::render_stage::group::all_graphics>, wait_for<d2d::render_stage::compute_shader>>,
+		acma::end_draw_phase,
+		acma::submit<acma::command_family::graphics, signal_completion_at<acma::render_stage::group::all_graphics>, wait_for<acma::render_stage::compute_shader>>,
 
-		d2d::initialize<d2d::command_family::present>,
-		d2d::submit<d2d::command_family::present>
+		acma::initialize<acma::command_family::present>,
+		acma::submit<acma::command_family::present>
 	>;
 
 }
 
 /*
-namespace d2d::test {
+namespace acma::test {
 	using intermediate_timeline = sl::tuple<
-		d2d::acquire_image,
+		acma::acquire_image,
 
 
-		d2d::initialize<d2d::command_family::transfer>,
-		d2d::commit_transfers<buffer_key_sequence_type<1, 2>>, //buffers used by graphics
+		acma::initialize<acma::command_family::transfer>,
+		acma::commit_transfers<buffer_key_sequence_type<1, 2>>, //buffers used by graphics
 
-		d2d::buffer_dependency<d2d::command_family::transfer,
-			d2d::render_stage::copy, d2d::memory_operation::write,
-			d2d::render_stage::fragment_shader, d2d::memory_operation::read,
+		acma::buffer_dependency<acma::command_family::transfer,
+			acma::render_stage::copy, acma::memory_operation::write,
+			acma::render_stage::fragment_shader, acma::memory_operation::read,
 			buffer_key_sequence_type<1, 2>
 		>,
-		d2d::submit<d2d::command_family::transfer, signal_completion_at<d2d::render_stage::copy>>,
+		acma::submit<acma::command_family::transfer, signal_completion_at<acma::render_stage::copy>>,
 
 
-		d2d::initialize<d2d::command_family::graphics>, 
+		acma::initialize<acma::command_family::graphics>, 
 
-		d2d::buffer_dependency<d2d::command_family::graphics,
-			d2d::render_stage::copy, d2d::memory_operation::write,
-			d2d::render_stage::fragment_shader, d2d::memory_operation::read,
+		acma::buffer_dependency<acma::command_family::graphics,
+			acma::render_stage::copy, acma::memory_operation::write,
+			acma::render_stage::fragment_shader, acma::memory_operation::read,
 			buffer_key_sequence_type<1, 2>
 		>,
 
 
-		d2d::begin_draw_phase,
+		acma::begin_draw_phase,
 
-		d2d::draw<d2d::test::styled_rect>,
+		acma::draw<acma::test::styled_rect>,
 
-		d2d::end_draw_phase,
-		d2d::submit<d2d::command_family::graphics, signal_completion_at<d2d::render_stage::none>, wait_for<d2d::render_stage::copy>>,
+		acma::end_draw_phase,
+		acma::submit<acma::command_family::graphics, signal_completion_at<acma::render_stage::none>, wait_for<acma::render_stage::copy>>,
 
-		d2d::initialize<d2d::command_family::present>,
-		d2d::submit<d2d::command_family::present>
+		acma::initialize<acma::command_family::present>,
+		acma::submit<acma::command_family::present>
 	>;
 
 }
 */
 
 /*
-namespace d2d::test {
+namespace acma::test {
 	using advanced_timeline = sl::tuple<
-		d2d::acquire_image,
+		acma::acquire_image,
 		
-		d2d::initialize<d2d::command_family::transfer>, 
-		d2d::commit_transfers<buffer_key_sequence_type<3, 4>>, //buffers used by compute
+		acma::initialize<acma::command_family::transfer>, 
+		acma::commit_transfers<buffer_key_sequence_type<3, 4>>, //buffers used by compute
 
-		d2d::buffer_dependency<d2d::command_family::transfer,
-			d2d::render_stage::copy, d2d::memory_operation::write,
-			d2d::render_stage::compute_shader, d2d::memory_operation::read,
+		acma::buffer_dependency<acma::command_family::transfer,
+			acma::render_stage::copy, acma::memory_operation::write,
+			acma::render_stage::compute_shader, acma::memory_operation::read,
 			buffer_key_sequence_type<3, 4>
 		>,
-		d2d::submit<d2d::command_family::transfer, signal_completion_at<d2d::render_stage::copy>>,
+		acma::submit<acma::command_family::transfer, signal_completion_at<acma::render_stage::copy>>,
 
-		d2d::initialize<d2d::command_family::compute>,
-		d2d::buffer_dependency<d2d::command_family::compute,
-			d2d::render_stage::copy, d2d::memory_operation::write,
-			d2d::render_stage::compute_shader, d2d::memory_operation::read,
+		acma::initialize<acma::command_family::compute>,
+		acma::buffer_dependency<acma::command_family::compute,
+			acma::render_stage::copy, acma::memory_operation::write,
+			acma::render_stage::compute_shader, acma::memory_operation::read,
 			buffer_key_sequence_type<3, 4>
 		>,
 
-		//d2d::dispatch<T>
-		//d2d::dispatch<U>
-		//d2d::dispatch<V>
+		//acma::dispatch<T>
+		//acma::dispatch<U>
+		//acma::dispatch<V>
 		
-		d2d::buffer_dependency<d2d::command_family::compute,
-			d2d::render_stage::compute_shader, d2d::memory_operation::write,
-			d2d::render_stage::draw_commands, d2d::memory_operation::read,
+		acma::buffer_dependency<acma::command_family::compute,
+			acma::render_stage::compute_shader, acma::memory_operation::write,
+			acma::render_stage::draw_commands, acma::memory_operation::read,
 			buffer_key_sequence_type<0>
 		>,
-		d2d::submit<d2d::command_family::compute, signal_completion_at<d2d::render_stage::compute_shader>, wait_for<d2d::render_stage::copy>>,
+		acma::submit<acma::command_family::compute, signal_completion_at<acma::render_stage::compute_shader>, wait_for<acma::render_stage::copy>>,
 
-		d2d::initialize<d2d::command_family::transfer>,
-		d2d::commit_transfers<buffer_key_sequence_type<1, 2>>, //buffers used by graphics
+		acma::initialize<acma::command_family::transfer>,
+		acma::commit_transfers<buffer_key_sequence_type<1, 2>>, //buffers used by graphics
 
-		d2d::buffer_dependency<d2d::command_family::transfer,
-			d2d::render_stage::copy, d2d::memory_operation::write,
-			d2d::render_stage::fragment_shader, d2d::memory_operation::read,
+		acma::buffer_dependency<acma::command_family::transfer,
+			acma::render_stage::copy, acma::memory_operation::write,
+			acma::render_stage::fragment_shader, acma::memory_operation::read,
 			buffer_key_sequence_type<1, 2>
 		>,
-		d2d::submit<d2d::command_family::transfer, signal_completion_at<d2d::render_stage::copy>>,
+		acma::submit<acma::command_family::transfer, signal_completion_at<acma::render_stage::copy>>,
 
 
-		d2d::initialize<d2d::command_family::graphics>, 
-		d2d::buffer_dependency<d2d::command_family::graphics,
-			d2d::render_stage::compute_shader, d2d::memory_operation::write,
-			d2d::render_stage::draw_commands, d2d::memory_operation::read,
+		acma::initialize<acma::command_family::graphics>, 
+		acma::buffer_dependency<acma::command_family::graphics,
+			acma::render_stage::compute_shader, acma::memory_operation::write,
+			acma::render_stage::draw_commands, acma::memory_operation::read,
 			buffer_key_sequence_type<0>
 		>,
 
-		d2d::buffer_dependency<d2d::command_family::graphics,
-			d2d::render_stage::copy, d2d::memory_operation::write,
-			d2d::render_stage::fragment_shader, d2d::memory_operation::read,
+		acma::buffer_dependency<acma::command_family::graphics,
+			acma::render_stage::copy, acma::memory_operation::write,
+			acma::render_stage::fragment_shader, acma::memory_operation::read,
 			buffer_key_sequence_type<1, 2>
 		>,
-		d2d::begin_draw_phase,
+		acma::begin_draw_phase,
 
-		d2d::draw<d2d::test::styled_rect>,
+		acma::draw<acma::test::styled_rect>,
 
-		d2d::end_draw_phase,
+		acma::end_draw_phase,
 
 
-		d2d::submit<d2d::command_family::graphics, signal_completion_at<d2d::render_stage::none>, wait_for<d2d::render_stage::copy | d2d::render_stage::compute_shader>>,
+		acma::submit<acma::command_family::graphics, signal_completion_at<acma::render_stage::none>, wait_for<acma::render_stage::copy | acma::render_stage::compute_shader>>,
 	
 
-		d2d::initialize<d2d::command_family::present>,
-		d2d::submit<d2d::command_family::present>
+		acma::initialize<acma::command_family::present>,
+		acma::submit<acma::command_family::present>
 	>;
 }
 */

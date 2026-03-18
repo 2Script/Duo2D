@@ -1,0 +1,75 @@
+#pragma once 
+#include <streamline/numeric/int.hpp>
+
+#include "sirius/arith/size.hpp"
+#include "sirius/core/window.hpp"
+#include "sirius/timeline/command.fwd.hpp"
+#include "sirius/timeline/state.hpp"
+#include "sirius/vulkan/core/command_buffer.hpp"
+#include "sirius/core/buffer_config_table.hpp"
+#include "sirius/core/asset_heap_config_table.hpp"
+#include "sirius/timeline/event.hpp"
+
+
+namespace acma {
+	struct begin_draw_phase : timeline::event {
+		constexpr static command_family_t family = command_family::graphics;
+	};
+}
+
+namespace acma::timeline {
+	template<>
+	struct command<begin_draw_phase> {
+		template<typename RenderProcessT, sl::index_t CommandGroupIdx>
+		constexpr result<void> operator()(RenderProcessT const& proc, window&, timeline::state& timeline_state, sl::empty_t, sl::index_constant_type<CommandGroupIdx>) const noexcept {
+			vk::command_buffer const& graphics_buffer = proc.command_buffers()[proc.frame_index()][CommandGroupIdx];
+			
+			std::array<VkImageMemoryBarrier2, 2> pre_render_transitions{{
+				VkImageMemoryBarrier2{
+				    .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+				    .srcStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+				    .srcAccessMask = VK_ACCESS_2_NONE,
+				    .dstStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+				    .dstAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
+				    .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+				    .newLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL,
+				    .image = proc.swap_chain().images()[timeline_state.image_index],
+				    .subresourceRange{.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .levelCount = 1, .layerCount = 1 }
+				},
+				VkImageMemoryBarrier2{
+				    .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+				    .srcStageMask = VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT,
+				    .srcAccessMask = VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+				    .dstStageMask = VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT,
+				    .dstAccessMask = VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+				    .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+				    .newLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL,
+				    .image = proc.depth_image().raw_image(),
+				    .subresourceRange{.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT, .levelCount = 1, .layerCount = 1 }
+				}
+			}};
+			graphics_buffer.pipeline_barrier({}, {}, pre_render_transitions);
+			
+			VkRenderingAttachmentInfo color_attachment{
+			    .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+			    .imageView = proc.swap_chain().image_views()[timeline_state.image_index],
+			    .imageLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL,
+			    .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+			    .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+			    .clearValue{.color{{0.0f, 0.0f, 0.0f, 1.0f}}}
+			};
+			VkRenderingAttachmentInfo depth_attachment {
+			    .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+			    .imageView = proc.depth_image().view(),
+			    .imageLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL,
+			    .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+			    .storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+			    .clearValue{.depthStencil{0.0f, 0}}
+			};
+
+			const extent2 swap_chain_extent = proc.swap_chain().extent();
+			graphics_buffer.begin_draw({&color_attachment, 1}, depth_attachment, {{}, swap_chain_extent}, {{}, static_cast<size2f>(swap_chain_extent)}, {{}, swap_chain_extent});
+			return {};
+		};
+	};
+}

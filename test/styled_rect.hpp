@@ -3,16 +3,16 @@
 
 #include <streamline/metaprogramming/integer_sequence.hpp>
 
-#include "Duo2D/core/drawable.hpp"
-#include "Duo2D/shaders/rect.hpp"
+#include "sirius/core/drawable.hpp"
+#include "sirius/shaders/rect.hpp"
 
 #include "./buffer_config_table.hpp"
 #include "./asset_heap_config_table.hpp"
 
-namespace d2d::test {
-	struct styled_rect : public d2d::drawable {
-        constexpr static auto vert_shader_data = std::to_array(d2d::shaders::rect::vert);
-        constexpr static auto frag_shader_data = std::to_array(d2d::shaders::rect::frag);
+namespace acma::test {
+	struct styled_rect : public acma::drawable {
+        constexpr static auto vert_shader_data = std::to_array(acma::shaders::rect::vert);
+        constexpr static auto frag_shader_data = std::to_array(acma::shaders::rect::frag);
 	public:
 		constexpr static auto buffers = buffer_key_sequence<
 			::buffer_id::draw_constants,

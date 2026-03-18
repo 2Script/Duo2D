@@ -75,18 +75,18 @@ A minimal example which opens a window, loads some assets, and renders to the wi
 > The `RESULT_XXX` macros verify if the function was successful and proceed with any specified operation if they were. If not, it returns the error code and thus stops execution.
 
 ```cpp
-#include <Duo2D.hpp>
+#include <sirius.hpp>
 
 int main(){
     //Create an application instance, verifying it was successful
-    d2d::application<> app;
-    RESULT_TRY_MOVE(app, d2d::make<d2d::application<>>("My App"));
+    acma::application<> app;
+    RESULT_TRY_MOVE(app, acma::make<acma::application<>>("My App"));
 
 
     //Generate a list of graphical devices, verifying the generation was successful and the list is not empty
-    std::set<d2d::vk::physical_device> device_list;
+    std::set<acma::vk::physical_device> device_list;
     RESULT_TRY_COPY(device_list, app.devices());
-    if(device_list.empty()) return d2d::error::no_vulkan_devices;
+    if(device_list.empty()) return acma::error::no_vulkan_devices;
 
     //Select the first device
     app.selected_device() = *device_list.begin();
@@ -95,25 +95,25 @@ int main(){
     RESULT_VERIFY(app.initialize_device());
 
     //Create a window, verifying the creation was successful
-    d2d::window* win;
+    acma::window* win;
     RESULT_TRY_COPY(win, app.add_window());
 
 
     const std::filesystem::path assets_path = std::filesystem::canonical(std::filesystem::path("../assets"));
 
     //Add a texture
-    win->try_emplace<d2d::texture>("characters", assets_path / "my_characters.ktx2");
+    win->try_emplace<acma::texture>("characters", assets_path / "my_characters.ktx2");
 
     //Add a font
-    win->try_emplace<d2d::font>("main_font", assets_path / "my_font.ttf");
+    win->try_emplace<acma::font>("main_font", assets_path / "my_font.ttf");
 
     //Apply the changes, making sure it was successfully applied
-    RESULT_VERIFY(win->apply_changes<d2d::texture>());
-    RESULT_VERIFY(win->apply_changes<d2d::font>());
+    RESULT_VERIFY(win->apply_changes<acma::texture>());
+    RESULT_VERIFY(win->apply_changes<acma::font>());
 
 
     //Begin async rendering
-    std::future<d2d::result<void>> render = app.start_async_render();
+    std::future<acma::result<void>> render = app.start_async_render();
 
     //Poll events
     while(app.open())
@@ -133,20 +133,20 @@ int main(){
 <details><summary>Alternatively, here's the same example without the result verification macros</summary>
 
 ```cpp
-#include <Duo2D.hpp>
+#include <sirius.hpp>
 
 int main(){
     //Create an application instance, verifying it was successful
-    auto _a = d2d::make<d2d::application<>>("My App");
+    auto _a = acma::make<acma::application<>>("My App");
     if(!_a.has_value()) return _a.error();
-    d2d::application<> app = *std::move(a);
+    acma::application<> app = *std::move(a);
 
 
     //Generate a list of graphical devices, verifying the generation was successful and the list is not empty
     auto _d = app.devices();
     if(!_d.has_value()) return d.error();
-    std::set<d2d::vk::physical_device> device_list = *d;
-    if(device_list.empty()) return d2d::error::no_vulkan_devices;
+    std::set<acma::vk::physical_device> device_list = *d;
+    if(device_list.empty()) return acma::error::no_vulkan_devices;
 
     //Select the first device
     app.selected_device() = *device_list.begin();
@@ -158,26 +158,26 @@ int main(){
     //Create a window, verifying the creation was successful
     auto _w = app.add_window();
     if(!_w.has_value()) return w.error();
-    d2d::window* win = *_w;
+    acma::window* win = *_w;
 
 
     const std::filesystem::path assets_path = std::filesystem::canonical(std::filesystem::path("../assets"));
 
     //Add a texture
-    win->try_emplace<d2d::texture>("characters", assets_path / "my_characters.ktx2");
+    win->try_emplace<acma::texture>("characters", assets_path / "my_characters.ktx2");
 
     //Add a font
-    win->try_emplace<d2d::font>("main_font", assets_path / "my_font.ttf");
+    win->try_emplace<acma::font>("main_font", assets_path / "my_font.ttf");
 
     //Apply the changes, making sure it was successfully applied
-    if(auto r = win->apply_changes<d2d::texture>(); !r.has_value())
+    if(auto r = win->apply_changes<acma::texture>(); !r.has_value())
         return r.error();
-    if(auto r = win->apply_changes<d2d::font>(); !r.has_value())
+    if(auto r = win->apply_changes<acma::font>(); !r.has_value())
         return r.error();
 
 
     //Begin async rendering
-    std::future<d2d::result<void>> render = app.start_async_render();
+    std::future<acma::result<void>> render = app.start_async_render();
 
     //Poll events
     while(app.open())
