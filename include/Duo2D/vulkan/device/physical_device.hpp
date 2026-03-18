@@ -35,7 +35,7 @@ namespace d2d::vk {
 
 namespace d2d::vk {
     struct physical_device : vulkan_ptr_base<VkPhysicalDevice> {
-        static result<physical_device> create(VkPhysicalDevice& device_handle, std::shared_ptr<vk::instance> instance, bool window_capability) noexcept;
+        static result<physical_device> create(VkPhysicalDevice& device_handle, std::shared_ptr<vk::instance> instance, bool prefer_synchronous_rendering, bool window_capability) noexcept;
     public:
         template<device_query Query> typename device_query_traits<Query>::return_type query(surface const& s) const noexcept = delete;
 

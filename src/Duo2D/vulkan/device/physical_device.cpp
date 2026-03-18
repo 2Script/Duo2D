@@ -8,7 +8,7 @@
 
 
 namespace d2d::vk {
-    result<physical_device> physical_device::create(VkPhysicalDevice& device_handle, std::shared_ptr<vk::instance> instance, bool window_capability) noexcept {
+    result<physical_device> physical_device::create(VkPhysicalDevice& device_handle, std::shared_ptr<vk::instance> instance, bool prefer_synchronous_rendering, bool window_capability) noexcept {
         
         //Get device features and properties
 		//VkPhysicalDeviceDescriptorHeapPropertiesEXT device_descriptor_heap_properties{
@@ -53,12 +53,13 @@ namespace d2d::vk {
             VkBool32 supports_present = false;
 			if(window_capability) {
             	vkGetPhysicalDeviceSurfaceSupportKHR(device_handle, idx, dummy_window.surface(), &supports_present);
-				if(supports_present) 
+				if(supports_present && (device_queue_family_infos[command_family::present].index == nidx || !prefer_synchronous_rendering)) 
 					device_queue_family_infos[command_family::present] = queue_family_info{true, idx};
 			}
 
             for(std::size_t family_id = 0; family_id < command_family::num_distinct_families; ++family_id) {    
 				if(!(families[idx].queueFlags & flag_bit[family_id])) continue;
+				if(device_queue_family_infos[family_id].index != nidx && prefer_synchronous_rendering) continue;
 				device_queue_family_infos[family_id] = queue_family_info{static_cast<bool>(supports_present), idx};
             }
         }

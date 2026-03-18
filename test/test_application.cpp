@@ -69,7 +69,7 @@ constexpr sl::array<3, d2d::pt2u32> rect_positions{{
 }};
 
 int main(){
-    auto a = d2d::make<application>("Duo2D Test", d2d::version{1,0,0}, false);
+    auto a = d2d::make<application>("Duo2D Test", d2d::version{1,0,0}, true);
     if(!a.has_value()) return a.error();
     application app = *std::move(a);
 
