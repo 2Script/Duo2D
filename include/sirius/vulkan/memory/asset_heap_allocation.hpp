@@ -99,7 +99,7 @@ namespace acma::vk {
 
 
 	private:
-		constexpr result<std::vector<image_allocation>> make_images(
+		constexpr result<std::unique_ptr<image_allocation[]>> make_images(
 			std::vector<texture_data_info> const& texture_data_infos,
 			sl::size_t& total_size_out
 		) noexcept;
@@ -146,7 +146,7 @@ namespace acma::vk {
 	private:
 		sl::size_t allocated_bytes, data_bytes, desired_bytes;
 		sl::array<allocation_count, std::vector<image>> _images;
-		sl::array<allocation_count, std::vector<image_view>> _image_views;
+		sl::array<allocation_count, std::unique_ptr<image_view[]>> _image_views;
 		sl::array<allocation_count, std::vector<asset_usage_policy_t>> _image_usages;
 		sl::array<allocation_count, std::vector<image_sampler>> _samplers;
 		sl::array<allocation_count, std::vector<VkSamplerCreateInfo>> _sampler_infos;

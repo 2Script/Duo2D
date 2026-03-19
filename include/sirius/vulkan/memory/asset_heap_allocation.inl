@@ -194,7 +194,7 @@ namespace acma::vk {
 
 		sl::size_t new_size = data_bytes;
 		RESULT_TRY_MOVE_UNSCOPED(
-			std::vector<image_allocation> img_allocs,
+			std::unique_ptr<image_allocation[]> img_allocs,
 			make_images(texture_data_buffer.texture_data_infos, new_size),
 		_ia);
 
@@ -202,7 +202,7 @@ namespace acma::vk {
 
 		const sl::index_t alloc_idx = allocation_index();
 		const sl::size_t start_idx = _images[alloc_idx].size();
-		for(sl::index_t i = 0; i < img_allocs.size(); ++i)
+		for(sl::index_t i = 0; i < texture_data_buffer.texture_data_infos.size(); ++i)
 			RESULT_VERIFY(bind(sl::move(img_allocs[i]), alloc_idx));
 
 		RESULT_VERIFY(upload_image_data(texture_data_buffer, alloc_idx, start_idx));
@@ -234,7 +234,7 @@ namespace acma::vk {
 
 		sl::size_t new_size = data_bytes;
 		RESULT_TRY_MOVE_UNSCOPED(
-			std::vector<image_allocation> img_allocs,
+			std::unique_ptr<image_allocation[]> img_allocs,
 			make_images(texture_data_buffer.texture_data_infos, new_size),
 		_ia);
 
@@ -339,17 +339,16 @@ namespace acma::vk {
 
 namespace acma::vk {
 	template<sl::index_t I, asset_heap_config Config, typename RenderProcessT>
-	constexpr result<std::vector<typename asset_heap_allocation<I, Config, RenderProcessT>::image_allocation>>
+	constexpr result<std::unique_ptr<typename asset_heap_allocation<I, Config, RenderProcessT>::image_allocation[]>>
 		asset_heap_allocation<I, Config, RenderProcessT>::
 	make_images(std::vector<texture_data_info> const& texture_data_infos, sl::size_t& total_size_out) noexcept {
-		std::vector<image_allocation> ret;
-		ret.reserve(texture_data_infos.size());
+		std::unique_ptr<image_allocation[]> ret = std::make_unique_for_overwrite<image_allocation[]>(texture_data_infos.size());
 		for(sl::size_t i = 0; i < texture_data_infos.size(); ++i) {
 			RESULT_TRY_MOVE_UNSCOPED(image new_img, make<image>(this->logi_device_ptr, static_cast<VkImageCreateInfo>(texture_data_infos[i])), img_result);
 			const sl::size_t align = new_img.alignment();
 			const sl::size_t offset = sl::aligned_to(total_size_out, align);
 			total_size_out = offset + new_img.size_bytes();
-			ret.push_back({offset, sl::move(new_img)});
+			new (&ret[i]) image_allocation{offset, sl::move(new_img)};
 		}
 		return sl::move(ret);
 	}
@@ -360,12 +359,9 @@ namespace acma::vk {
 	initialize_image_views(
 		sl::index_t alloc_idx
 	) noexcept {
-		_image_views[alloc_idx].clear();
-		_image_views[alloc_idx].reserve(_images[alloc_idx].size());
-		for(sl::size_t i = 0; i < _images[alloc_idx].size(); ++i) {
-			RESULT_VERIFY_UNSCOPED(make<image_view>(this->logi_device_ptr, _images[alloc_idx][i]), img_view_result);
-			_image_views[alloc_idx].push_back(*sl::move(img_view_result));
-		}
+		_image_views[alloc_idx] = std::make_unique_for_overwrite<image_view[]>(_images[alloc_idx].size());
+		for(sl::size_t i = 0; i < _images[alloc_idx].size(); ++i)
+			RESULT_TRY_MOVE(_image_views[alloc_idx][i], make<image_view>(this->logi_device_ptr, _images[alloc_idx][i]));
 		return {};
 	}
 
@@ -527,10 +523,10 @@ namespace acma::vk {
 			};
 			transfer_command_buffer.pipeline_barrier({}, {/*&pre_copy_buffer_barrier, 1*/}, {&pre_copy_image_barrier, 1});
 
-			std::vector<VkBufferImageCopy> copy_regions{};
-			copy_regions.reserve(_images[alloc_idx][image_start_idx + i].mip_level_count());
-			for(sl::uint32_t j = 0; j < std::min(_images[alloc_idx][image_start_idx + i].mip_level_count(), static_cast<sl::uint32_t>(max_mip_levels)); ++j) {
-				copy_regions.emplace_back(
+			const sl::uint32_t copy_region_count = std::min(_images[alloc_idx][image_start_idx + i].mip_level_count(), static_cast<sl::uint32_t>(max_mip_levels));
+			std::unique_ptr<VkBufferImageCopy[]> copy_regions = std::make_unique_for_overwrite<VkBufferImageCopy[]>(copy_region_count);
+			for(sl::uint32_t j = 0; j < copy_region_count; ++j) {
+				new (&copy_regions[j]) VkBufferImageCopy{
 					texture_data_infos[i].offset + texture_data_infos[i].mip_offsets[j],
 					0, 0,
 					VkImageSubresourceLayers{
@@ -545,13 +541,13 @@ namespace acma::vk {
 						.height = texture_data_infos[i].extent.height() >> j,
 						.depth = 1
 					}
-				);
+				};
 			}
 
 			vkCmdCopyBufferToImage(transfer_command_buffer, 
 				static_cast<VkBuffer>(texture_data_buffer),
 				_images[alloc_idx][image_start_idx + i], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-				copy_regions.size(), copy_regions.data()
+				copy_region_count, copy_regions.get()
 			);
 
 			sl::array<1, VkImageMemoryBarrier2> post_copy_barriers{{
@@ -702,10 +698,9 @@ namespace acma::vk {
 			}};
 			transfer_command_buffer.pipeline_barrier({}, {}, pre_copy_barriers);
 
-			std::vector<VkImageCopy> copy_regions{};
-			copy_regions.reserve(old_images[j].mip_level_count());
+			std::unique_ptr<VkImageCopy[]> copy_regions = std::make_unique_for_overwrite<VkImageCopy[]>(old_images[j].mip_level_count());
 			for(sl::uint32_t i = 0; i < old_images[j].mip_level_count(); ++i) {
-				copy_regions.emplace_back(
+				new (&copy_regions[i]) VkImageCopy{
 					VkImageSubresourceLayers{
 					    .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
 					    .mipLevel = i,
@@ -721,13 +716,13 @@ namespace acma::vk {
 					},
 					VkOffset3D{},
 					old_images[j].size()
-				);
+				};
 			}
 
 			vkCmdCopyImage(transfer_command_buffer, 
 				old_images[j], VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
 				images[j], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-				copy_regions.size(), copy_regions.data()
+				old_images[j].mip_level_count(), copy_regions.get()
 			);
 
 			if(original_layout == VK_IMAGE_LAYOUT_UNDEFINED) {
