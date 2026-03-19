@@ -5,5 +5,5 @@
 namespace acma {
     template<typename TimelineT, auto BufferConfigs, auto AssetHeapConfigs>
 	requires impl::is_buffer_config_table_v<decltype(BufferConfigs)>
-    class application_instance;
+    class render_instance;
 }

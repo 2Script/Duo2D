@@ -18,7 +18,7 @@
 #include <sirius/core/window.hpp>
 #include <sirius/arith/matrix.hpp>
 #include <sirius/arith/point.hpp>
-#include "sirius/core/application_instance.hpp"
+#include "sirius/core/render_instance.hpp"
 #include "sirius/core/decoder.hpp"
 #include "sirius/input/category.hpp"
 #include "sirius/input/code.hpp"
@@ -37,7 +37,7 @@ extern "C" const char* __asan_default_options() { return "detect_leaks=0"; }
 
 
 
-using application_instance = acma::application_instance<acma::test::novice_timeline, buffer_configs, asset_heap_configs>;
+using render_instance = acma::render_instance<acma::test::novice_timeline, buffer_configs, asset_heap_configs>;
 
 using command_traits_type = acma::timeline::impl::command_traits<
 	acma::test::basic_timeline, 
@@ -75,9 +75,9 @@ int main(){
     const std::filesystem::path assets_path = std::filesystem::canonical(std::filesystem::path("../../test/assets"));
 	
 	acma::vk::physical_device& selected_device = *acma::devices().begin();
-    acma::result<application_instance> inst_result = acma::make<application_instance>(selected_device, true, acma::sz2u32{1600, 900});
+    acma::result<render_instance> inst_result = acma::make<render_instance>(selected_device, true, acma::sz2u32{1600, 900});
     if(!inst_result.has_value()) return inst_result.error();
-    application_instance inst = *std::move(inst_result);
+    render_instance inst = *std::move(inst_result);
 
  
 	//llfio::mapped_file_handle mh;
@@ -87,7 +87,7 @@ int main(){
 
 	
 	//Set callback to update gpu address
-	inst.timeline_callbacks()[acma::timeline::callback_event::on_frame_begin].push_back([](typename application_instance::render_process_type& proc, acma::window& win, auto&) noexcept -> acma::result<void> {
+	inst.timeline_callbacks()[acma::timeline::callback_event::on_frame_begin].push_back([](typename render_instance::render_process_type& proc, acma::window& win, auto&) noexcept -> acma::result<void> {
 		{
 		draw_constants constants {
 			.swap_extent = win.swap_chain().extent(),
@@ -126,7 +126,7 @@ int main(){
 		return {};
 	});
 	inst.timeline_callbacks()[acma::timeline::callback_event::on_swap_chain_updated].push_back(
-		&acma::timeline::predefined_callbacks::update_swap_extent<application_instance, buffer_id::draw_constants>
+		&acma::timeline::predefined_callbacks::update_swap_extent<render_instance, buffer_id::draw_constants>
 	);
 
 	//Set dispatch commands
@@ -343,7 +343,7 @@ int main(){
 
 
 
-    std::thread edit_s([](application_instance&) noexcept -> acma::result<void> {//, window& w){
+    std::thread edit_s([](render_instance&) noexcept -> acma::result<void> {//, window& w){
 		return {};
     }, std::ref(inst));
 

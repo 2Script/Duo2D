@@ -1,5 +1,5 @@
 #pragma once
-#include "sirius/core/application_instance.hpp"
+#include "sirius/core/render_instance.hpp"
 
 #include <cstring>
 #include <memory>
@@ -34,12 +34,12 @@
 
 namespace acma {
 	template<typename... TimelineEventTs, auto BufferConfigs, auto AssetHeapConfigs> requires impl::is_buffer_config_table_v<decltype(BufferConfigs)>
-	result<application_instance<sl::tuple<TimelineEventTs...>, BufferConfigs, AssetHeapConfigs>>     application_instance<sl::tuple<TimelineEventTs...>, BufferConfigs, AssetHeapConfigs>::
+	result<render_instance<sl::tuple<TimelineEventTs...>, BufferConfigs, AssetHeapConfigs>>     render_instance<sl::tuple<TimelineEventTs...>, BufferConfigs, AssetHeapConfigs>::
 	create(
 		vk::physical_device& device, 
 		bool prefer_synchronous_rendering
 	) noexcept {
-		application_instance ret{};
+		render_instance ret{};
 		ret.has_window = false;
 		RESULT_VERIFY(ret.initialize(sl::false_constant, device, prefer_synchronous_rendering));
 
@@ -49,7 +49,7 @@ namespace acma {
 
 
 	template<typename... TimelineEventTs, auto BufferConfigs, auto AssetHeapConfigs> requires impl::is_buffer_config_table_v<decltype(BufferConfigs)>
-	result<application_instance<sl::tuple<TimelineEventTs...>, BufferConfigs, AssetHeapConfigs>>     application_instance<sl::tuple<TimelineEventTs...>, BufferConfigs, AssetHeapConfigs>::
+	result<render_instance<sl::tuple<TimelineEventTs...>, BufferConfigs, AssetHeapConfigs>>     render_instance<sl::tuple<TimelineEventTs...>, BufferConfigs, AssetHeapConfigs>::
 	create(
 		vk::physical_device& device, 
 		bool prefer_synchronous_rendering,
@@ -58,7 +58,7 @@ namespace acma {
 	) noexcept {
 		static_assert(impl::window_capability, "Cannot make a render_instance with a window when window capabilites are disabled.");
 
-		application_instance ret{};
+		render_instance ret{};
 		ret.has_window = true;
 		RESULT_VERIFY(ret.initialize(sl::true_constant, device, prefer_synchronous_rendering));
 
@@ -91,7 +91,7 @@ namespace acma {
 namespace acma {
 	template<typename... TimelineEventTs, auto BufferConfigs, auto AssetHeapConfigs> requires impl::is_buffer_config_table_v<decltype(BufferConfigs)>
 	template<bool Windowing>
-	result<void>     application_instance<sl::tuple<TimelineEventTs...>, BufferConfigs, AssetHeapConfigs>::
+	result<void>     render_instance<sl::tuple<TimelineEventTs...>, BufferConfigs, AssetHeapConfigs>::
 	initialize(
 		sl::bool_constant_type<Windowing>,
 		vk::physical_device& device,
@@ -120,7 +120,7 @@ namespace acma {
 		
 		//Initialize buffer allocations
 		constexpr auto init_single_buffer_alloc = []<coupling_policy_t CP, memory_policy_t MP>(
-			application_instance& app_inst,
+			render_instance& app_inst,
 			sl::constant_type<coupling_policy_t, CP>,
 			sl::constant_type<memory_policy_t, MP>
 		) noexcept -> result<void> {
@@ -149,7 +149,7 @@ namespace acma {
 
 		//Init asset heap allocations
 		constexpr auto init_single_asset_heap_alloc = []<sl::index_t I>(
-			application_instance& app_inst,
+			render_instance& app_inst,
 			sl::index_constant_type<I>
 		) noexcept -> result<void> {
 			using allocation_type = vk::asset_heap_allocation<
@@ -209,9 +209,9 @@ namespace acma {
 
 	
 	template<typename... TimelineEventTs, auto BufferConfigs, auto AssetHeapConfigs> requires impl::is_buffer_config_table_v<decltype(BufferConfigs)>
-	result<void>     application_instance<sl::tuple<TimelineEventTs...>, BufferConfigs, AssetHeapConfigs>::
+	result<void>     render_instance<sl::tuple<TimelineEventTs...>, BufferConfigs, AssetHeapConfigs>::
 	initialize_auxiliary() noexcept {
-		constexpr auto init_aux = []<sl::index_t I>(application_instance& app_inst, window& win, sl::index_constant_type<I>) noexcept -> result<void> {
+		constexpr auto init_aux = []<sl::index_t I>(render_instance& app_inst, window& win, sl::index_constant_type<I>) noexcept -> result<void> {
 			if constexpr (std::is_same_v<typename sl::tuple_traits<decltype(app_inst.auxiliary)>::template type_of_element<I>, sl::empty_t>) {
 				//_auxiliary[sl::index_constant<I>] = sl::empty_t{};
 				return {};
@@ -226,20 +226,20 @@ namespace acma {
 
 namespace acma {
     template<typename... TimelineEventTs, auto BufferConfigs, auto AssetHeapConfigs> requires impl::is_buffer_config_table_v<decltype(BufferConfigs)>
-    bool     application_instance<sl::tuple<TimelineEventTs...>, BufferConfigs, AssetHeapConfigs>::
+    bool     render_instance<sl::tuple<TimelineEventTs...>, BufferConfigs, AssetHeapConfigs>::
 	is_open() const noexcept {
         return should_be_open->load(std::memory_order_relaxed);
     }
 
     template<typename... TimelineEventTs, auto BufferConfigs, auto AssetHeapConfigs> requires impl::is_buffer_config_table_v<decltype(BufferConfigs)>
-    void     application_instance<sl::tuple<TimelineEventTs...>, BufferConfigs, AssetHeapConfigs>::
+    void     render_instance<sl::tuple<TimelineEventTs...>, BufferConfigs, AssetHeapConfigs>::
 	close() noexcept {
         should_be_open->store(false, std::memory_order_relaxed);
     }
 
 
     template<typename... TimelineEventTs, auto BufferConfigs, auto AssetHeapConfigs> requires impl::is_buffer_config_table_v<decltype(BufferConfigs)>
-    void     application_instance<sl::tuple<TimelineEventTs...>, BufferConfigs, AssetHeapConfigs>::
+    void     render_instance<sl::tuple<TimelineEventTs...>, BufferConfigs, AssetHeapConfigs>::
 	poll_events() noexcept {
 		static_assert(impl::window_capability, "Cannot poll window events with windowing capabilities disabled");
 		if(!has_window) return;
@@ -255,9 +255,9 @@ namespace acma {
 
 
     template<typename... TimelineEventTs, auto BufferConfigs, auto AssetHeapConfigs> requires impl::is_buffer_config_table_v<decltype(BufferConfigs)>
-    std::future<result<void>>      application_instance<sl::tuple<TimelineEventTs...>, BufferConfigs, AssetHeapConfigs>::
+    std::future<result<void>>      render_instance<sl::tuple<TimelineEventTs...>, BufferConfigs, AssetHeapConfigs>::
 	start_async_render() noexcept {
-        return std::async([](application_instance& a) -> acma::result<void> {
+        return std::async([](render_instance& a) -> acma::result<void> {
             while(a.is_open())
                 if(auto r = a.render(); !r.has_value()) [[unlikely]]
                 	return r.error();
@@ -266,7 +266,7 @@ namespace acma {
     }
 
     template<typename... TimelineEventTs, auto BufferConfigs, auto AssetHeapConfigs> requires impl::is_buffer_config_table_v<decltype(BufferConfigs)>
-    result<void>      application_instance<sl::tuple<TimelineEventTs...>, BufferConfigs, AssetHeapConfigs>::
+    result<void>      render_instance<sl::tuple<TimelineEventTs...>, BufferConfigs, AssetHeapConfigs>::
 	join() const noexcept {
         __D2D_VULKAN_VERIFY(vkDeviceWaitIdle(*this->logi_device_ptr));
         return {};
@@ -276,7 +276,7 @@ namespace acma {
 
 namespace acma {
 	template<typename... TimelineEventTs, auto BufferConfigs, auto AssetHeapConfigs> requires impl::is_buffer_config_table_v<decltype(BufferConfigs)>
-    result<void> application_instance<sl::tuple<TimelineEventTs...>, BufferConfigs, AssetHeapConfigs>::render() noexcept {
+    result<void> render_instance<sl::tuple<TimelineEventTs...>, BufferConfigs, AssetHeapConfigs>::render() noexcept {
 		using filter_dedicated_command_groups_sequence = sl::filtered_sequence_t<
 			sl::index_sequence_of_length_type<command_group_count>,
 			[]<sl::index_t I>(sl::index_constant_type<I>) noexcept { return I >= acma::timeline::impl::dedicated_command_group::num_dedicated_command_groups; }
@@ -310,7 +310,7 @@ namespace acma {
 		D2D_INVOKE_ALL(this->timeline_callbacks(), on_frame_begin, *this, *this, timeline_state);
 
 		
-		constexpr auto exec = []<sl::index_t I>(application_instance& app_inst, timeline_state_type& state, sl::index_constant_type<I>) noexcept -> result<void> {
+		constexpr auto exec = []<sl::index_t I>(render_instance& app_inst, timeline_state_type& state, sl::index_constant_type<I>) noexcept -> result<void> {
 			return app_inst.template execute_command<I>(state);
 		};
 		RESULT_VERIFY((sl::functor::invoke_each_result<result<void>, exec>{}(sl::index_sequence_for_pack<TimelineEventTs...>, *this, timeline_state)));
@@ -328,7 +328,7 @@ namespace acma {
 
 	template<typename... TimelineEventTs, auto BufferConfigs, auto AssetHeapConfigs> requires impl::is_buffer_config_table_v<decltype(BufferConfigs)>
 	template<sl::index_t I>
-    result<void> application_instance<sl::tuple<TimelineEventTs...>, BufferConfigs, AssetHeapConfigs>::execute_command(timeline_state_type& state) noexcept {
+    result<void> render_instance<sl::tuple<TimelineEventTs...>, BufferConfigs, AssetHeapConfigs>::execute_command(timeline_state_type& state) noexcept {
 		using timeline_type = typename sl::tuple_traits<sl::tuple<TimelineEventTs...>>::template type_of_element<I>;
 		return acma::timeline::command<timeline_type>{}(
 			*this,
@@ -343,7 +343,7 @@ namespace acma {
 namespace acma {
 	template<typename... TimelineEventTs, auto BufferConfigs, auto AssetHeapConfigs> requires impl::is_buffer_config_table_v<decltype(BufferConfigs)>
 	template<typename TimelineCommandT>
-    result<void> application_instance<sl::tuple<TimelineEventTs...>, BufferConfigs, AssetHeapConfigs>::execute_command(timeline_state_type& state) noexcept {
+    result<void> render_instance<sl::tuple<TimelineEventTs...>, BufferConfigs, AssetHeapConfigs>::execute_command(timeline_state_type& state) noexcept {
 		return acma::timeline::command<TimelineCommandT>{}(
 			*this,
 			*this,
@@ -355,7 +355,7 @@ namespace acma {
 
 	template<typename... TimelineEventTs, auto BufferConfigs, auto AssetHeapConfigs> requires impl::is_buffer_config_table_v<decltype(BufferConfigs)>
 	template<typename TimelineCommandT>
-    result<void> application_instance<sl::tuple<TimelineEventTs...>, BufferConfigs, AssetHeapConfigs>::execute_command() noexcept {
+    result<void> render_instance<sl::tuple<TimelineEventTs...>, BufferConfigs, AssetHeapConfigs>::execute_command() noexcept {
 		return execute_command(external_timeline_state());
 	}
 }

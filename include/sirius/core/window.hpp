@@ -5,7 +5,7 @@
 #include <string_view>
 #include <streamline/functional/functor/generic_stateless.hpp>
 
-#include "sirius/core/application_instance.fwd.hpp"
+#include "sirius/core/render_instance.fwd.hpp"
 #include "sirius/core/window.fwd.hpp"
 #include "sirius/arith/size.hpp"
 #include "sirius/input/category.hpp"
@@ -75,7 +75,7 @@ namespace acma {
 
     	template<typename TimelineT, auto BufferConfigs, auto AssetHeapConfigs>
 		requires impl::is_buffer_config_table_v<decltype(BufferConfigs)>
-		friend class application_instance;
+		friend class render_instance;
 		
 	private:
         input::category_flags_t category_flags;

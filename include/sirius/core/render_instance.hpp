@@ -1,5 +1,5 @@
 #pragma once
-#include "sirius/core/application_instance.fwd.hpp"
+#include "sirius/core/render_instance.fwd.hpp"
 
 #include <cstddef>
 #include <functional>
@@ -28,7 +28,7 @@
 
 namespace acma {
     template<typename... TimelineEventTs, auto BufferConfigs, auto AssetHeapConfigs> requires impl::is_buffer_config_table_v<decltype(BufferConfigs)>
-	class application_instance<sl::tuple<TimelineEventTs...>, BufferConfigs, AssetHeapConfigs> :
+	class render_instance<sl::tuple<TimelineEventTs...>, BufferConfigs, AssetHeapConfigs> :
 		public window,
 		public render_process<
 			BufferConfigs, AssetHeapConfigs,
@@ -52,11 +52,11 @@ namespace acma {
 		constexpr static sl::size_t M = AssetHeapConfigs.size();
 
 	public:
-		static result<application_instance> create(
+		static result<render_instance> create(
 			vk::physical_device& device, 
 			bool prefer_synchronous_rendering
 		) noexcept;
-		static result<application_instance> create(
+		static result<render_instance> create(
 			vk::physical_device& device, 
 			bool prefer_synchronous_rendering,
 			acma::sz2u32 window_size,
@@ -106,4 +106,4 @@ namespace acma {
 	};
 }
 
-#include "sirius/core/application_instance.inl"
+#include "sirius/core/render_instance.inl"
