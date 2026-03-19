@@ -656,7 +656,7 @@ namespace acma {
 }
 
 
-#define __D2D_WEAK_PTR_TRY_LOCK(lhs, weak_ptr) auto lhs = weak_ptr.lock(); if(!lhs) return ::acma::errc::device_not_initialized;
+//#define __D2D_WEAK_PTR_TRY_LOCK(lhs, weak_ptr) auto lhs = weak_ptr.lock(); if(!lhs) return ::acma::errc::device_not_initialized;
 
 
 #define __D2D_VULKAN_VERIFY(fn) if(VkResult r = fn)       [[unlikely]] return static_cast<acma::errc>(__D2D_VKRESULT_TO_ERRC(r));

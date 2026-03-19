@@ -2,9 +2,7 @@
 #include "sirius/vulkan/device/physical_device.hpp"
 
 namespace acma::vk {
-    result<image_sampler> image_sampler::create(std::shared_ptr<logical_device> logi_device, std::weak_ptr<physical_device> phys_device, pt3<VkSamplerAddressMode> address_modes) noexcept {
-        __D2D_WEAK_PTR_TRY_LOCK(phys_device_ptr, phys_device);
-
+    result<image_sampler> image_sampler::create(std::shared_ptr<logical_device> logi_device, physical_device* phys_device, pt3<VkSamplerAddressMode> address_modes) noexcept {
 	    const VkSamplerCreateInfo sampler_create_info {
             .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
 	        .magFilter               = VK_FILTER_LINEAR,
@@ -15,7 +13,7 @@ namespace acma::vk {
 	        .addressModeW            = address_modes[2],
             .mipLodBias              = 0.0f,
             .anisotropyEnable        = VK_TRUE,
-            .maxAnisotropy           = phys_device_ptr->limits.maxSamplerAnisotropy,
+            .maxAnisotropy           = phys_device->limits.maxSamplerAnisotropy,
             .compareEnable           = VK_FALSE,
             .compareOp               = VK_COMPARE_OP_ALWAYS,
             .minLod                  = 0.0f,

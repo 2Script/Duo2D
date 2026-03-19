@@ -4,12 +4,8 @@
 
 
 namespace acma::vk {
-    result<logical_device> logical_device::create(std::weak_ptr<physical_device> associated_phys_device, bool create_present_queue) noexcept {
-        auto phys_device_ptr = associated_phys_device.lock();
-        if(!phys_device_ptr)
-            return error::device_not_selected;
-
-		const sl::size_t queue_create_info_count = command_family::num_distinct_families + static_cast<sl::size_t>(create_present_queue);
+    result<logical_device> logical_device::create(physical_device* associated_phys_device, bool windowing) noexcept {
+		const sl::size_t queue_create_info_count = command_family::num_distinct_families + static_cast<sl::size_t>(windowing);
 
         //Create desired queues for each queue family
         constexpr static float priority = 1.f;
@@ -17,7 +13,7 @@ namespace acma::vk {
 		std::unordered_map<sl::uint32_t, bool> duplicate_index{};
 		sl::uint32_t queue_create_count = 0;
         for(std::size_t i = 0; i < queue_create_info_count; ++i) {
-			const sl::uint32_t index = phys_device_ptr->queue_family_infos[i].index;
+			const sl::uint32_t index = associated_phys_device->queue_family_infos[i].index;
 			if(duplicate_index[index])
 				continue;
             VkDeviceQueueCreateInfo queue_create_info{
@@ -79,9 +75,9 @@ namespace acma::vk {
 
         //Set extensions
         //TODO improve with lookup table?
-        std::vector<const char*> enabled_extensions;
-        for(std::size_t i = 0; i < phys_device_ptr->extensions.size(); ++i)
-            if(phys_device_ptr->extensions[i])
+        std::vector<const char*> enabled_extensions{};
+        for(std::size_t i = 0; i < associated_phys_device->extensions.size(); ++i)
+            if(associated_phys_device->extensions[i] && (windowing || i != extension::swap_chain))
                 enabled_extensions.push_back(extension::name[i].data());
 
         //Create logical device
@@ -97,12 +93,12 @@ namespace acma::vk {
         };
 
         logical_device ret{};
-        __D2D_VULKAN_VERIFY(vkCreateDevice(*phys_device_ptr, &device_create_info, nullptr, &ret));
+        __D2D_VULKAN_VERIFY(vkCreateDevice(*associated_phys_device, &device_create_info, nullptr, &ret));
 
 
         //Create queues
         for(std::size_t i = 0; i < queue_create_info_count; ++i)
-            vkGetDeviceQueue(ret.handle, phys_device_ptr->queue_family_infos[i].index, 0, &ret.queues[i]);
+            vkGetDeviceQueue(ret.handle, associated_phys_device->queue_family_infos[i].index, 0, &ret.queues[i]);
 
 
 		//Load extended functions

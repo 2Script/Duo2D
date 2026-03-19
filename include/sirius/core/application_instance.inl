@@ -34,27 +34,87 @@
 
 namespace acma {
 	template<typename... TimelineEventTs, auto BufferConfigs, auto AssetHeapConfigs> requires impl::is_buffer_config_table_v<decltype(BufferConfigs)>
-	template<bool WindowCapability>
 	result<application_instance<sl::tuple<TimelineEventTs...>, BufferConfigs, AssetHeapConfigs>>     application_instance<sl::tuple<TimelineEventTs...>, BufferConfigs, AssetHeapConfigs>::
 	create(
-		std::shared_ptr<vk::instance> instance,
-		std::shared_ptr<vk::logical_device> logi_device, 
-		std::shared_ptr<vk::physical_device> phys_device,
-		std::string_view name,
-		sl::bool_constant_type<WindowCapability>
+		vk::physical_device& device, 
+		bool prefer_synchronous_rendering
 	) noexcept {
 		application_instance ret{};
-		ret.inst_ptr = instance;
-		ret.phys_device_ptr = phys_device;
-		ret.logi_device_ptr = logi_device;
-		ret.app_name = name;
+		ret.has_window = false;
+		RESULT_VERIFY(ret.initialize(sl::false_constant, device, prefer_synchronous_rendering));
 
-		constexpr sl::size_t command_familes_to_init = command_family::num_distinct_families + static_cast<sl::size_t>(WindowCapability);
+		RESULT_VERIFY(ret.initialize_auxiliary());
+		return ret;
+	}
+
+
+	template<typename... TimelineEventTs, auto BufferConfigs, auto AssetHeapConfigs> requires impl::is_buffer_config_table_v<decltype(BufferConfigs)>
+	result<application_instance<sl::tuple<TimelineEventTs...>, BufferConfigs, AssetHeapConfigs>>     application_instance<sl::tuple<TimelineEventTs...>, BufferConfigs, AssetHeapConfigs>::
+	create(
+		vk::physical_device& device, 
+		bool prefer_synchronous_rendering,
+		acma::sz2u32 window_size,
+		std::string_view window_title
+	) noexcept {
+		static_assert(impl::window_capability, "Cannot make a render_instance with a window when window capabilites are disabled.");
+
+		application_instance ret{};
+		ret.has_window = true;
+		RESULT_VERIFY(ret.initialize(sl::true_constant, device, prefer_synchronous_rendering));
+
+		//Create window
+		RESULT_TRY_MOVE(static_cast<window&>(ret), make<window>(
+			window_size,
+			window_title.empty() ? impl::name() : window_title
+		));
+		RESULT_VERIFY(static_cast<window&>(ret).initialize(ret.logi_device_ptr, ret.phys_device_ptr));
+
+		//Create swap chain sempahores
+		ret._graphics_semaphores.reserve(ret._swap_chain.image_count());
+		ret._pre_present_semaphores.reserve(ret._swap_chain.image_count());
+		for(std::size_t i = 0; i < ret._swap_chain.image_count(); ++i) {
+			RESULT_VERIFY_UNSCOPED(make<vk::semaphore>(ret.logi_device_ptr), graphics_semaphore);
+			ret._graphics_semaphores.push_back(*std::move(graphics_semaphore));
+
+			RESULT_VERIFY_UNSCOPED(make<vk::semaphore>(ret.logi_device_ptr), pre_present_semaphore);
+			ret._pre_present_semaphores.push_back(*std::move(pre_present_semaphore));
+		}
+
+
+		D2D_INVOKE_ALL(ret.timeline_callbacks(), on_swap_chain_updated, ret, ret, ret.external_timeline_state());
+
+		RESULT_VERIFY(ret.initialize_auxiliary());
+		return ret;
+	}
+}
+
+namespace acma {
+	template<typename... TimelineEventTs, auto BufferConfigs, auto AssetHeapConfigs> requires impl::is_buffer_config_table_v<decltype(BufferConfigs)>
+	template<bool Windowing>
+	result<void>     application_instance<sl::tuple<TimelineEventTs...>, BufferConfigs, AssetHeapConfigs>::
+	initialize(
+		sl::bool_constant_type<Windowing>,
+		vk::physical_device& device,
+		bool prefer_synchronous_rendering
+	) noexcept {
+		//Set open flag
+		should_be_open = std::make_unique<std::atomic<bool>>(true);
+
+		//Initialize physical device
+		this->phys_device_ptr = std::addressof(device);
+		RESULT_VERIFY(this->phys_device_ptr->initialize_queues(prefer_synchronous_rendering, Windowing));
+
+		//Create logical device
+        this->logi_device_ptr = std::make_shared_for_overwrite<vk::logical_device>();
+        RESULT_TRY_MOVE(*this->logi_device_ptr, acma::make<vk::logical_device>(this->phys_device_ptr, Windowing));
+
+
+		constexpr sl::size_t command_familes_to_init = command_family::num_distinct_families + static_cast<sl::size_t>(impl::window_capability);
 
 		//Create command pools
 		for(command_family_t i = 0; i < command_familes_to_init; ++i) {
-			RESULT_VERIFY_UNSCOPED((make<vk::command_pool>(i, logi_device, phys_device)), c);
-			ret._command_pool_ptrs[i] = std::make_shared<vk::command_pool>(*std::move(c));
+			RESULT_VERIFY_UNSCOPED((acma::make<vk::command_pool>(i, this->logi_device_ptr, this->phys_device_ptr)), c);
+			this->_command_pool_ptrs[i] = std::make_shared<vk::command_pool>(*std::move(c));
 		}
 
 		
@@ -84,7 +144,7 @@ namespace acma {
 		>{}(
 			sl::integer_sequence_of_length<coupling_policy_t, coupling_policy::num_coupling_policies>,
 			sl::integer_sequence_of_length<memory_policy_t, memory_policy::num_memory_policies>,
-			ret
+			*this
 		)));
 
 		//Init asset heap allocations
@@ -104,82 +164,53 @@ namespace acma {
 			return {};
 		};
 		RESULT_VERIFY((sl::functor::invoke_each_result<result<void>, init_single_asset_heap_alloc>{}(
-			sl::index_sequence_of_length<AssetHeapConfigs.size()>, ret
+			sl::index_sequence_of_length<AssetHeapConfigs.size()>, *this
 		)));
 
 
 		constexpr static sl::size_t dedicated_cmd_buff_count = timeline::impl::dedicated_command_group::num_dedicated_command_groups;
-		for(sl::index_t i = 0; i < ret.frames_in_flight; ++i) {
+		for(sl::index_t i = 0; i < frames_in_flight; ++i) {
 			//Create command buffers
 			for(sl::index_t j = 0; j < dedicated_cmd_buff_count; ++j) {
-				RESULT_TRY_MOVE(ret._command_buffers[i][j], make<vk::command_buffer>(
-					logi_device, 
-					phys_device, 
-					ret._command_pool_ptrs[command_family::transfer]
+				RESULT_TRY_MOVE(this->_command_buffers[i][j], acma::make<vk::command_buffer>(
+					this->logi_device_ptr, 
+					this->phys_device_ptr, 
+					this->_command_pool_ptrs[command_family::transfer]
 				));
 			}
 			for(sl::index_t j = 0; j < command_traits_type::group_count; ++j) {
 				if(command_traits_type::group_families[j] == command_family::none) continue;
-				RESULT_TRY_MOVE(ret._command_buffers[i][j + dedicated_cmd_buff_count], make<vk::command_buffer>(
-					logi_device, 
-					phys_device, 
-					ret._command_pool_ptrs[command_traits_type::group_families[j]]
+				RESULT_TRY_MOVE(this->_command_buffers[i][j + dedicated_cmd_buff_count], acma::make<vk::command_buffer>(
+					this->logi_device_ptr, 
+					this->phys_device_ptr, 
+					this->_command_pool_ptrs[command_traits_type::group_families[j]]
 				));
 			}
 			
 			//Create command buffer semaphores
 			for(sl::index_t j = 0; j < command_group_count; ++j) {
-				RESULT_TRY_MOVE(ret._command_buffer_semaphores[i][j], make<vk::semaphore>(logi_device, VK_SEMAPHORE_TYPE_TIMELINE));
-				ret._command_buffer_semaphore_values[i][j] = 0;
+				RESULT_TRY_MOVE(this->_command_buffer_semaphores[i][j], acma::make<vk::semaphore>(this->logi_device_ptr, VK_SEMAPHORE_TYPE_TIMELINE));
+				this->_command_buffer_semaphore_values[i][j] = 0;
 			}
 
 
 			//Create generic semaphores
 			for(sl::index_t j = 0; j < command_familes_to_init; ++j) {
-				RESULT_TRY_MOVE(ret._generic_timeline_sempahores[i][j], make<vk::semaphore>(logi_device, VK_SEMAPHORE_TYPE_TIMELINE));
-				ret._command_family_semaphore_values[i][j] = 0;
+				RESULT_TRY_MOVE(this->_generic_timeline_sempahores[i][j], acma::make<vk::semaphore>(this->logi_device_ptr, VK_SEMAPHORE_TYPE_TIMELINE));
+				this->_command_family_semaphore_values[i][j] = 0;
 			}
 
 			//Create image acquire semaphore
-			RESULT_TRY_MOVE(ret._acquisition_semaphores[i], make<vk::semaphore>(logi_device));
+			RESULT_TRY_MOVE(this->_acquisition_semaphores[i], acma::make<vk::semaphore>(this->logi_device_ptr));
 		}
-
-		return ret;
-	}
-
-
-	template<typename... TimelineEventTs, auto BufferConfigs, auto AssetHeapConfigs> requires impl::is_buffer_config_table_v<decltype(BufferConfigs)>
-	result<void>     application_instance<sl::tuple<TimelineEventTs...>, BufferConfigs, AssetHeapConfigs>::
-	emplace_window(acma::sz2u32 size, std::string_view title) noexcept {
-		//Create window
-		RESULT_TRY_MOVE(static_cast<window&>(*this), make<window>(
-			inst_ptr, 
-			size,
-			title.empty() ? app_name : title
-		));
-		RESULT_VERIFY(window::initialize(this->logi_device_ptr, this->phys_device_ptr));
-		
-		//Create swap chain sempahores
-		this->_graphics_semaphores.reserve(this->_swap_chain.image_count());
-		this->_pre_present_semaphores.reserve(this->_swap_chain.image_count());
-		for(std::size_t i = 0; i < this->_swap_chain.image_count(); ++i) {
-			RESULT_VERIFY_UNSCOPED(make<vk::semaphore>(this->logi_device_ptr), graphics_semaphore);
-			this->_graphics_semaphores.push_back(*std::move(graphics_semaphore));
-
-			RESULT_VERIFY_UNSCOPED(make<vk::semaphore>(this->logi_device_ptr), pre_present_semaphore);
-			this->_pre_present_semaphores.push_back(*std::move(pre_present_semaphore));
-		}
-
-
-		D2D_INVOKE_ALL(this->timeline_callbacks(), on_swap_chain_updated, *this, *this, external_timeline_state());
+			
 		return {};
 	}
 
-
+	
 	template<typename... TimelineEventTs, auto BufferConfigs, auto AssetHeapConfigs> requires impl::is_buffer_config_table_v<decltype(BufferConfigs)>
 	result<void>     application_instance<sl::tuple<TimelineEventTs...>, BufferConfigs, AssetHeapConfigs>::
-	initialize() noexcept {
-		//Create auxiliary objects
+	initialize_auxiliary() noexcept {
 		constexpr auto init_aux = []<sl::index_t I>(application_instance& app_inst, window& win, sl::index_constant_type<I>) noexcept -> result<void> {
 			if constexpr (std::is_same_v<typename sl::tuple_traits<decltype(app_inst.auxiliary)>::template type_of_element<I>, sl::empty_t>) {
 				//_auxiliary[sl::index_constant<I>] = sl::empty_t{};
@@ -188,11 +219,58 @@ namespace acma {
 			RESULT_TRY_MOVE(app_inst.auxiliary[sl::index_constant<I>], (sl::type_of_pack_element_t<I, timeline::setup<TimelineEventTs>...>{}(app_inst, win)));
 			return {};
 		};
-		RESULT_VERIFY((sl::functor::invoke_each_result<result<void>, init_aux>{}(sl::index_sequence_for_pack<TimelineEventTs...>, *this, *this)));
-		
-			
-		return {};
+		return sl::functor::invoke_each_result<result<void>, init_aux>{}(sl::index_sequence_for_pack<TimelineEventTs...>, *this, *this);
 	}
+}
+
+
+namespace acma {
+    template<typename... TimelineEventTs, auto BufferConfigs, auto AssetHeapConfigs> requires impl::is_buffer_config_table_v<decltype(BufferConfigs)>
+    bool     application_instance<sl::tuple<TimelineEventTs...>, BufferConfigs, AssetHeapConfigs>::
+	is_open() const noexcept {
+        return should_be_open->load(std::memory_order_relaxed);
+    }
+
+    template<typename... TimelineEventTs, auto BufferConfigs, auto AssetHeapConfigs> requires impl::is_buffer_config_table_v<decltype(BufferConfigs)>
+    void     application_instance<sl::tuple<TimelineEventTs...>, BufferConfigs, AssetHeapConfigs>::
+	close() noexcept {
+        should_be_open->store(false, std::memory_order_relaxed);
+    }
+
+
+    template<typename... TimelineEventTs, auto BufferConfigs, auto AssetHeapConfigs> requires impl::is_buffer_config_table_v<decltype(BufferConfigs)>
+    void     application_instance<sl::tuple<TimelineEventTs...>, BufferConfigs, AssetHeapConfigs>::
+	poll_events() noexcept {
+		static_assert(impl::window_capability, "Cannot poll window events with windowing capabilities disabled");
+		if(!has_window) return;
+		
+        glfwPollEvents();
+
+		if(!this->window_handle) [[unlikely]] return;
+        if(!glfwWindowShouldClose(this->window_handle.get()))
+            return;
+		
+        close();
+    }
+
+
+    template<typename... TimelineEventTs, auto BufferConfigs, auto AssetHeapConfigs> requires impl::is_buffer_config_table_v<decltype(BufferConfigs)>
+    std::future<result<void>>      application_instance<sl::tuple<TimelineEventTs...>, BufferConfigs, AssetHeapConfigs>::
+	start_async_render() noexcept {
+        return std::async([](application_instance& a) -> acma::result<void> {
+            while(a.is_open())
+                if(auto r = a.render(); !r.has_value()) [[unlikely]]
+                	return r.error();
+            return {};
+        }, std::ref(*this));
+    }
+
+    template<typename... TimelineEventTs, auto BufferConfigs, auto AssetHeapConfigs> requires impl::is_buffer_config_table_v<decltype(BufferConfigs)>
+    result<void>      application_instance<sl::tuple<TimelineEventTs...>, BufferConfigs, AssetHeapConfigs>::
+	join() const noexcept {
+        __D2D_VULKAN_VERIFY(vkDeviceWaitIdle(*this->logi_device_ptr));
+        return {};
+    }
 }
 
 

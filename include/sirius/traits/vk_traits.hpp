@@ -42,8 +42,8 @@ namespace acma::vk::impl { \
 #define __D2D_DECLARE_VK_TRAITS_INST(type) \
 namespace acma::vk::impl { \
     template<> struct vk_traits<type>{ \
-        using dependent_type = vk::instance; \
-        using deleter_type = void(typename dependent_type::pointer, type, const VkAllocationCallbacks*); \
+        using dependent_type = VkInstance; \
+        using deleter_type = void(dependent_type, type, const VkAllocationCallbacks*); \
     }; \
 }
 

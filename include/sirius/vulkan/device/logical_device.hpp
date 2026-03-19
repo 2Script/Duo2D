@@ -44,7 +44,7 @@ namespace acma::vk {
 		>;
 
 	public:
-        static result<logical_device> create(std::weak_ptr<physical_device> associated_phys_device, bool create_present_queue) noexcept;
+        static result<logical_device> create(physical_device* associated_phys_device, bool windowing) noexcept;
 
 	public:
 		constexpr vulkan_functions_type const& vulkan_functions() const& noexcept { return vulkan_fns; }

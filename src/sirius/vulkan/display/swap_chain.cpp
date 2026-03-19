@@ -16,7 +16,7 @@
 namespace acma::vk {
 	 result<void> swap_chain::reset(
 		std::shared_ptr<logical_device> logi_device,
-		std::weak_ptr<physical_device> phys_device,
+		physical_device* phys_device,
 		surface& window_surface,
 		GLFWwindow& window_instance,
 		std::span<const pixel_format_info> pixel_format_priority,
@@ -24,9 +24,7 @@ namespace acma::vk {
 		std::span<const present_mode> present_mode_priority
 	) noexcept {
         dependent_handle = logi_device;
-        __D2D_WEAK_PTR_TRY_LOCK(phys_device_ptr, phys_device);
-        
-        VkSurfaceCapabilitiesKHR device_capabilities = phys_device_ptr->query<device_query::surface_capabilites>(window_surface);
+        VkSurfaceCapabilitiesKHR device_capabilities = phys_device->query<device_query::surface_capabilites>(window_surface);
 
         //Create swap extent
         if(device_capabilities.currentExtent.width != std::numeric_limits<std::uint32_t>().max())
@@ -44,7 +42,7 @@ namespace acma::vk {
 
 
         //Check display format support
-        auto display_formats = phys_device_ptr->query<device_query::display_formats>(window_surface);
+        auto display_formats = phys_device->query<device_query::display_formats>(window_surface);
         for(std::size_t i = 0; i < pixel_format_priority.size(); ++i) {
             const auto it = display_formats.find({pixel_format_priority[i], color_space});
             if(it != display_formats.end()) {
@@ -57,7 +55,7 @@ namespace acma::vk {
     found_display_format:
 
         //Check present mode support
-        auto present_modes = phys_device_ptr->query<device_query::present_modes>(window_surface);
+        auto present_modes = phys_device->query<device_query::present_modes>(window_surface);
         for(present_mode p : present_mode_priority) {
             if(present_modes[static_cast<std::size_t>(p)]) {
                 _present_mode = p;

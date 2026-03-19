@@ -35,7 +35,6 @@
 namespace acma {
     result<window>    window::
 	create(
-		std::shared_ptr<vk::instance> instance,
 		acma::sz2u32 size, std::string_view title
 	) noexcept {
 
@@ -54,7 +53,7 @@ namespace acma {
         glfwSetScrollCallback(ret.window_handle.get(), mouse_scroll);
 
         //Create surface
-        RESULT_TRY_MOVE(ret._surface, make<vk::surface>(ret.window_handle.get(), instance));
+        RESULT_TRY_MOVE(ret._surface, make<vk::surface>(ret.window_handle.get()));
 
         return std::move(ret);
     }
@@ -64,7 +63,7 @@ namespace acma {
     result<void>    window::
 	initialize(
 		std::shared_ptr<vk::logical_device> logi_device, 
-		std::shared_ptr<vk::physical_device> phys_device
+		vk::physical_device* phys_device
 	) noexcept {
 		//Create swap chain
 		RESULT_TRY_MOVE(_swap_chain, make<vk::swap_chain>(
@@ -93,7 +92,7 @@ namespace acma {
 	verify_swap_chain(
 		VkResult fn_result, 
 		std::shared_ptr<vk::logical_device> logi_device, 
-		std::shared_ptr<vk::physical_device> phys_device,
+		vk::physical_device* phys_device,
 		bool even_if_suboptimal
 	) noexcept {
 		switch(fn_result) {

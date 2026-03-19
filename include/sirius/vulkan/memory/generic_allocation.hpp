@@ -17,7 +17,7 @@ namespace acma::vk {
 	protected:
 		result<void> initialize(
 			std::shared_ptr<logical_device> logi_device, 
-			std::shared_ptr<physical_device> phys_device//,
+			physical_device* phys_device//,
 			//std::shared_ptr<command_pool> transfer_command_pool
 		) noexcept;
 
@@ -26,7 +26,7 @@ namespace acma::vk {
 		sl::array<allocation_count, memory_ptr_type> mems;
 	protected:
 		std::shared_ptr<logical_device> logi_device_ptr;
-		std::shared_ptr<physical_device> phys_device_ptr;
+		physical_device* phys_device_ptr;
 	};
 }
 

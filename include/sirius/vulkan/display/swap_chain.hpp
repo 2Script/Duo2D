@@ -35,7 +35,7 @@ namespace acma::vk {
 	public:
 		result<void> reset(
 			std::shared_ptr<logical_device> logi_deivce,
-			std::weak_ptr<physical_device> phys_device,
+			physical_device* phys_device,
 			surface& window_surface,
 			GLFWwindow& window_instance,
 			std::span<const pixel_format_info> pixel_format_priority = default_pixel_format_priority,

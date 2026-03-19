@@ -11,7 +11,7 @@
 
 
 namespace acma::vk {
-    result<depth_image> depth_image::create(std::shared_ptr<logical_device> logi_device, std::weak_ptr<physical_device> phys_device_weak_ref, extent2 extent) noexcept {
+    result<depth_image> depth_image::create(std::shared_ptr<logical_device> logi_device, physical_device* phys_device, extent2 extent) noexcept {
         depth_image ret{};
 		ret.dependent_handle = logi_device;
 
@@ -32,7 +32,6 @@ namespace acma::vk {
         RESULT_TRY_MOVE(ret.img, make<image>(logi_device, image_create_info));
 
         //TODO do this once in physical_device
-        __D2D_WEAK_PTR_TRY_LOCK(phys_device, phys_device_weak_ref);
         VkPhysicalDeviceMemoryProperties mem_props;
         vkGetPhysicalDeviceMemoryProperties(*phys_device, &mem_props);
 

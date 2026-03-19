@@ -8,7 +8,7 @@ namespace acma::vk {
 	result<void>    generic_allocation<CouplingPolicy, RenderProcessT>::
 	initialize(
 		std::shared_ptr<logical_device> logi_device, 
-		std::shared_ptr<physical_device> phys_device//,
+		physical_device* phys_device//,
 		//std::shared_ptr<command_pool> transfer_command_pool
 	) noexcept {
         mems = sl::universal::make<sl::array<allocation_count, memory_ptr_type>>(

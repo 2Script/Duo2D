@@ -8,7 +8,7 @@
 
 
 namespace acma::vk {
-    result<physical_device> physical_device::create(VkPhysicalDevice& device_handle, std::shared_ptr<vk::instance> instance, bool prefer_synchronous_rendering, bool window_capability) noexcept {
+    result<physical_device> physical_device::create(VkPhysicalDevice& device_handle) noexcept {
         
         //Get device features and properties
 		//VkPhysicalDeviceDescriptorHeapPropertiesEXT device_descriptor_heap_properties{
@@ -21,56 +21,6 @@ namespace acma::vk {
         VkPhysicalDeviceFeatures device_features;
         vkGetPhysicalDeviceProperties2(device_handle, &device_properties);
         vkGetPhysicalDeviceFeatures(device_handle, &device_features);
-
-
-		constexpr static sl::uint32_t nidx = (static_cast<std::uint32_t>(sl::npos) >> 1);
-        //Get device queue family indicies
-        auto device_queue_family_infos = sl::universal::make<sl::array<command_family::num_families, queue_family_info>>(
-			sl::in_place_tag,
-			false, 
-			nidx
-		);
-        
-		{
-        std::uint32_t family_count = 0;
-        vkGetPhysicalDeviceQueueFamilyProperties(device_handle, &family_count, nullptr);
-
-        std::vector<VkQueueFamilyProperties> families(family_count);
-        vkGetPhysicalDeviceQueueFamilyProperties(device_handle, &family_count, families.data());
-
-        constexpr std::array<VkQueueFlagBits, command_family::num_distinct_families> flag_bit = {
-            VK_QUEUE_GRAPHICS_BIT,
-			VK_QUEUE_COMPUTE_BIT,
-			VK_QUEUE_TRANSFER_BIT,
-        }; 
-
-		//Create dummy window
-		window dummy_window{};
-		if(window_capability)
-			RESULT_TRY_MOVE(dummy_window, make<window>(instance, acma::sz2u32{1280, 720}, "dummy"));
-
-        for(std::uint32_t idx = 0; idx < family_count; ++idx) {
-            VkBool32 supports_present = false;
-			if(window_capability) {
-            	vkGetPhysicalDeviceSurfaceSupportKHR(device_handle, idx, dummy_window.surface(), &supports_present);
-				if(supports_present && (device_queue_family_infos[command_family::present].index == nidx || !prefer_synchronous_rendering)) 
-					device_queue_family_infos[command_family::present] = queue_family_info{true, idx};
-			}
-
-            for(std::size_t family_id = 0; family_id < command_family::num_distinct_families; ++family_id) {    
-				if(!(families[idx].queueFlags & flag_bit[family_id])) continue;
-				if(device_queue_family_infos[family_id].index != nidx && prefer_synchronous_rendering) continue;
-				device_queue_family_infos[family_id] = queue_family_info{static_cast<bool>(supports_present), idx};
-            }
-        }
-		}
-
-		//Check for queue family support
-		//TODO: only check for queues that we actually need (based on graphics timeline)?
-		const sl::size_t num_queue_families_to_verify = command_family::num_distinct_families + static_cast<sl::size_t>(window_capability);
-		for(std::size_t i = 0; i < num_queue_families_to_verify; ++i)
-			if(device_queue_family_infos[i].index == nidx)
-				return static_cast<errc>(error::device_lacks_necessary_queue_base + i);
 		
 		
 
@@ -133,11 +83,69 @@ namespace acma::vk {
 				// 	device_descriptor_heap_properties.maxResourceHeapSize
 				// },
 			}},
-            .queue_family_infos = device_queue_family_infos,
+            .queue_family_infos = sl::universal::make<sl::array<command_family::num_families, queue_family_info>>(
+				sl::in_place_tag,
+				false, 
+				nidx
+			),
         };
         ret.handle = device_handle;
         return ret;
     }
+
+
+	result<void> physical_device::initialize_queues(bool prefer_synchronous_rendering, bool window_capability) noexcept {
+        //Get device queue family indicies
+        auto device_queue_family_infos = sl::universal::make<sl::array<command_family::num_families, queue_family_info>>(
+			sl::in_place_tag,
+			false, 
+			nidx
+		);
+        
+		{
+        std::uint32_t family_count = 0;
+        vkGetPhysicalDeviceQueueFamilyProperties(handle, &family_count, nullptr);
+
+        std::vector<VkQueueFamilyProperties> families(family_count);
+        vkGetPhysicalDeviceQueueFamilyProperties(handle, &family_count, families.data());
+
+        constexpr std::array<VkQueueFlagBits, command_family::num_distinct_families> flag_bit = {
+            VK_QUEUE_GRAPHICS_BIT,
+			VK_QUEUE_COMPUTE_BIT,
+			VK_QUEUE_TRANSFER_BIT,
+        }; 
+
+		//Create dummy window
+		window dummy_window{};
+		if(window_capability)
+			RESULT_TRY_MOVE(dummy_window, make<window>(acma::sz2u32{1280, 720}, "dummy"));
+
+        for(std::uint32_t idx = 0; idx < family_count; ++idx) {
+            VkBool32 supports_present = false;
+			if(window_capability) {
+            	vkGetPhysicalDeviceSurfaceSupportKHR(handle, idx, dummy_window.surface(), &supports_present);
+				if(supports_present && (device_queue_family_infos[command_family::present].index == nidx || !prefer_synchronous_rendering)) 
+					device_queue_family_infos[command_family::present] = queue_family_info{true, idx};
+			}
+
+            for(std::size_t family_id = 0; family_id < command_family::num_distinct_families; ++family_id) {    
+				if(!(families[idx].queueFlags & flag_bit[family_id])) continue;
+				if(device_queue_family_infos[family_id].index != nidx && prefer_synchronous_rendering) continue;
+				device_queue_family_infos[family_id] = queue_family_info{static_cast<bool>(supports_present), idx};
+            }
+        }
+		}
+
+		//Check for queue family support
+		//TODO: only check for queues that we actually need (based on graphics timeline)?
+		const sl::size_t num_queue_families_to_verify = command_family::num_distinct_families + static_cast<sl::size_t>(window_capability);
+		for(std::size_t i = 0; i < num_queue_families_to_verify; ++i)
+			if(device_queue_family_infos[i].index == nidx)
+				return static_cast<errc>(error::device_lacks_necessary_queue_base + i);
+
+		queue_family_infos = device_queue_family_infos;
+		return {};
+	}
 }
 
 

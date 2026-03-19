@@ -11,7 +11,17 @@
 __D2D_DECLARE_VK_TRAITS_INST(VkSurfaceKHR);
 
 namespace acma::vk {
-    struct surface : vulkan_ptr<VkSurfaceKHR, vkDestroySurfaceKHR> {
-        static result<surface> create(GLFWwindow* w, std::shared_ptr<instance> i) noexcept;
+    struct surface : vulkan_ptr_base<VkSurfaceKHR> {
+		constexpr surface() noexcept = default;
+        static result<surface> create(GLFWwindow* w) noexcept;
+
+	public:
+		~surface() noexcept;
+	public:
+	    surface(surface&& other) noexcept;
+        surface& operator=(surface&& other) noexcept;
+
+        constexpr surface(const surface& other) = delete;
+        constexpr surface& operator=(const surface& other) = delete;
     };
 }

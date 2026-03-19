@@ -104,7 +104,7 @@ namespace acma {
 
 	public:
 		constexpr std::shared_ptr<vk::logical_device>  logical_device_ptr()  const noexcept { return logi_device_ptr; }
-		constexpr std::shared_ptr<vk::physical_device> physical_device_ptr() const noexcept { return phys_device_ptr; }
+		constexpr vk::physical_device* physical_device_ptr() const noexcept { return phys_device_ptr; }
 
 		constexpr sl::size_t  frame_count() const noexcept { return _frame_count; }
 		constexpr sl::index_t frame_index() const noexcept { return frame_count() % frames_in_flight; }
@@ -171,7 +171,7 @@ namespace acma {
 
 	protected:
 		std::shared_ptr<vk::logical_device> logi_device_ptr;
-		std::shared_ptr<vk::physical_device> phys_device_ptr;
+		vk::physical_device* phys_device_ptr;
 
 		//std::size_t frame_idx;
 		sl::array<timeline::callback_event::num_callback_events, std::vector<callback_function_type*>> _timeline_callbacks;

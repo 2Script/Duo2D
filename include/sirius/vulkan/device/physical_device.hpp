@@ -35,7 +35,13 @@ namespace acma::vk {
 
 namespace acma::vk {
     struct physical_device : vulkan_ptr_base<VkPhysicalDevice> {
-        static result<physical_device> create(VkPhysicalDevice& device_handle, std::shared_ptr<vk::instance> instance, bool prefer_synchronous_rendering, bool window_capability) noexcept;
+        static result<physical_device> create(VkPhysicalDevice& device_handle) noexcept;
+
+		result<void> initialize_queues(bool prefer_synchronous_rendering, bool window_capability) noexcept;
+
+	private:
+		constexpr static sl::uint32_t nidx = (static_cast<std::uint32_t>(sl::npos) >> 1);
+
     public:
         template<device_query Query> typename device_query_traits<Query>::return_type query(surface const& s) const noexcept = delete;
 
@@ -60,6 +66,7 @@ namespace acma::vk {
 
     public:
         constexpr friend std::strong_ordering operator<=>(const physical_device& a, const physical_device& b) noexcept;
+
     };
 }
 

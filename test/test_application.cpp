@@ -14,7 +14,7 @@
 
 #include <sirius/core/error.hpp>
 #include <sirius/core/make.hpp>
-#include <sirius/core/application.hpp>
+#include <sirius/core/initialize.hpp>
 #include <sirius/core/window.hpp>
 #include <sirius/arith/matrix.hpp>
 #include <sirius/arith/point.hpp>
@@ -38,7 +38,6 @@ extern "C" const char* __asan_default_options() { return "detect_leaks=0"; }
 
 
 using application_instance = acma::application_instance<acma::test::novice_timeline, buffer_configs, asset_heap_configs>;
-using application = acma::application<application_instance, true>;
 
 using command_traits_type = acma::timeline::impl::command_traits<
 	acma::test::basic_timeline, 
@@ -69,30 +68,16 @@ constexpr sl::array<3, acma::pt2u32> rect_positions{{
 }};
 
 int main(){
-    auto a = acma::make<application>("Sirius Test", acma::version{1,0,0}, true);
-    if(!a.has_value()) return a.error();
-    application app = *std::move(a);
-
+	RESULT_VERIFY(acma::intitialize_lib("Sirius Test", acma::version{1,0,0}));
 
 
     std::cout << std::filesystem::current_path() << std::endl;
     const std::filesystem::path assets_path = std::filesystem::canonical(std::filesystem::path("../../test/assets"));
-
-    std::set<acma::vk::physical_device> device_list = app.devices();
-    app.selected_device() = *device_list.begin();
-    auto i = app.initialize_device();
-    if(!i.has_value()) return i.error(); 
-
-    acma::result<application_instance*> inst_result = app.emplace_back();
+	
+	acma::vk::physical_device& selected_device = *acma::devices().begin();
+    acma::result<application_instance> inst_result = acma::make<application_instance>(selected_device, true, acma::sz2u32{1600, 900});
     if(!inst_result.has_value()) return inst_result.error();
-    application_instance& inst = *(*inst_result);
-
-	//Add window
-	RESULT_VERIFY(inst.emplace_window(acma::sz2u32{1600, 900}));
-	//RESULT_VERIFY(inst.emplace_window(acma::sz2u32{1600, 900}, "Sirius Test Window"));
-
-	//Initialize
-	RESULT_VERIFY(inst.initialize());
+    application_instance inst = *std::move(inst_result);
 
  
 	//llfio::mapped_file_handle mh;
@@ -363,10 +348,10 @@ int main(){
     }, std::ref(inst));
 
 
-    std::future<acma::result<void>> render = app.start_async_render();
+    std::future<acma::result<void>> render = inst.start_async_render();
 
-    while(app.is_open()) {
-        app.poll_events();
+    while(inst.is_open()) {
+        inst.poll_events();
         //if(auto r = app.render(); !r.has_value()) [[unlikely]]
         //    return r.error();
     }
@@ -386,7 +371,7 @@ int main(){
             std::cout << std::format("{},", b);
         std::cout << std::endl;
     }
-    RESULT_VERIFY(app.join());
+    RESULT_VERIFY(inst.join());
     edit_s.join();
 
     std::cout << acma::error::last_glfw_desc() << std::endl;

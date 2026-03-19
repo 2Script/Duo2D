@@ -318,7 +318,7 @@ namespace acma::vk {
 // 		asset_heap_allocation<Config, RenderProcessT> const& asset_heap,
 // 		uniform_buffer_segment<Js> const&... uniform_buffs
 // 	) noexcept {
-// 		const std::shared_ptr<physical_device> phys_device_ptr = static_cast<RenderProcessT const&>(*this).physical_device_ptr();
+// 		const physical_device* phys_device_ptr = static_cast<RenderProcessT const&>(*this).physical_device_ptr();
 // 		const sl::array<descriptor_heap::num_descriptor_heaps, descriptor_heap_info> descriptor_heap_infos = phys_device_ptr->descriptor_heap_infos;
 // 		const sl::array<asset_group::num_asset_groups, asset_group_info> asset_group_infos{{
 // 			{{phys_device_ptr->descriptor_infos[asset_group::sampler]}, asset_heap._sampler_infos.size()},

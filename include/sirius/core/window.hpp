@@ -29,20 +29,19 @@ namespace acma {
 			window_handle(), _surface{}, _swap_chain{}, _depth_image{}, _size{} {}
 	public:
         inline static result<window> create(
-			std::shared_ptr<vk::instance> instance,
 			acma::sz2u32 size, std::string_view title
 		) noexcept;
 
 		inline result<void> initialize(
 			std::shared_ptr<vk::logical_device> logi_device, 
-			std::shared_ptr<vk::physical_device> phys_device
+			vk::physical_device* phys_device
 		) noexcept;
 		
 	public:
 		inline result<bool> verify_swap_chain(
 			VkResult fn_result, 
 			std::shared_ptr<vk::logical_device> logi_device, 
-			std::shared_ptr<vk::physical_device> phys_device,
+			vk::physical_device* phys_device,
 			bool even_if_suboptimal
 		) noexcept;
 

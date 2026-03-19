@@ -15,7 +15,7 @@ namespace acma::vk {
 		device_allocation<FiF, sl::index_sequence_type<Is...>, CP, MP, N, BufferConfigs, RenderProcessT>::
 	create(
 		std::shared_ptr<logical_device> logi_device,
-		std::shared_ptr<physical_device> phys_device//,
+		physical_device* phys_device//,
 		//std::shared_ptr<command_pool> transfer_command_pool
 	) noexcept {
         device_allocation ret{}; 

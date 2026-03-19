@@ -8,7 +8,7 @@
 
 
 namespace acma::vk {
-    result<command_buffer> command_buffer::create(std::shared_ptr<logical_device> logi_device, std::shared_ptr<physical_device> phys_device, std::shared_ptr<command_pool> pool) noexcept {
+    result<command_buffer> command_buffer::create(std::shared_ptr<logical_device> logi_device, physical_device* phys_device, std::shared_ptr<command_pool> pool) noexcept {
         command_buffer ret{};
         ret.logi_device_ptr = logi_device;
 		ret.phys_device_ptr = phys_device;

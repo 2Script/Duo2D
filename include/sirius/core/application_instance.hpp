@@ -6,6 +6,7 @@
 #include <memory>
 #include <string_view>
 
+#include "sirius/core/initialize.hpp"
 #include "sirius/timeline/command_traits.hpp"
 #include "sirius/timeline/setup.hpp"
 #include "sirius/input/category.hpp"
@@ -51,17 +52,34 @@ namespace acma {
 		constexpr static sl::size_t M = AssetHeapConfigs.size();
 
 	public:
-		template<bool WindowCapability>
 		static result<application_instance> create(
-			std::shared_ptr<vk::instance> instance,
-			std::shared_ptr<vk::logical_device> logi_device, 
-			std::shared_ptr<vk::physical_device> phys_device,
-			std::string_view name,
-			sl::bool_constant_type<WindowCapability>
+			vk::physical_device& device, 
+			bool prefer_synchronous_rendering
 		) noexcept;
+		static result<application_instance> create(
+			vk::physical_device& device, 
+			bool prefer_synchronous_rendering,
+			acma::sz2u32 window_size,
+			std::string_view window_title = {}
+		) noexcept;
+
+	private:
+		template<bool Windowing>
+		result<void> initialize(
+			sl::bool_constant_type<Windowing>,
+			vk::physical_device& device,
+			bool prefer_synchronous_rendering
+		) noexcept;
+
+		result<void> initialize_auxiliary() noexcept;
+
 	public:
-		result<void> emplace_window(acma::sz2u32 size, std::string_view title = {}) noexcept;
-		result<void> initialize() noexcept;
+        bool is_open() const noexcept;
+		void close() noexcept;
+        void poll_events() noexcept;
+
+        std::future<result<void>> start_async_render() noexcept;
+        result<void> join() const noexcept;
 
     public:
         result<void> render() noexcept;
@@ -78,8 +96,8 @@ namespace acma {
 		constexpr auto&& external_timeline_state(this auto&& self) noexcept { return sl::forward_like<decltype(self)>(self._external_timeline_state); }
 
 	private:
-        std::shared_ptr<vk::instance> inst_ptr;
-		std::string_view app_name;
+        std::unique_ptr<std::atomic<bool>> should_be_open;
+		bool has_window;
 	private:
 		timeline_state_type _external_timeline_state;
 	private:

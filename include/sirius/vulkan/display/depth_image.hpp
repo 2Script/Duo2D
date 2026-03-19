@@ -14,7 +14,7 @@ namespace acma::vk {
     class depth_image : public vulkan_ptr<VkDeviceMemory, vkFreeMemory> {
     public:
         constexpr depth_image() noexcept = default;
-        static result<depth_image> create(std::shared_ptr<logical_device> logi_device, std::weak_ptr<physical_device> phys_device, extent2 extent) noexcept;
+        static result<depth_image> create(std::shared_ptr<logical_device> logi_device, physical_device* phys_device, extent2 extent) noexcept;
     public:
         constexpr auto&& view     (this auto&& self) noexcept { return sl::forward_like<decltype(self)>(self.img_view); }
         constexpr auto&& raw_image(this auto&& self) noexcept { return sl::forward_like<decltype(self)>(self.img); }

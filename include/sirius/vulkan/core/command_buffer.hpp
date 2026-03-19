@@ -43,7 +43,7 @@ namespace acma::vk {
 		constexpr static sl::size_t dispatch_command_count = dispatch_command_buffers_sequence_type<T, N, BufferConfigs>::size();
 
 	public:
-        inline static result<command_buffer> create(std::shared_ptr<logical_device> logi_device, std::shared_ptr<physical_device> phys_device, std::shared_ptr<command_pool> pool) noexcept;
+        inline static result<command_buffer> create(std::shared_ptr<logical_device> logi_device, physical_device* phys_device, std::shared_ptr<command_pool> pool) noexcept;
     public:
     	inline result<void> begin(bool one_time = false) const noexcept;
     	inline result<void> end() const noexcept;
@@ -103,7 +103,7 @@ namespace acma::vk {
 
     private:
         std::shared_ptr<logical_device> logi_device_ptr;
-        std::shared_ptr<physical_device> phys_device_ptr;
+        physical_device* phys_device_ptr;
         std::shared_ptr<command_pool> cmd_pool_ptr;
     };
 }

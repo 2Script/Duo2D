@@ -14,7 +14,7 @@ namespace acma::vk {
 		asset_heap_allocation<I, Config, RenderProcessT>::
 	create(
 		std::shared_ptr<logical_device> logi_device,
-		std::shared_ptr<physical_device> phys_device//,
+		physical_device* phys_device//,
 		//std::shared_ptr<command_pool> transfer_command_pool
 	) noexcept {
         asset_heap_allocation ret{}; 
